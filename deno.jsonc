@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "lib": ["deno.ns", "dom", "dom.iterable", "dom.asynciterable", "deno.unstable"],
+    "target": "esnext"
+  },
+  "lint": {
+    "files": {
+      "include": ["src/", "examples/", "scripts/"],
+      "exclude": ["dist/"]
+    },
+    "rules": {
+      "tags": ["recommended"],
+      "include": [],
+      "exclude": []
+    }
+  },
+  "fmt": {
+    "files": {
+      "include": ["src/", "examples/", "scripts/"],
+      "exclude": ["dist/"]
+    },
+    "options": {
+      "useTabs": false,
+      "lineWidth": 80,
+      "indentWidth": 2,
+      "singleQuote": true // Note: JSONC allows this, but pure JSON does not. Deno handles it.
+    }
+  },
+  "tasks": {
+    "dev": "deno run --allow-net --allow-read scripts/dev_server.ts",
+    "build:browser": "deno run -A npm:esbuild@0.20.2 src/main.ts --bundle --outfile=dist/my-webgpu-lib.js --format=esm --platform=browser --sourcemap --target=chrome100"
+  }, 
+  "nodeModulesDir": "auto"
+}

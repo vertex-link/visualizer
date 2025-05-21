@@ -1,0 +1,39 @@
+﻿# Project Specific
+dist/
+
+# Deno specific
+.deno/
+*.orig
+*.pyc
+*.swp
+node_modules
+
+# TypeScript
+*.tsbuildinfo
+.tscache/
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# IDE - JetBrains
+.idea/
+*.iml
+*.iws
+.idea_modules/
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# OS
+.DS_Store
+Thumbs.db
+*.log
+.git
