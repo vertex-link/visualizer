@@ -1,4 +1,6 @@
-﻿export interface IService {
+﻿export type ServiceKey = symbol;
+
+export interface IService {
     initialize?(): Promise<void> | void;
     update?(deltaTime: number): void;
     dispose?(): Promise<void> | void;

@@ -30,5 +30,8 @@
     "dev": "deno run --allow-net --allow-read scripts/dev_server.ts",
     "build:browser": "deno run -A npm:esbuild@0.20.2 src/main.ts --bundle --outfile=dist/my-webgpu-lib.js --format=esm --platform=browser --sourcemap --target=chrome100"
   }, 
-  "nodeModulesDir": "auto"
+  "nodeModulesDir": "auto",
+  "imports": {
+    "reflect-metadata": "npm:reflect-metadata@^0.2.2"
+  }
 }

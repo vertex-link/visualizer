@@ -8,7 +8,8 @@
     "jsr:@std/fs@~0.218.2": "0.218.2",
     "jsr:@std/io@~0.218.2": "0.218.2",
     "jsr:@std/path@~0.218.2": "0.218.2",
-    "npm:esbuild@0.20.2": "0.20.2"
+    "npm:esbuild@0.20.2": "0.20.2",
+    "npm:reflect-metadata@~0.2.2": "0.2.2"
   },
   "jsr": {
     "@deno/cache-dir@0.8.0": {
@@ -191,6 +192,9 @@
       ],
       "scripts": true,
       "bin": true
+    },
+    "reflect-metadata@0.2.2": {
+      "integrity": "sha512-urBwgfrvVP/eAyXx4hluJivBKzuEbSQs9rKWCrCkbSxNv8mxPcUZKeuoF3Uy4mJl3Lwprp6yy5/39VWigZ4K6Q=="
     }
   },
   "redirects": {
@@ -310,5 +314,10 @@
     "https://deno.land/x/emit@0.40.0/_utils.ts": "98412edc7aa29e77d592b54fbad00bdec1b05d0c25eb772a5f8edc9813e08d88",
     "https://deno.land/x/emit@0.40.0/emit.generated.js": "65621c730ae9e4e818a3f83913562101dc9a371befbdb44d81e09a1532af5089",
     "https://deno.land/x/emit@0.40.0/mod.ts": "04b1818a60d6f85ca991bc4369634ea55d51388c4154b0100dfbe3c9684e2318"
+  },
+  "workspace": {
+    "dependencies": [
+      "npm:reflect-metadata@~0.2.2"
+    ]
   }
 }
