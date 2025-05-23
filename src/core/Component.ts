@@ -1,122 +1,92 @@
-﻿// Defines the expected constructor signature for Component classes.
-// It must accept an Actor instance as its first argument.
+﻿// src/core/Component.ts
 import Actor from "./Actor.ts";
-import {generateUUID} from "../utils/uuid.ts";
+import { generateUUID } from "../utils/uuid.ts"; //
 
-export type ComponentClass<T extends Component = Component> = new (actor: Actor, ...args: any[]) => T;
+// Existing ComponentClass type
+export type ComponentClass<T extends Component = Component> = new (actor: Actor, ...args: any[]) => T; //
+
+/**
+ * Utility type to extract the constructor parameters of a ComponentClass,
+ * excluding the first 'actor' argument.
+ *
+ * @template T - A Component constructor type.
+ * @returns A tuple representing the types of the arguments after 'actor'.
+ */
+export type ComponentConstructorParameters<
+    T extends new (actor: Actor, ...args: any[]) => any
+> = T extends new (actor: Actor, ...args: infer P) => any ? P : never;
 
 export default abstract class Component {
-    public readonly id: string; // Unique ID for this component instance
-    readonly #actor: Actor; // Reference to the parent Actor
+    public readonly id: string; //
+    readonly #actor: Actor; //
 
-    // Properties for dependency management (if you keep this system)
-    #dependencies = new Map<ComponentClass<any>, Component | undefined>(); // Using ComponentClass<any>
-    #initialized = false; // If you use an initialization phase
+    #dependencies = new Map<ComponentClass<any>, Component | undefined>(); //
+    #initialized = false; //
 
     constructor(actor: Actor) {
-        if (!actor || !(actor instanceof Actor)) {
-            throw new Error("Component constructor: Valid Actor instance is required.");
+        if (!actor || !(actor instanceof Actor)) { //
+            throw new Error("Component constructor: Valid Actor instance is required."); //
         }
-        this.#actor = actor;
+        this.#actor = actor; //
         this.id = generateUUID(); // Assign a unique ID to the component instance
         // console.debug(`Component '${this.constructor.name}' (ID: ${this.id}) created for Actor '${actor.label}'.`);
-        // Registration of decorated methods is now handled by Actor.addComponent
     }
 
-    /**
-     * Provides access to the parent Actor instance.
-     */
-    public get actor(): Actor {
-        return this.#actor;
+    public get actor(): Actor { //
+        return this.#actor; //
     }
 
-    // --- Optional: Dependency Management System (if you use it) ---
-    /**
-     * Declares a dependency on another Component type.
-     * Call this in the constructor of derived components.
-     * @param componentClass The class of the Component being depended upon.
-     */
-    protected addDependency(componentClass: ComponentClass<any>): void {
-        if (this.#initialized) {
-            console.warn(`Component '${this.constructor.name}': Cannot add dependency after initialization.`);
-            return;
+    protected addDependency(componentClass: ComponentClass<any>): void { //
+        if (this.#initialized) { //
+            console.warn(`Component '${this.constructor.name}': Cannot add dependency after initialization.`); //
+            return; //
         }
-        this.#dependencies.set(componentClass, undefined);
+        this.#dependencies.set(componentClass, undefined); //
     }
 
-    /**
-     * Called by the Actor to attempt to resolve dependencies and initialize the component.
-     * This is part of an optional, more complex initialization flow.
-     */
-    public checkAndResolveDependencies(): boolean {
-        // console.groupCollapsed(`Component '${this.constructor.name}' (ID: ${this.id}): Checking dependencies.`);
-        if (this.#initialized) {
-            // console.debug("Already initialized.");
-            console.groupEnd();
-            return true;
+    public checkAndResolveDependencies(): boolean { //
+        if (this.#initialized) { //
+            return true; //
         }
 
-        let allResolved = true;
-        if (this.#dependencies.size > 0) {
-            for (const [requiredClass, resolvedInstance] of this.#dependencies) {
-                if (resolvedInstance) continue; // Already resolved this one
+        let allResolved = true; //
+        if (this.#dependencies.size > 0) { //
+            for (const [requiredClass, resolvedInstance] of this.#dependencies) { //
+                if (resolvedInstance) continue; //
 
-                if (this.actor.hasComponent(requiredClass)) {
-                    this.#dependencies.set(requiredClass, this.actor.getComponent(requiredClass));
-                    // console.debug(`Dependency '${requiredClass.name}' resolved.`);
+                if (this.actor.hasComponent(requiredClass)) { //
+                    this.#dependencies.set(requiredClass, this.actor.getComponent(requiredClass)); //
                 } else {
-                    // console.warn(`Dependency '${requiredClass.name}' NOT YET RESOLVED.`);
-                    allResolved = false;
-                    break;
+                    allResolved = false; //
+                    break; //
                 }
             }
-        } else {
-            // console.debug("No declared dependencies.");
         }
 
-        if (allResolved) {
-            this.#initialized = true;
-            // console.debug("All dependencies resolved. Initializing component.");
-            if (typeof (this as any).initialize === 'function') {
+        if (allResolved) { //
+            this.#initialized = true; //
+            if (typeof (this as any).initialize === 'function') { //
                 try {
-                    (this as any).initialize(); // Call initialize if it exists
-                    // console.debug("initialize() method called.");
+                    (this as any).initialize(); //
                 } catch (e) {
-                    console.error(`Error during initialize() of component ${this.constructor.name} (ID: ${this.id}):`, e)
+                    console.error(`Error during initialize() of component ${this.constructor.name} (ID: ${this.id}):`, e) //
                 }
-            } else {
-                // console.debug("No custom initialize() method found.");
             }
         }
-        console.groupEnd();
-        return this.#initialized;
+        return this.#initialized; //
     }
 
-    /**
-     * Retrieves a resolved dependency. Throws an error if the dependency
-     * is not declared or not yet resolved.
-     * @param componentClass The class of the Component dependency to retrieve.
-     */
-    protected getDependency<T extends Component>(componentClass: ComponentClass<T>): T {
-        if (!this.#dependencies.has(componentClass)) {
-            throw new Error(`Component '${this.constructor.name}': Dependency on '${componentClass.name}' was not declared.`);
+    protected getDependency<T extends Component>(componentClass: ComponentClass<T>): T { //
+        if (!this.#dependencies.has(componentClass)) { //
+            throw new Error(`Component '${this.constructor.name}': Dependency on '${componentClass.name}' was not declared.`); //
         }
-        const instance = this.#dependencies.get(componentClass) as T | undefined;
-        if (!instance || !this.#initialized) {
-            throw new Error(`Component '${this.constructor.name}': Dependency on '${componentClass.name}' is not yet resolved or component not initialized.`);
+        const instance = this.#dependencies.get(componentClass) as T | undefined; //
+        if (!instance || !this.#initialized) { //
+            throw new Error(`Component '${this.constructor.name}': Dependency on '${componentClass.name}' is not yet resolved or component not initialized.`); //
         }
-        return instance;
+        return instance; //
     }
 
-    /**
-     * Optional: A method that can be called by the Actor when the component is removed.
-     * Useful for cleaning up resources specific to this component.
-     */
-    public dispose?(): void;
-
-    /**
-     * Optional: A method that can be called after all dependencies are resolved.
-     * Useful for one-time setup that relies on other components.
-     */
-    public initialize?(): void;
+    public dispose?(): void; //
+    public initialize?(): void; //
 }

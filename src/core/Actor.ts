@@ -1,5 +1,5 @@
 ﻿// src/core/Actor.ts
-import Component, { ComponentClass } from "./Component.ts";
+import Component, {ComponentClass, ComponentConstructorParameters} from "./Component.ts";
 import System from "./System.ts"; // Assuming System.actors is still relevant
 import { HOOKED_METHODS_METADATA_KEY, HookedMethodMetadata } from './processor/Decorators.ts';
 import { ProcessorRegistry } from './processor/ProcessorRegistry.ts';
@@ -107,28 +107,39 @@ export default class Actor {
         });
     }
 
-    public addComponent(label: string, componentClass: ComponentClass): this {
-        if (!label || label.trim() === "") {
-            throw new Error(`Actor '${this.label}': Component label cannot be empty.`);
+    /**
+     * Adds a component to the actor with type-safe arguments.
+     * @param label A unique label for this component within the actor.
+     * @param componentClass The class of the component to add.
+     * @param args Additional arguments to pass to the component's constructor, matching its signature (after 'actor').
+     * @returns The newly created component instance.
+     */
+    public addComponent<C extends new (actor: Actor, ...args: any[]) => Component>( // Generic C for ComponentClass
+        label: string,
+        componentClass: C,
+        ...args: ComponentConstructorParameters<C> // Use utility type for ...args
+    ): InstanceType<C> { // Return the specific instance type T
+        if (!label || label.trim() === "") { //
+            throw new Error(`Actor '${this.label}': Component label cannot be empty.`); //
         }
-        // console.debug(`Actor '${this.label}': Attempting to add component '${label}' of type '${componentClass.name}'.`);
-        const component = new componentClass(this); // Actor instance is passed to component constructor
 
-        this.validateComponent(label, component);
-        this._components.set(label, component);
+        const component = new componentClass(this, ...args); // Spread args here
 
-        // Register component's decorated methods.
-        // The component's constructor should have assigned it a unique `component.id`.
+        this.validateComponent(label, component); //
+        this._components.set(label, component); //
+
         this._registerDecoratedMethodsForInstance(
             component,
             component.id,
             Object.getPrototypeOf(component),
-            `actor_${this.id}_comp_` // Prefix to ensure global uniqueness of processable IDs
+            `actor_${this.id}_comp_` //
         );
 
-        this.updateDependencies(); // If components have their own dependency system
-        // console.debug(`Actor '${this.label}': Added component '${label}' (ID: ${component.id}). Total components: ${this._components.size}`);
-        return this;
+        if (this._isInitialized) { //
+            this.updateDependencies(); //
+        }
+        return this
+        //return component as InstanceType<C>; // Return the strongly-typed instance
     }
 
     public removeComponent(label: string): boolean {
