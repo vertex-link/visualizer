@@ -1,6 +1,6 @@
 ﻿// src/core/Component.ts
-import Actor from "./Actor.ts";
-import { generateUUID } from "../utils/uuid.ts"; //
+import Actor from "./../Actor.ts";
+import { generateUUID } from "./../../utils/uuid.ts"; //
 
 // Existing ComponentClass type
 export type ComponentClass<T extends Component = Component> = new (actor: Actor, ...args: any[]) => T; //
@@ -88,5 +88,5 @@ export default abstract class Component {
     }
 
     public dispose?(): void; //
-    public initialize?(): void; //
+    public initialize?(): void {}; //
 }

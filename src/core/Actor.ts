@@ -1,105 +1,65 @@
 ﻿// src/core/Actor.ts
-import Component, {ComponentClass, ComponentConstructorParameters} from "./Component.ts";
+import Component, {ComponentClass, ComponentConstructorParameters} from "./component/Component.ts";
 import System from "./System.ts";
 import { HOOKED_METHODS_METADATA_KEY, HookedMethodMetadata } from './processor/Decorators.ts';
 import { ProcessorRegistry } from './processor/ProcessorRegistry.ts';
 import { IProcessable } from './processor/Processor.ts';
 import { generateUUID } from "../utils/uuid.ts";
+import {ComponentTypeRegistry} from "./component/ComponentRegistry.ts";
 
 export default class Actor {
     public readonly label: string;
     public readonly id: string;
-    private _components: Map<string, Component> = new Map<string, Component>();
-    private _isInitialized: boolean = false;
-    private _isInitializing: boolean = false;
-
-    private _initializationPromise: Promise<void>;
-    private _resolveInitialization!: () => void;
+    private componentMask: bigint = 0n;
+    private components: (Component | undefined)[] = []; // Stores component instances by their type ID
+    private isInitialized: boolean = false;
 
     constructor(label: string) {
         this.label = label;
         this.id = generateUUID();
-
-        this._initializationPromise = new Promise(resolve => {
-            this._resolveInitialization = resolve;
-        });
-
-        this._scheduleInitialization();
+        // Initialization is now synchronous within the constructor or called immediately.
+        this.performInitialization();
     }
 
-    private _scheduleInitialization(): void {
-        if (this._isInitializing || this._isInitialized) return;
-        this._isInitializing = true;
-        queueMicrotask(() => {
-            this._performInitialization();
-        });
-    }
-
-    private _performInitialization(): void {
-        if (this._isInitialized) return;
-        try {
-            this.onInitialize();
-            this._registerDecoratedMethodsForInstance(this, this.id, Object.getPrototypeOf(this));
-            System.actors.push(this);
-            this.updateDependencies();
-            this._isInitialized = true;
-            console.debug(`Actor '${this.label}' (ID: ${this.id}) fully initialized.`);
-            this._resolveInitialization(); // Resolve the promise
-        } catch (error) {
-            console.error(`Actor '${this.label}' (ID: ${this.id}) initialization failed:`, error);
-            // Resolve even on error to not leave awaiters hanging, error is logged.
-            // Consider rejecting if callers should handle initialization errors via catch.
-            this._resolveInitialization(); 
-        } finally {
-            this._isInitializing = false;
-        }
-    }
-
-    /**
-     * Waits until the actor's asynchronous initialization is complete.
-     * Primarily for internal use by other async actor methods.
-     */
-    protected async waitUntilInitialized(): Promise<void> {
-        if (this._isInitialized) {
-            return;
-        }
-        return this._initializationPromise;
+    private performInitialization(): void {
+        if (this.isInitialized) return;
+        
+        this.onInitialize(); // Call subclass-specific initialization
+        this.registerDecoratedMethodsForInstance(this, this.id, Object.getPrototypeOf(this));
+        System.actors.push(this); // Add to global actor list
+        this.updateDependencies(); // Resolve component dependencies
+        this.isInitialized = true;
+        console.debug(`Actor '${this.label}' (ID: ${this.id}) fully initialized.`);
     }
 
     protected onInitialize(): void {
-        // Subclasses override this
+        // Subclasses can override this method for custom initialization logic
+        // that needs to run after the actor's base setup but before components are fully active.
     }
 
-    // _registerDecoratedMethodsForInstance and _unregisterDecoratedMethodsForInstance remain the same
-
-    private _registerDecoratedMethodsForInstance(instance: any, instanceId: string, prototype: any, idPrefix: string = ''): void {
+    private registerDecoratedMethodsForInstance(instance: any, instanceId: string, prototype: any, idPrefix: string = ''): void {
         if (!prototype) return;
 
         const hookedMethods: HookedMethodMetadata[] = Reflect.getOwnMetadata(HOOKED_METHODS_METADATA_KEY, prototype) || [];
-
         for (const hook of hookedMethods) {
             const processor = ProcessorRegistry.get(hook.processorName);
             if (processor) {
-                const method = instance[hook.propertyKey];
-                if (typeof method === 'function') {
-                    const processableId = `${idPrefix}${instanceId}:${String(hook.propertyKey)}`;
-                    const processable: IProcessable = {
-                        id: processableId,
-                        update: method.bind(instance),
-                        context: instance,
-                    };
-                    processor.addTask(processable);
-                } else {
-                    console.warn(`Actor/Component (ID: ${instanceId}): Decorated property '${String(hook.propertyKey)}' on prototype '${prototype.constructor.name}' is not a function.`);
-                }
+                const processableId = `${idPrefix}${instanceId}:${String(hook.propertyKey)}`;
+                const task: IProcessable = {
+                    id: processableId,
+                    update: (instance as any)[hook.propertyKey].bind(instance),
+                    context: instance
+                };
+                processor.addTask(task);
             } else {
                 console.warn(`Actor/Component (ID: ${instanceId}): Processor '${hook.processorName}' not found for method '${String(hook.propertyKey)}' on prototype '${prototype.constructor.name}'.`);
             }
         }
-        this._registerDecoratedMethodsForInstance(instance, instanceId, Object.getPrototypeOf(prototype), idPrefix);
+        // Recursively register for parent prototypes
+        this.registerDecoratedMethodsForInstance(instance, instanceId, Object.getPrototypeOf(prototype), idPrefix);
     }
 
-    private _unregisterDecoratedMethodsForInstance(instance: any, instanceId: string, prototype: any, idPrefix: string = ''): void {
+    private unregisterDecoratedMethodsForInstance(instance: any, instanceId: string, prototype: any, idPrefix: string = ''): void {
         if (!prototype) return;
 
         const hookedMethods: HookedMethodMetadata[] = Reflect.getOwnMetadata(HOOKED_METHODS_METADATA_KEY, prototype) || [];
@@ -110,123 +70,139 @@ export default class Actor {
                 processor.removeTask(processableId);
             }
         }
-        this._unregisterDecoratedMethodsForInstance(instance, instanceId, Object.getPrototypeOf(prototype), idPrefix);
+        // Recursively unregister for parent prototypes
+        this.unregisterDecoratedMethodsForInstance(instance, instanceId, Object.getPrototypeOf(prototype), idPrefix);
     }
-
-    private isComponentDuplicate(component: Component): boolean {
-        return Array.from(this._components.values()).some(comp => comp === component);
-    }
-
-    private validateComponent(label: string, component: Component): void {
-        if (this._components.has(label)) {
-            throw new Error(`Actor '${this.label}': Component with label '${label}' already exists.`);
-        }
-        if (this.isComponentDuplicate(component)) {
-            throw new Error(`Actor '${this.label}': Component instance (ID: ${component.id}) is already added, possibly under a different label.`);
-        }
-    }
-
 
     private updateDependencies(): void {
-        this._components.forEach(component => {
-            if (typeof (component as any).checkAndResolveDependencies === 'function') {
+        for (const component of this.components) {
+            if (component && typeof (component as any).checkAndResolveDependencies === 'function') {
                 (component as any).checkAndResolveDependencies();
             }
-        });
+        }
     }
 
-    public addComponent<C extends new (actor: Actor, ...args: any[]) => Component>(
-        label: string,
+    public addComponent<C extends ComponentClass>(
         componentClass: C,
         ...args: ComponentConstructorParameters<C>
     ): InstanceType<C> {
-        if (!label || label.trim() === "") {
-            throw new Error(`Actor '${this.label}': Component label cannot be empty.`);
+        const componentId = ComponentTypeRegistry.getId(componentClass);
+        if (this.hasComponent(componentClass)) {
+            throw new Error(`Actor '${this.label}': Component of type '${componentClass.name}' already exists.`);
         }
-        const component = new componentClass(this, ...args);
-        this.validateComponent(label, component);
-        this._components.set(label, component);
-        this._registerDecoratedMethodsForInstance(
+
+        const component = new componentClass(this, ...args) as InstanceType<C>;
+        
+        // Ensure components array is large enough
+        if (componentId >= this.components.length) {
+            this.components.length = componentId + 1;
+        }
+        this.components[componentId] = component;
+        this.componentMask |= (1n << BigInt(componentId));
+
+        this.registerDecoratedMethodsForInstance(
             component,
-            component.id,
+            component.id, // The component's own unique instance ID
             Object.getPrototypeOf(component),
             `actor_${this.id}_comp_`
         );
-        // If actor is already initialized, new component might need its dependencies checked.
-        // And other components might depend on this new one.
-        if (this._isInitialized) {
-            this.updateDependencies(); 
+
+        if (this.isInitialized) {
+             // Initialize the component if actor is already initialized
+            if (typeof (component as any).checkAndResolveDependencies === 'function') {
+                (component as any).checkAndResolveDependencies();
+            }
+            // Potentially, other components might depend on this new one.
+            this.updateDependencies();
         }
-        return component as InstanceType<C>;
+        return component;
     }
 
-    public removeComponent(label: string): boolean {
-        const component = this._components.get(label);
+    public removeComponent(componentClass: ComponentClass): boolean {
+        const componentId = ComponentTypeRegistry.getId(componentClass);
+        if (!this.hasComponent(componentClass)) {
+            return false;
+        }
+
+        const component = this.components[componentId];
         if (component) {
-            this._unregisterDecoratedMethodsForInstance(
+            this.unregisterDecoratedMethodsForInstance(
                 component,
                 component.id,
                 Object.getPrototypeOf(component),
                 `actor_${this.id}_comp_`
             );
+
             if (typeof (component as any).dispose === 'function') {
                 (component as any).dispose();
             }
-            this._components.delete(label);
-            // If actor is initialized, dependencies might change.
-            if (this._isInitialized) {
-                this.updateDependencies();
+
+            this.components[componentId] = undefined;
+            this.componentMask &= ~(1n << BigInt(componentId)); // Clear the bit
+
+            if (this.isInitialized) {
+                this.updateDependencies(); // Dependencies might change
             }
             return true;
         }
         return false;
     }
 
-    /**
-     * Asynchronously gets a component by its class.
-     * Waits for actor initialization before attempting to retrieve the component.
-     */
-    public async getComponent<T extends Component>(componentClass: new (...args: any[]) => T): Promise<T> {
-        await this.waitUntilInitialized();
-        for (const component of this._components.values()) {
-            if (component instanceof componentClass) {
-                return component as T;
-            }
+    public getComponent<C extends ComponentClass>(componentClass: C): InstanceType<C> | undefined {
+        const componentId = ComponentTypeRegistry.getId(componentClass);
+        if ((this.componentMask & (1n << BigInt(componentId))) !== 0n) {
+            return this.components[componentId] as InstanceType<C> | undefined;
         }
-        throw new Error(`Actor '${this.label}': Component of type '${componentClass.name}' not found.`);
+        return undefined;
     }
 
-    /**
-     * Asynchronously checks if a component of a given class exists.
-     * Waits for actor initialization before performing the check.
-     */
-    public async hasComponent<T extends Component>(componentClass: new (...args: any[]) => T): Promise<boolean> {
-        await this.waitUntilInitialized();
-        for (const component of this._components.values()) {
-            if (component instanceof componentClass) {
-                return true;
-            }
-        }
-        return false;
+    public hasComponent(componentClass: ComponentClass): boolean {
+        const componentId = ComponentTypeRegistry.getId(componentClass);
+        // Check if componentId is within bounds of currently known components for this actor
+        // and if the bit is set in the mask.
+        return (this.componentMask & (1n << BigInt(componentId))) !== 0n;
     }
     
-    public async destroy(): Promise<void> { // Made async if removeComponent could become async or if waiting is desired
-        await this.waitUntilInitialized(); // Ensure init is done before destroying
-        console.debug(`Actor '${this.label}' (ID: ${this.id}): Initiating destruction.`);
-        this._unregisterDecoratedMethodsForInstance(this, this.id, Object.getPrototypeOf(this));
+    public getAllComponents(): Component[] {
+        return this.components.filter(c => c !== undefined) as Component[];
+    }
 
-        const componentLabels = Array.from(this._components.keys());
-        for (const label of componentLabels) {
-            // removeComponent is currently synchronous. If it were to become async, this loop would need 'await'.
-            this.removeComponent(label); 
+    public destroy(): void {
+        // Unregister actor's own decorated methods
+        this.unregisterDecoratedMethodsForInstance(this, this.id, Object.getPrototypeOf(this));
+
+        // Dispose and unregister all components
+        // Iterate backward in case dispose logic modifies the components array (though it shouldn't directly)
+        for (let i = this.components.length - 1; i >= 0; i--) {
+            const component = this.components[i];
+            if (component) {
+                 // We need the ComponentClass to correctly call removeComponent which handles unregistration and bitmask
+                // This assumes component instance has a way to get its class, or we find it by iterating ComponentTypeRegistry
+                // For simplicity here, let's assume we can find its ComponentClass if needed,
+                // or directly call the necessary cleanup.
+                // A more robust way would be to have component store its typeId or class.
+                // However, the current Component design does not store its ComponentClass directly.
+                // So, we manually do parts of removeComponent's job:
+                this.unregisterDecoratedMethodsForInstance(
+                    component,
+                    component.id,
+                    Object.getPrototypeOf(component),
+                    `actor_${this.id}_comp_`
+                );
+                if (typeof (component as any).dispose === 'function') {
+                    (component as any).dispose();
+                }
+            }
         }
-        this._components.clear();
+        this.components = [];
+        this.componentMask = 0n;
 
+        // Remove actor from the system
         const index = System.actors.indexOf(this);
         if (index > -1) {
             System.actors.splice(index, 1);
         }
-
-        console.info(`Actor '${this.label}' (ID: ${this.id}) destroyed. System actors count: ${System.actors.length}`);
+        this.isInitialized = false; // Mark as not initialized
+        console.debug(`Actor '${this.label}' (ID: ${this.id}) destroyed.`);
     }
 }

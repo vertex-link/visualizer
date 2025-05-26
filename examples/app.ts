@@ -1,6 +1,6 @@
 ﻿// Import necessary modules from the library
 import Actor from "../src/core/Actor.ts";
-import Component from "../src/core/Component.ts";
+import Component from "../src/core/component/Component.ts";
 import System from "../src/core/System.ts";
 import { ServiceRegistry, IService, ServiceKey } from "../src/core/Service.ts";
 import { ProcessorRegistry } from "../src/core/processor/ProcessorRegistry.ts";
@@ -131,7 +131,7 @@ class ParticleComponent extends Component {
         if (!this.canvasService) return;
 
         // Use synchronous getComponent since we're in the same actor
-        const transform = this.actor['_components'].get('transform') as TransformComponent;
+        const transform = this.actor['components'][0] as TransformComponent;
         if (!transform) return;
 
         const ctx = this.canvasService.getContext();
@@ -161,7 +161,7 @@ class PhysicsComponent extends Component {
     update(deltaTime: number): void {
         if (!this.canvasService) return;
 
-        const transform = this.actor['_components'].get('transform') as TransformComponent;
+        const transform = this.actor['components'][0] as TransformComponent;
         if (!transform) return;
 
         // Mouse attraction
@@ -236,21 +236,23 @@ ProcessorRegistry.register(fixedTickProcessor);
 let particleId = 0;
 function createParticle(x: number, y: number): void {
     const particle = new Actor(`particle-${particleId++}`);
-
+    
+    console.log(particle)
+    
     // Generate random color
     const hue = Math.random() * 360;
     const color = `hsl(${hue}, 100%, 70%)`;
 
-    particle.addComponent('transform', TransformComponent, x, y);
-    particle.addComponent('particle', ParticleComponent, Math.random() * 3 + 2, color);
-    particle.addComponent('physics', PhysicsComponent);
+    particle.addComponent(TransformComponent, x, y);
+    particle.addComponent(ParticleComponent, Math.random() * 3 + 2, color);
+    particle.addComponent(PhysicsComponent);
 }
 
 // Setup the scene
 async function setupScene() {
     // Create background actor first
     const background = new Actor("background");
-    background.addComponent('bg', BackgroundComponent);
+    background.addComponent(BackgroundComponent);
 
     // Wait for async initialization
     await new Promise(resolve => setTimeout(resolve, 100));
