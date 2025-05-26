@@ -1,14 +1,16 @@
-﻿// Import necessary modules from the library
+﻿// examples/app.ts - Updated to use Scene instead of System class
+
 import Actor from "../src/core/Actor.ts";
 import Component from "../src/core/component/Component.ts";
-import System from "../src/core/System.ts";
+import { Scene } from "../src/core/scene/Scene.ts";
 import { ServiceRegistry, IService, ServiceKey } from "../src/core/Service.ts";
 import { ProcessorRegistry } from "../src/core/processor/ProcessorRegistry.ts";
 import { RenderProcessor, RenderUpdate } from "../src/engine/processors/RenderProcessor.ts";
 import { FixedTickProcessor, FixedTickUpdate } from "../src/engine/processors/FixedTickProcessor.ts";
 
-// Global service registry
+// Global service registry and scene
 const serviceRegistry = new ServiceRegistry();
+const gameScene = new Scene('ParticleDemo');
 
 // Service Keys
 const ICanvasServiceKey = Symbol.for("ICanvasService");
@@ -121,8 +123,9 @@ class ParticleComponent extends Component {
     updateLifetime(deltaTime: number): void {
         this.lifetime -= deltaTime * 0.2;
         if (this.lifetime <= 0) {
-            // Schedule destruction after current update cycle
-            setTimeout(() => this.actor.destroy(), 0);
+            // Scene-managed approach: Remove from scene, then destroy
+            gameScene.removeActor(this.actor);
+            this.actor.destroy();
         }
     }
 
@@ -130,8 +133,7 @@ class ParticleComponent extends Component {
     render(deltaTime: number): void {
         if (!this.canvasService) return;
 
-        // Use synchronous getComponent since we're in the same actor
-        const transform = this.actor['components'][0] as TransformComponent;
+        const transform = this.actor.getComponent(TransformComponent);
         if (!transform) return;
 
         const ctx = this.canvasService.getContext();
@@ -161,7 +163,7 @@ class PhysicsComponent extends Component {
     update(deltaTime: number): void {
         if (!this.canvasService) return;
 
-        const transform = this.actor['components'][0] as TransformComponent;
+        const transform = this.actor.getComponent(TransformComponent);
         if (!transform) return;
 
         // Mouse attraction
@@ -236,9 +238,7 @@ ProcessorRegistry.register(fixedTickProcessor);
 let particleId = 0;
 function createParticle(x: number, y: number): void {
     const particle = new Actor(`particle-${particleId++}`);
-    
-    console.log(particle)
-    
+
     // Generate random color
     const hue = Math.random() * 360;
     const color = `hsl(${hue}, 100%, 70%)`;
@@ -246,6 +246,9 @@ function createParticle(x: number, y: number): void {
     particle.addComponent(TransformComponent, x, y);
     particle.addComponent(ParticleComponent, Math.random() * 3 + 2, color);
     particle.addComponent(PhysicsComponent);
+
+    // Add to scene
+    gameScene.addActor(particle);
 }
 
 // Setup the scene
@@ -253,6 +256,7 @@ async function setupScene() {
     // Create background actor first
     const background = new Actor("background");
     background.addComponent(BackgroundComponent);
+    gameScene.addActor(background);
 
     // Wait for async initialization
     await new Promise(resolve => setTimeout(resolve, 100));
@@ -280,10 +284,14 @@ async function setupScene() {
         }
     });
 
-    // Update stats
+    // Update stats using scene queries
     setInterval(() => {
-        const particleCount = System.actors.filter(a => a.label.startsWith('particle-')).length;
-        document.getElementById('particleCount')!.textContent = particleCount.toString();
+        // Use scene query to count particles
+        const particles = gameScene.query()
+            .withComponent(ParticleComponent)
+            .execute(gameScene);
+
+        document.getElementById('particleCount')!.textContent = particles.length.toString();
     }, 100);
 
     // FPS counter
@@ -300,6 +308,18 @@ async function setupScene() {
         requestAnimationFrame(updateFPS);
     }
     updateFPS();
+
+    // Debug: Log scene info periodically
+    setInterval(() => {
+        console.log('Scene actors:', gameScene.getActorCount());
+
+        // Example query: find all actors with both Transform and Particle components
+        const movingParticles = gameScene.query()
+            .withComponent(TransformComponent, ParticleComponent)
+            .execute(gameScene);
+
+        console.log('Moving particles:', movingParticles.length);
+    }, 5000);
 }
 
 // Start the application
