@@ -31,6 +31,7 @@ class JourneyState {
     public systemRunning = false;
     public activeFilters: string[] = [];
     public highlightedActors: Set<Actor> = new Set();
+    public mouseAttraction = false;
 }
 
 const journeyState = new JourneyState();
@@ -162,6 +163,7 @@ class YellowComponent extends Component {
 class GreenComponent extends Component {
     getHexColor(): string { return '#44ff44'; }
 }
+
 class RenderComponent extends Component {
     public shape: 'circle' | 'square' | 'triangle';
     public size = 8;
@@ -178,7 +180,41 @@ class RenderComponent extends Component {
         this.renderToCanvas('step2-canvas');
         this.renderToCanvas('step3-canvas');
         this.renderToCanvas('step4-canvas');
-        this.renderToCanvas('step5-canvas');
+
+        // Step 5 has live filtering - check if this actor should be visible
+        if (this.shouldRenderToStep5()) {
+            this.renderToCanvas('step5-canvas');
+        }
+    }
+
+    private shouldRenderToStep5(): boolean {
+        // If no filters active, render all actors
+        if (journeyState.activeFilters.length === 0) {
+            return true;
+        }
+
+        // Check each active filter
+        let passesFilters = true;
+
+        if (journeyState.activeFilters.includes('red')) {
+            if (!this.actor.hasComponent(RedComponent)) {
+                passesFilters = false;
+            }
+        }
+
+        if (journeyState.activeFilters.includes('fast')) {
+            if (!this.actor.hasComponent(FastMovementComponent)) {
+                passesFilters = false;
+            }
+        }
+
+        if (journeyState.activeFilters.includes('animated')) {
+            if (!this.actor.hasComponent(AnimationComponent)) {
+                passesFilters = false;
+            }
+        }
+
+        return passesFilters;
     }
 
     private renderToCanvas(canvasId: string): void {
@@ -280,7 +316,7 @@ class SlowMovementComponent extends Component {
         this.vx = (Math.random() - 0.5) * 50;
         this.vy = (Math.random() - 0.5) * 50;
     }
-    
+
     @FixedTickUpdate()
     updateSlow(deltaTime: number): void {
         const transform = this.actor.getComponent(TransformComponent);
@@ -295,6 +331,139 @@ class SlowMovementComponent extends Component {
 
         transform.x = Math.max(10, Math.min(790, transform.x));
         transform.y = Math.max(10, Math.min(390, transform.y));
+    }
+}
+
+class AttractionComponent extends Component {
+    public attractionStrength = 150;
+    public pulseMultiplier = 1;
+
+    @RenderUpdate()
+    applyAttraction(deltaTime: number): void {
+        if (!journeyState.mouseAttraction) return;
+
+        const transform = this.actor.getComponent(TransformComponent);
+        if (!transform) return;
+
+        const mouseService = journeyState.serviceRegistry.resolve<IMouseService>(IMouseServiceKey);
+        if (!mouseService) return;
+
+        // Get mouse position for step4 canvas specifically
+        const mousePos = mouseService.getPosition('step4-canvas');
+
+        // Calculate direction to mouse
+        const dx = mousePos.x - transform.x;
+        const dy = mousePos.y - transform.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance > 5) {
+            // Normalize and apply attraction force
+            const force = this.attractionStrength * this.pulseMultiplier / Math.max(distance, 50);
+            const forceX = (dx / distance) * force * deltaTime;
+            const forceY = (dy / distance) * force * deltaTime;
+
+            transform.x += forceX;
+            transform.y += forceY;
+
+            // Keep in bounds
+            transform.x = Math.max(15, Math.min(785, transform.x));
+            transform.y = Math.max(15, Math.min(385, transform.y));
+        }
+
+        // Handle click pulse
+        if (mouseService.isClicked()) {
+            this.pulseMultiplier = 5;
+        }
+
+        // Decay pulse
+        this.pulseMultiplier = Math.max(1, this.pulseMultiplier * 0.92);
+    }
+}
+
+class ColorCycleComponent extends Component {
+    private timeOffset = Math.random() * Math.PI * 2;
+    private time = 0;
+
+    @RenderUpdate()
+    cycleColors(deltaTime: number): void {
+        this.time += deltaTime * 2; // Faster cycling
+
+        // Remove existing color components
+        if (this.actor.hasComponent(RedComponent)) this.actor.removeComponent(RedComponent);
+        if (this.actor.hasComponent(BlueComponent)) this.actor.removeComponent(BlueComponent);
+        if (this.actor.hasComponent(YellowComponent)) this.actor.removeComponent(YellowComponent);
+        if (this.actor.hasComponent(GreenComponent)) this.actor.removeComponent(GreenComponent);
+
+        // Add new color based on sine wave
+        const colorValue = Math.sin(this.time + this.timeOffset) + 1; // 0-2 range
+
+        if (colorValue < 0.5) {
+            this.actor.addComponent(RedComponent);
+        } else if (colorValue < 1.0) {
+            this.actor.addComponent(BlueComponent);
+        } else if (colorValue < 1.5) {
+            this.actor.addComponent(YellowComponent);
+        } else {
+            this.actor.addComponent(GreenComponent);
+        }
+
+        // Update scene indices when components change
+        journeyState.scene.updateActorIndices(this.actor);
+    }
+}
+
+class GravityComponent extends Component {
+    private gravity = 150;
+    private velocityY = 0;
+    private bounce = 0.7;
+
+    @RenderUpdate()
+    applyGravity(deltaTime: number): void {
+        const transform = this.actor.getComponent(TransformComponent);
+        if (!transform) return;
+
+        // Apply gravity
+        this.velocityY += this.gravity * deltaTime;
+        transform.y += this.velocityY * deltaTime;
+
+        // Bounce off bottom
+        if (transform.y > 380) {
+            transform.y = 380;
+            this.velocityY *= -this.bounce;
+
+            // Add some randomness to prevent synchronization
+            this.velocityY += (Math.random() - 0.5) * 50;
+        }
+
+        // Keep in horizontal bounds
+        transform.x = Math.max(15, Math.min(785, transform.x));
+    }
+}
+
+class PulseEffectComponent extends Component {
+    private pulseTime = 0;
+    private basePulseSpeed = 4;
+
+    constructor(actor: Actor) {
+        super(actor);
+        this.pulseTime = Math.random() * Math.PI * 2; // Random start phase
+    }
+
+    @RenderUpdate()
+    pulse(deltaTime: number): void {
+        this.pulseTime += deltaTime * this.basePulseSpeed;
+
+        const render = this.actor.getComponent(RenderComponent);
+        if (render) {
+            // Create pulsing effect
+            const pulseScale = 0.5 + Math.sin(this.pulseTime) * 0.3; // 0.2 to 0.8
+            render.size = 8 * pulseScale;
+
+            const transform = this.actor.getComponent(TransformComponent);
+            if (transform) {
+                transform.scale = pulseScale;
+            }
+        }
     }
 }
 
@@ -451,13 +620,6 @@ class Step2 {
     public templateMovementTypes = new Map<string, 'none' | 'fast' | 'slow'>();
 
     initialize(): void {
-        // Create processors with proper names
-        journeyState.renderProcessor = new RenderProcessor(); // Default name "render" for @RenderUpdate()
-        journeyState.slowProcessor = new FixedTickProcessor("fixedTick", 10); // 10 FPS for slow movement
-
-        ProcessorRegistry.register(journeyState.renderProcessor);
-        ProcessorRegistry.register(journeyState.slowProcessor);
-
         // FPS tracking - track actual renders via processor
         let renderCount = 0;
         const originalRenderProcessor = journeyState.renderProcessor;
@@ -539,7 +701,6 @@ class Step2 {
                 actor.removeComponent(SlowMovementComponent);
                 journeyState.scene.updateActorIndices(actor);
                 console.log('add fast movement', actor.label);
-                // Don't add AttractionComponent here - that's for Step 4
             } else if (movementType === 'slow') {
                 actor.addComponent(SlowMovementComponent);
                 actor.removeComponent(FastMovementComponent);
@@ -547,9 +708,6 @@ class Step2 {
                 console.log('add slow movement', actor.label);
             }
         });
-
-        // Add new movement type
-        
 
         // Update tracking
         this.templateMovementTypes.set(templateName, movementType);
@@ -576,7 +734,6 @@ class Step2 {
     private clearActorMovement(actor: Actor): void {
         if (actor.hasComponent(FastMovementComponent)) {
             actor.removeComponent(FastMovementComponent);
-
         }
         if (actor.hasComponent(SlowMovementComponent)) {
             actor.removeComponent(SlowMovementComponent);
@@ -740,6 +897,7 @@ class Step4 {
     private mousePos = { x: 0, y: 0 };
     private canvasServiceUsed = false;
     private mouseServiceUsed = false;
+    private effectsActive = new Set<string>();
 
     initialize(): void {
         setInterval(() => {
@@ -751,28 +909,204 @@ class Step4 {
         }, 100);
     }
 
+    enableMouseAttraction(): void {
+        journeyState.mouseAttraction = true;
+        this.effectsActive.add('attraction');
+
+        // Add attraction component to all renderable actors
+        const actors = journeyState.scene.query()
+            .withComponent(TransformComponent, RenderComponent)
+            .execute(journeyState.scene)
+            .filter(actor => actor.label !== 'CanvasClearer');
+
+        actors.forEach(actor => {
+            if (!actor.hasComponent(AttractionComponent)) {
+                actor.addComponent(AttractionComponent);
+                journeyState.scene.updateActorIndices(actor);
+            }
+        });
+
+        this.mouseServiceUsed = true;
+        this.serviceCalls++;
+        console.log('🎯 Mouse attraction enabled - move mouse over canvas and click!');
+        this.updateUI();
+    }
+
+    disableMouseAttraction(): void {
+        journeyState.mouseAttraction = false;
+        this.effectsActive.delete('attraction');
+
+        // Remove attraction component from all actors
+        const actors = journeyState.scene.query().withComponent(AttractionComponent).execute(journeyState.scene);
+        actors.forEach(actor => {
+            actor.removeComponent(AttractionComponent);
+            journeyState.scene.updateActorIndices(actor);
+        });
+
+        this.serviceCalls++;
+        console.log('❌ Mouse attraction disabled');
+        this.updateUI();
+    }
+
+    enableColorCycling(): void {
+        this.effectsActive.add('colors');
+
+        // Add color cycling to actors that don't have it
+        const actors = journeyState.scene.query()
+            .withComponent(TransformComponent, RenderComponent)
+            .execute(journeyState.scene)
+            .filter(actor =>
+                actor.label !== 'CanvasClearer' &&
+                !actor.hasComponent(ColorCycleComponent)
+            );
+
+        actors.forEach(actor => {
+            actor.addComponent(ColorCycleComponent);
+            journeyState.scene.updateActorIndices(actor);
+        });
+
+        this.serviceCalls++;
+        console.log('🌈 Color cycling enabled - using Canvas Service for rendering');
+        this.canvasServiceUsed = true;
+        this.updateUI();
+    }
+
+    disableColorCycling(): void {
+        this.effectsActive.delete('colors');
+
+        // Remove color cycling from all actors
+        const actors = journeyState.scene.query().withComponent(ColorCycleComponent).execute(journeyState.scene);
+        actors.forEach(actor => {
+            actor.removeComponent(ColorCycleComponent);
+            journeyState.scene.updateActorIndices(actor);
+        });
+
+        this.serviceCalls++;
+        console.log('🔴 Color cycling disabled');
+        this.updateUI();
+    }
+
+    enableGravityEffect(): void {
+        this.effectsActive.add('gravity');
+
+        // Add gravity to actors without movement components
+        const actors = journeyState.scene.query()
+            .withComponent(TransformComponent, RenderComponent)
+            .execute(journeyState.scene)
+            .filter(actor =>
+                actor.label !== 'CanvasClearer' &&
+                !actor.hasComponent(FastMovementComponent) &&
+                !actor.hasComponent(SlowMovementComponent) &&
+                !actor.hasComponent(GravityComponent)
+            );
+
+        actors.forEach(actor => {
+            // Reset position to top for gravity effect
+            const transform = actor.getComponent(TransformComponent);
+            if (transform) {
+                transform.y = Math.random() * 100 + 20; // Start from top
+            }
+
+            actor.addComponent(GravityComponent);
+            journeyState.scene.updateActorIndices(actor);
+        });
+
+        this.serviceCalls++;
+        console.log('⬇️ Gravity effect enabled');
+        this.updateUI();
+    }
+
+    disableGravityEffect(): void {
+        this.effectsActive.delete('gravity');
+
+        // Remove gravity from all actors
+        const actors = journeyState.scene.query().withComponent(GravityComponent).execute(journeyState.scene);
+        actors.forEach(actor => {
+            actor.removeComponent(GravityComponent);
+            journeyState.scene.updateActorIndices(actor);
+        });
+
+        this.serviceCalls++;
+        console.log('🚫 Gravity effect disabled');
+        this.updateUI();
+    }
+
+    enablePulseEffect(): void {
+        this.effectsActive.add('pulse');
+
+        // Add pulse effect to actors
+        const actors = journeyState.scene.query()
+            .withComponent(TransformComponent, RenderComponent)
+            .execute(journeyState.scene)
+            .filter(actor =>
+                actor.label !== 'CanvasClearer' &&
+                !actor.hasComponent(PulseEffectComponent) &&
+                !actor.hasComponent(AnimationComponent) // Don't conflict with existing animation
+            );
+
+        actors.forEach(actor => {
+            actor.addComponent(PulseEffectComponent);
+            journeyState.scene.updateActorIndices(actor);
+        });
+
+        this.serviceCalls++;
+        console.log('💓 Pulse effect enabled');
+        this.updateUI();
+    }
+
+    disablePulseEffect(): void {
+        this.effectsActive.delete('pulse');
+
+        // Remove pulse effect from all actors
+        const actors = journeyState.scene.query().withComponent(PulseEffectComponent).execute(journeyState.scene);
+        actors.forEach(actor => {
+            actor.removeComponent(PulseEffectComponent);
+
+            // Reset scale and size
+            const transform = actor.getComponent(TransformComponent);
+            const render = actor.getComponent(RenderComponent);
+            if (transform) transform.scale = 1;
+            if (render) render.size = 8;
+
+            journeyState.scene.updateActorIndices(actor);
+        });
+
+        this.serviceCalls++;
+        console.log('⭕ Pulse effect disabled');
+        this.updateUI();
+    }
+
     demonstrateCanvasService(): void {
         const canvasService = journeyState.serviceRegistry.resolve<ICanvasService>(ICanvasServiceKey);
         if (!canvasService) return;
 
-        // Use canvas service to get canvas info and draw a demonstration
+        // Use canvas service to draw visual feedback
         const size = canvasService.getSize('step4-canvas');
         const ctx = canvasService.getContext('step4-canvas');
 
         if (ctx) {
-            // Draw a temporary highlight border
-            ctx.strokeStyle = '#4a9eff';
-            ctx.lineWidth = 4;
-            ctx.strokeRect(2, 2, size.width - 4, size.height - 4);
+            // Draw animated border using canvas service
+            const time = performance.now() * 0.005;
+            const brightness = Math.sin(time) * 0.5 + 0.5;
 
-            // Clear it after 1 second
+            ctx.strokeStyle = `rgba(74, 158, 255, ${brightness})`;
+            ctx.lineWidth = 6;
+            ctx.setLineDash([10, 5]);
+            ctx.lineDashOffset = time * 20;
+            ctx.strokeRect(3, 3, size.width - 6, size.height - 6);
+
             setTimeout(() => {
-                canvasService.clear('step4-canvas');
-            }, 1000);
+                ctx.setLineDash([]);
+                ctx.clearRect(0, 0, 10, size.height);
+                ctx.clearRect(0, 0, size.width, 10);
+                ctx.clearRect(size.width - 10, 0, 10, size.height);
+                ctx.clearRect(0, size.height - 10, size.width, 10);
+            }, 2000);
         }
 
         this.canvasServiceUsed = true;
         this.serviceCalls++;
+        console.log('🎨 Canvas Service demonstration - animated border');
         this.updateUI();
     }
 
@@ -780,32 +1114,40 @@ class Step4 {
         const mouseService = journeyState.serviceRegistry.resolve<IMouseService>(IMouseServiceKey);
         if (!mouseService) return;
 
-        // Use mouse service to get current position
+        // Use mouse service to create visual effect at mouse position
         const pos = mouseService.getPosition('step4-canvas');
-
-        // Draw a circle at mouse position using canvas service
         const canvasService = journeyState.serviceRegistry.resolve<ICanvasService>(ICanvasServiceKey);
         const ctx = canvasService?.getContext('step4-canvas');
 
         if (ctx) {
-            ctx.fillStyle = '#ffff44';
-            ctx.beginPath();
-            ctx.arc(pos.x, pos.y, 20, 0, Math.PI * 2);
-            ctx.fill();
+            // Draw expanding circle at mouse position
+            let radius = 5;
+            const maxRadius = 50;
 
-            // Clear after 2 seconds
-            setTimeout(() => {
-                canvasService?.clear('step4-canvas');
-            }, 2000);
+            const animate = () => {
+                if (radius > maxRadius) return;
+
+                ctx.strokeStyle = `rgba(255, 255, 68, ${1 - radius / maxRadius})`;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+                ctx.stroke();
+
+                radius += 2;
+                requestAnimationFrame(animate);
+            };
+
+            animate();
         }
 
         this.mouseServiceUsed = true;
         this.serviceCalls++;
+        console.log('🖱️ Mouse Service demonstration - click effect');
         this.updateUI();
     }
 
     demonstrateMultipleServices(): void {
-        // Use multiple services together
+        // Combine multiple services for a complex effect
         const canvasService = journeyState.serviceRegistry.resolve<ICanvasService>(ICanvasServiceKey);
         const mouseService = journeyState.serviceRegistry.resolve<IMouseService>(IMouseServiceKey);
 
@@ -816,30 +1158,38 @@ class Step4 {
         const size = canvasService.getSize('step4-canvas');
 
         if (ctx) {
-            // Draw connecting lines from mouse to corners (demonstrates multiple service usage)
-            ctx.strokeStyle = '#00ff88';
-            ctx.lineWidth = 2;
+            // Create ripple effect using both services
+            const createRipple = (x: number, y: number, delay: number) => {
+                setTimeout(() => {
+                    let radius = 0;
+                    const animate = () => {
+                        if (radius > 100) return;
 
-            ctx.beginPath();
-            ctx.moveTo(mousePos.x, mousePos.y);
-            ctx.lineTo(0, 0);
-            ctx.moveTo(mousePos.x, mousePos.y);
-            ctx.lineTo(size.width, 0);
-            ctx.moveTo(mousePos.x, mousePos.y);
-            ctx.lineTo(0, size.height);
-            ctx.moveTo(mousePos.x, mousePos.y);
-            ctx.lineTo(size.width, size.height);
-            ctx.stroke();
+                        ctx.strokeStyle = `rgba(0, 255, 136, ${0.5 - radius / 200})`;
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.arc(x, y, radius, 0, Math.PI * 2);
+                        ctx.stroke();
 
-            // Clear after 3 seconds
-            setTimeout(() => {
-                canvasService.clear('step4-canvas');
-            }, 3000);
+                        radius += 3;
+                        requestAnimationFrame(animate);
+                    };
+                    animate();
+                }, delay);
+            };
+
+            // Create multiple ripples from mouse to corners
+            createRipple(mousePos.x, mousePos.y, 0);
+            createRipple(0, 0, 200);
+            createRipple(size.width, 0, 400);
+            createRipple(0, size.height, 600);
+            createRipple(size.width, size.height, 800);
         }
 
         this.canvasServiceUsed = true;
         this.mouseServiceUsed = true;
-        this.serviceCalls += 2; // Used 2 services
+        this.serviceCalls += 2;
+        console.log('✨ Multi-Service demonstration - ripple effects');
         this.updateUI();
     }
 
@@ -847,37 +1197,30 @@ class Step4 {
         document.getElementById('step4-mouse-x')!.textContent = Math.round(this.mousePos.x).toString();
         document.getElementById('step4-mouse-y')!.textContent = Math.round(this.mousePos.y).toString();
         document.getElementById('step4-calls')!.textContent = this.serviceCalls.toString();
+        document.getElementById('step4-services')!.textContent = this.getServicesUsedCount().toString();
 
-        // Update service usage status
-        const statusElement = document.querySelector('#step4-status .status-grid');
-        if (statusElement) {
-            statusElement.innerHTML = `
-                <div class="status-item">
-                    <span>Mouse X:</span>
-                    <span class="status-value">${Math.round(this.mousePos.x)}</span>
-                </div>
-                <div class="status-item">
-                    <span>Mouse Y:</span>
-                    <span class="status-value">${Math.round(this.mousePos.y)}</span>
-                </div>
-                <div class="status-item">
-                    <span>Service Calls:</span>
-                    <span class="status-value">${this.serviceCalls}</span>
-                </div>
-                <div class="status-item">
-                    <span>Services Used:</span>
-                    <span class="status-value">${this.getServicesUsedCount()}</span>
-                </div>
-                <div class="status-item">
-                    <span>Canvas Service:</span>
-                    <span class="status-value">${this.canvasServiceUsed ? 'Used' : 'Unused'}</span>
-                </div>
-                <div class="status-item">
-                    <span>Mouse Service:</span>
-                    <span class="status-value">${this.mouseServiceUsed ? 'Used' : 'Unused'}</span>
-                </div>
-            `;
-        }
+        // Update button states
+        this.updateButtonStates();
+    }
+
+    private updateButtonStates(): void {
+        const buttons = document.querySelectorAll('#step4-controls .control-button');
+        buttons.forEach(button => {
+            const buttonElement = button as HTMLButtonElement;
+            const onclick = buttonElement.getAttribute('onclick') || '';
+
+            let isActive = false;
+            if (onclick.includes('enableMouseAttraction') && this.effectsActive.has('attraction')) isActive = true;
+            if (onclick.includes('enableColorCycling') && this.effectsActive.has('colors')) isActive = true;
+            if (onclick.includes('enableGravityEffect') && this.effectsActive.has('gravity')) isActive = true;
+            if (onclick.includes('enablePulseEffect') && this.effectsActive.has('pulse')) isActive = true;
+
+            if (isActive) {
+                buttonElement.classList.add('active');
+            } else {
+                buttonElement.classList.remove('active');
+            }
+        });
     }
 
     private getServicesUsedCount(): number {
@@ -938,6 +1281,7 @@ class Step5 {
         journeyState.activeFilters = [];
         journeyState.highlightedActors.clear();
         journeyState.systemRunning = false;
+        journeyState.mouseAttraction = false;
 
         // Clear Step 2 movement tracking
         if (journey.step2 && journey.step2.templateMovementTypes) {
@@ -959,7 +1303,12 @@ class Step5 {
         } else {
             journeyState.activeFilters.splice(index, 1);
         }
+
+        // Force UI update to reflect changes immediately
         this.updateUI();
+
+        console.log(`Live query filter '${filter}' ${index === -1 ? 'enabled' : 'disabled'}`);
+        console.log('Active filters:', journeyState.activeFilters);
     }
 
     updateUI(): void {
@@ -970,58 +1319,52 @@ class Step5 {
 
         // Calculate visible actors based on active filters
         let visibleActors = journeyState.scene.query().execute(journeyState.scene);
+
         if (journeyState.activeFilters.includes('red')) {
-            visibleActors = visibleActors.filter(actor =>
-                actor.getComponent(ColorComponent)?.color === 'red'
-            );
+            visibleActors = visibleActors.filter(actor => actor.hasComponent(RedComponent));
         }
         if (journeyState.activeFilters.includes('fast')) {
-            visibleActors = visibleActors.filter(actor =>
-                actor.hasComponent(FastMovementComponent)
-            );
+            visibleActors = visibleActors.filter(actor => actor.hasComponent(FastMovementComponent));
         }
         if (journeyState.activeFilters.includes('animated')) {
-            visibleActors = visibleActors.filter(actor =>
-                actor.hasComponent(AnimationComponent)
-            );
+            visibleActors = visibleActors.filter(actor => actor.hasComponent(AnimationComponent));
         }
 
         document.getElementById('step5-visible')!.textContent = visibleActors.length.toString();
+
+        // Update button states to show active filters
+        this.updateFilterButtonStates();
+    }
+
+    private updateFilterButtonStates(): void {
+        // Update button visual states based on active filters
+        const filterButtons = document.querySelectorAll('.step-controls button[onclick*="toggleLiveQuery"]');
+
+        filterButtons.forEach(button => {
+            const buttonElement = button as HTMLButtonElement;
+            const buttonText = buttonElement.textContent || '';
+
+            let isActive = false;
+            if (buttonText.includes('Red') && journeyState.activeFilters.includes('red')) isActive = true;
+            if (buttonText.includes('Fast') && journeyState.activeFilters.includes('fast')) isActive = true;
+            if (buttonText.includes('Animated') && journeyState.activeFilters.includes('animated')) isActive = true;
+
+            if (isActive) {
+                buttonElement.classList.add('active');
+            } else {
+                buttonElement.classList.remove('active');
+            }
+        });
     }
 
     render(): void {
         this.frameCount++;
 
+        // Rendering is handled automatically by the processor system through RenderComponent
+        // This method is kept for FPS tracking and mouse attraction visualization
+
         const canvasService = journeyState.serviceRegistry.resolve<ICanvasService>(ICanvasServiceKey);
         if (!canvasService) return;
-
-        canvasService.clear('step5-canvas');
-
-        // Get actors to render based on active filters
-        let actorsToRender = journeyState.scene.query()
-            .withComponent(TransformComponent, RenderComponent)
-            .execute(journeyState.scene);
-
-        if (journeyState.activeFilters.includes('red')) {
-            actorsToRender = actorsToRender.filter(actor =>
-                actor.getComponent(ColorComponent)?.color === 'red'
-            );
-        }
-        if (journeyState.activeFilters.includes('fast')) {
-            actorsToRender = actorsToRender.filter(actor =>
-                actor.hasComponent(FastMovementComponent)
-            );
-        }
-        if (journeyState.activeFilters.includes('animated')) {
-            actorsToRender = actorsToRender.filter(actor =>
-                actor.hasComponent(AnimationComponent)
-            );
-        }
-
-        actorsToRender.forEach(actor => {
-            const render = actor.getComponent(RenderComponent);
-            render?.render('step5-canvas');
-        });
 
         // Draw mouse position if attraction is enabled
         const mouse = journeyState.serviceRegistry.resolve<IMouseService>(IMouseServiceKey);
@@ -1050,6 +1393,13 @@ class Journey {
     public step5 = new Step5();
 
     async initialize(): Promise<void> {
+        // Create processors first
+        journeyState.renderProcessor = new RenderProcessor(); // Default name "render" for @RenderUpdate()
+        journeyState.slowProcessor = new FixedTickProcessor("fixedTick", 10); // 10 FPS for slow movement
+
+        ProcessorRegistry.register(journeyState.renderProcessor);
+        ProcessorRegistry.register(journeyState.slowProcessor);
+
         // Register services
         journeyState.serviceRegistry.register(ICanvasServiceKey, new CanvasService());
         journeyState.serviceRegistry.register(IMouseServiceKey, new MouseService());
@@ -1069,6 +1419,8 @@ class Journey {
         // Start the render processor for automatic rendering
         if (journeyState.renderProcessor) {
             journeyState.renderProcessor.start();
+        }
+        if (journeyState.slowProcessor) {
             journeyState.slowProcessor.start();
         }
 
@@ -1085,8 +1437,14 @@ class Journey {
     }
 
     private startRenderLoops(): void {
-        // Rendering is now handled by processors through RenderComponent
-        // No manual render loops needed - much cleaner!
+        // Rendering is handled by processors through RenderComponent
+        // Add a simple render loop for Step 5 FPS tracking
+        const step5RenderLoop = () => {
+            this.step5.render();
+            requestAnimationFrame(step5RenderLoop);
+        };
+        requestAnimationFrame(step5RenderLoop);
+
         console.log('🎨 Rendering handled by processor system');
     }
 }

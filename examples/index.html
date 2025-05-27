@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VertexLink ACS - Interactive Journey</title>
+
+    <!-- Prism.js for code highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -267,6 +272,70 @@
         .highlight-yellow { background: var(--yellow) !important; }
         .highlight-green { background: var(--green) !important; }
 
+        /* Code examples */
+        .code-example {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .code-example h4 {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .code-example pre {
+            margin: 0;
+            background: var(--bg-primary) !important;
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            font-size: 0.85rem !important;
+            line-height: 1.4;
+            overflow-x: auto;
+        }
+
+        .code-example code {
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace !important;
+        }
+
+        /* Override Prism.js colors for our dark theme */
+        .token.comment,
+        .token.prolog,
+        .token.cdata {
+            color: var(--text-muted);
+        }
+
+        .token.punctuation {
+            color: var(--text-secondary);
+        }
+
+        .token.keyword,
+        .token.operator {
+            color: #ff79c6;
+        }
+
+        .token.string {
+            color: #f1fa8c;
+        }
+
+        .token.function {
+            color: #50fa7b;
+        }
+
+        .token.class-name {
+            color: var(--accent-blue);
+        }
+
+        .token.number,
+        .token.boolean {
+            color: #bd93f9;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .step-content {
@@ -311,6 +380,37 @@
                     Set how many instances of each template you want.
                 </p>
             </div>
+        </div>
+
+        <div class="code-example">
+            <h4>Code Example: Creating Actors with Components</h4>
+            <pre><code class="language-typescript">// Creating Actors with Components
+const actor = new Actor('MyActor');
+
+// Add components with parameters
+actor.addComponent(TransformComponent, x, y);
+actor.addComponent(RenderComponent, 'circle');
+actor.addComponent(RedComponent);
+
+if (hasAnimation) {
+  actor.addComponent(AnimationComponent);
+}
+
+// Add to scene
+scene.addActor(actor);
+
+// Component composition determines behavior
+const player = new Actor('Player');
+player.addComponent(TransformComponent, 100, 100);
+player.addComponent(RenderComponent, 'square');
+player.addComponent(BlueComponent);
+player.addComponent(AnimationComponent); // Makes it pulse
+
+// Each template can create multiple instances
+for (let i = 0; i < template.count; i++) {
+  const instance = createActorFromTemplate(template, i);
+  scene.addActor(instance);
+}</code></pre>
         </div>
 
         <div class="step-content">
@@ -385,6 +485,35 @@
             </div>
         </div>
 
+        <div class="code-example">
+            <h4>Code Example: Processor-based Updates</h4>
+            <pre><code class="language-typescript">// Processor-based Updates with Decorators
+class MovementComponent extends Component {
+  @RenderUpdate()  // 60 FPS - smooth movement
+  fastUpdate(deltaTime: number) {
+    const transform = this.actor.getComponent(TransformComponent);
+    transform.x += this.vx * deltaTime;
+    transform.y += this.vy * deltaTime;
+  }
+
+  @FixedTickUpdate()  // 10 FPS - game logic
+  slowUpdate(deltaTime: number) {
+    // AI decisions, collision detection, etc.
+    this.updateAI(deltaTime);
+  }
+}
+
+// Register and start processors
+const renderProcessor = new RenderProcessor(); // 60 FPS
+const gameLogicProcessor = new FixedTickProcessor("fixedTick", 10); // 10 FPS
+
+ProcessorRegistry.register(renderProcessor);
+ProcessorRegistry.register(gameLogicProcessor);
+
+renderProcessor.start(); // Start the loops
+gameLogicProcessor.start();</code></pre>
+        </div>
+
         <div class="step-content">
             <div class="step-canvas">
                 <canvas id="step2-canvas"></canvas>
@@ -442,6 +571,40 @@
                     Selected actors will be highlighted. Build complex queries to find exactly what you need.
                 </p>
             </div>
+        </div>
+
+        <div class="code-example">
+            <h4>Code Example: Scene Query System</h4>
+            <pre><code class="language-typescript">// Scene Query System - Efficient Component Filtering
+const scene = new Scene();
+
+// Simple component queries
+const animated = scene.query()
+  .withComponent(AnimationComponent)
+  .execute(scene);
+
+const redActors = scene.query()
+  .withComponent(RedComponent)
+  .execute(scene);
+
+// Complex multi-component queries
+const redAndAnimated = scene.query()
+  .withComponent(RedComponent, AnimationComponent)
+  .limit(10)
+  .execute(scene);
+
+// Combining queries for complex logic
+const fastMovingEnemies = scene.query()
+  .withComponent(FastMovementComponent, EnemyComponent)
+  .withoutTag('disabled')
+  .orderBy((a, b) => a.getComponent(HealthComponent).health - b.getComponent(HealthComponent).health)
+  .execute(scene);
+
+// Process query results
+animated.forEach(actor => {
+  const render = actor.getComponent(RenderComponent);
+  render.highlighted = true; // Visual feedback
+});</code></pre>
         </div>
 
         <div class="step-content">
@@ -510,23 +673,97 @@
             </div>
         </div>
 
+        <div class="code-example">
+            <h4>Code Example: Service Registration & Dependency Injection</h4>
+            <pre><code class="language-typescript">// Service Registration with Unique Keys
+const IMouseServiceKey = Symbol.for("IMouseService");
+const ICanvasServiceKey = Symbol.for("ICanvasService");
+
+// Register services in the registry
+serviceRegistry.register(IMouseServiceKey, new MouseService());
+serviceRegistry.register(ICanvasServiceKey, new CanvasService());
+
+// Service Usage in Components - Clean Dependency Injection
+class AttractionComponent extends Component {
+  @RenderUpdate()
+  attract(deltaTime: number) {
+    // Resolve services at runtime - fully decoupled
+    const mouseService = journeyState.serviceRegistry
+      .resolve&lt;IMouseService&gt;(IMouseServiceKey);
+    
+    if (!mouseService) return; // Graceful degradation
+    
+    const mousePos = mouseService.getPosition('step4-canvas');
+    const transform = this.actor.getComponent(TransformComponent);
+    
+    // Service provides clean API for mouse interaction
+    if (mouseService.isClicked()) {
+      this.pulseMultiplier = 5; // Boost attraction on click
+    }
+    
+    // Apply physics using service data
+    const dx = mousePos.x - transform.x;
+    const dy = mousePos.y - transform.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    if (distance > 5) {
+      const force = this.attractionStrength / Math.max(distance, 50);
+      transform.x += (dx / distance) * force * deltaTime;
+      transform.y += (dy / distance) * force * deltaTime;
+    }
+  }
+}
+
+// Multiple services working together
+class VisualEffectComponent extends Component {
+  @RenderUpdate()
+  createEffect(deltaTime: number) {
+    const canvasService = this.resolveService&lt;ICanvasService&gt;(ICanvasServiceKey);
+    const mouseService = this.resolveService&lt;IMouseService&gt;(IMouseServiceKey);
+    
+    // Services enable complex cross-system interactions
+    if (canvasService && mouseService) {
+      this.drawRippleEffect(canvasService, mouseService);
+    }
+  }
+}</code></pre>
+        </div>
+
         <div class="step-content">
             <div class="step-canvas">
                 <canvas id="step4-canvas"></canvas>
             </div>
-            <div class="step-controls">
+            <div class="step-controls" id="step4-controls">
                 <div class="control-section">
-                    <div class="control-label">Service Controls</div>
-                    <button class="control-button" onclick="journey.step4.enableMouseAttraction()">Enable Mouse Attraction</button>
-                    <button class="control-button" onclick="journey.step4.disableMouseAttraction()">Disable Attraction</button>
-                    <button class="control-button" onclick="journey.step4.addRandomForces()">Add Random Forces</button>
+                    <div class="control-label">Interactive Effects (Using Services)</div>
+                    <button class="control-button" onclick="journey.step4.enableMouseAttraction()">🎯 Mouse Attraction</button>
+                    <button class="control-button" onclick="journey.step4.disableMouseAttraction()">❌ Disable Attraction</button>
+                    <button class="control-button" onclick="journey.step4.enableColorCycling()">🌈 Color Cycling</button>
+                    <button class="control-button" onclick="journey.step4.disableColorCycling()">🔴 Disable Colors</button>
                 </div>
 
                 <div class="control-section">
-                    <div class="control-label">Interaction</div>
+                    <div class="control-label">Physics Effects</div>
+                    <button class="control-button" onclick="journey.step4.enableGravityEffect()">⬇️ Gravity Effect</button>
+                    <button class="control-button" onclick="journey.step4.disableGravityEffect()">🚫 Disable Gravity</button>
+                    <button class="control-button" onclick="journey.step4.enablePulseEffect()">💓 Pulse Effect</button>
+                    <button class="control-button" onclick="journey.step4.disablePulseEffect()">⭕ Disable Pulse</button>
+                </div>
+
+                <div class="control-section">
+                    <div class="control-label">Service Demonstrations</div>
+                    <button class="control-button" onclick="journey.step4.demonstrateCanvasService()">🎨 Canvas Service</button>
+                    <button class="control-button" onclick="journey.step4.demonstrateMouseService()">🖱️ Mouse Service</button>
+                    <button class="control-button" onclick="journey.step4.demonstrateMultipleServices()">✨ Multi-Service</button>
+                </div>
+
+                <div class="control-section">
+                    <div class="control-label">Interaction Tips</div>
                     <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 1rem;">
-                        Move mouse over canvas<br>
-                        Click to pulse attraction
+                        • Move mouse over canvas<br>
+                        • Click for attraction pulse<br>
+                        • Try combining effects<br>
+                        • Active effects show highlighted buttons
                     </div>
                 </div>
 
@@ -565,6 +802,52 @@
                     queries filtering efficiently, and services handling interaction. This is the full power of the ACS.
                 </p>
             </div>
+        </div>
+
+        <div class="code-example">
+            <h4>Code Example: Complete ACS System Integration</h4>
+            <pre><code class="language-typescript">// Complete ACS System Integration
+class GameManager {
+  constructor() {
+    this.scene = new Scene('MainScene');
+    this.serviceRegistry = new ServiceRegistry();
+    this.processors = new Map();
+  }
+
+  async initialize() {
+    // 1. Register all services
+    this.serviceRegistry.register(IInputServiceKey, new InputService());
+    this.serviceRegistry.register(IRendererServiceKey, new WebGPURenderer());
+    this.serviceRegistry.register(IAudioServiceKey, new AudioService());
+    
+    // 2. Setup processors with different frequencies
+    const renderProcessor = new RenderProcessor(); // 60 FPS
+    const gameLogicProcessor = new FixedTickProcessor("gameLogic", 30); // 30 FPS
+    const aiProcessor = new FixedTickProcessor("ai", 10); // 10 FPS
+    
+    ProcessorRegistry.register(renderProcessor);
+    ProcessorRegistry.register(gameLogicProcessor);
+    ProcessorRegistry.register(aiProcessor);
+    
+    // 3. Create game world with live filtering
+    this.spawnGameEntities();
+    
+    // 4. Start all systems
+    renderProcessor.start();
+    gameLogicProcessor.start();
+    aiProcessor.start();
+    
+    console.log('🚀 Complete ACS System Running');
+  }
+
+  // Live query filtering for performance
+  getVisibleEnemies() {
+    return this.scene.query()
+      .withComponent(EnemyComponent, TransformComponent, RenderComponent)
+      .withoutTag('hidden')
+      .execute(this.scene);
+  }
+}</code></pre>
         </div>
 
         <div class="step-content">
