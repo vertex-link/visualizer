@@ -2,7 +2,7 @@
 
 export class ComponentTypeRegistry {
     private static typeToId = new Map<ComponentClass, number>();
-    private static nextId = -1;
+    private static nextId = 0;
 
     static getId(componentClass: ComponentClass): number {
         let id = this.typeToId.get(componentClass);

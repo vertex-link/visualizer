@@ -56,7 +56,7 @@ export class ServiceRegistry {
         const instance = this.services.get(key) as T | undefined;
         
         if (instance) {
-          console.debug(`Service resolved for key: ${String(key)}`);
+          // console.debug(`Service resolved for key: ${String(key)}`);
         } else {
           console.warn(`Service not found for key: ${String(key)}`);
         }

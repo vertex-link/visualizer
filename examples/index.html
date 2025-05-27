@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ActorComponent Library - Particle System Demo</title>
+    <title>VertexLink ACS - Interactive Journey</title>
     <style>
         * {
             margin: 0;
@@ -11,61 +11,604 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #1a1a1a;
+            --bg-tertiary: #2a2a2a;
+            --accent-blue: #4a9eff;
+            --text-primary: #ffffff;
+            --text-secondary: #cccccc;
+            --text-muted: #888888;
+            --border: #333333;
+            --red: #ff4444;
+            --blue: #4444ff;
+            --yellow: #ffff44;
+            --green: #44ff44;
+        }
+
         body {
-            background: #0a0a0a;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+            line-height: 1.5;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* Header */
+        .header {
+            padding: 2rem 0;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 300;
+            margin-bottom: 0.5rem;
+            color: var(--accent-blue);
+        }
+
+        .header p {
+            font-size: 1rem;
+            color: var(--text-secondary);
+        }
+
+        /* Journey Steps */
+        .journey-step {
+            padding: 3rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .journey-step:last-child {
+            border-bottom: none;
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .step-number {
+            background: var(--accent-blue);
+            color: var(--bg-primary);
+            width: 3rem;
+            height: 3rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .step-title {
+            font-size: 1.8rem;
+            font-weight: 300;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .step-description {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            max-width: 600px;
+        }
+
+        .step-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .step-canvas {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            position: relative;
+            height: 400px;
             overflow: hidden;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        .step-controls {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 1.5rem;
+            height: fit-content;
+        }
+
+        .control-section {
+            margin-bottom: 2rem;
+        }
+
+        .control-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .control-label {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .control-button {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.7rem 1rem;
+            border-radius: 3px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.8rem;
+            transition: background-color 0.2s;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+            width: 100%;
+            text-align: left;
+        }
+
+        .control-button:hover {
+            background: var(--border);
+        }
+
+        .control-button.active {
+            background: var(--accent-blue);
+            color: var(--bg-primary);
+            font-weight: bold;
+        }
+
+        .control-input {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.5rem;
+            border-radius: 3px;
+            font-family: inherit;
+            font-size: 0.8rem;
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+
+        .control-select {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.5rem;
+            border-radius: 3px;
+            font-family: inherit;
+            font-size: 0.8rem;
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            font-size: 0.7rem;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.3rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .status-value {
+            color: var(--accent-blue);
+        }
+
+        .actor-template {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .template-name {
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .template-components {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .template-count {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .template-count input {
+            width: 60px;
         }
 
         canvas {
+            width: 100%;
+            height: 100%;
             display: block;
-            cursor: crosshair;
         }
 
-        .info {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            color: rgba(255, 255, 255, 0.8);
-            font-size: 14px;
-            line-height: 1.6;
-            pointer-events: none;
-            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+        .query-builder {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            padding: 1rem;
+            margin-bottom: 1rem;
         }
 
-        .info h1 {
-            font-size: 18px;
-            font-weight: 300;
-            margin-bottom: 10px;
-            color: #fff;
+        .query-condition {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.8rem;
         }
 
-        .info p {
-            opacity: 0.7;
-            font-size: 12px;
+        .highlight-red { background: var(--red) !important; }
+        .highlight-blue { background: var(--blue) !important; }
+        .highlight-yellow { background: var(--yellow) !important; }
+        .highlight-green { background: var(--green) !important; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .step-content {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
         }
 
-        .stats {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            color: rgba(255, 255, 255, 0.6);
-            font-size: 12px;
-            font-family: 'Courier New', monospace;
-            pointer-events: none;
+        /* Minimal animations */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
 <body>
-<canvas id="canvas"></canvas>
-<div class="info">
-    <h1>Particle Attraction System</h1>
-    <p>Move your mouse to attract particles</p>
-    <p>Click to spawn new particles</p>
+<!-- Header -->
+<div class="header">
+    <div class="container">
+        <h1>VertexLink ACS</h1>
+        <p>Interactive Actor Component System Journey</p>
+    </div>
 </div>
-<div class="stats" id="stats">
-    Particles: <span id="particleCount">0</span> | FPS: <span id="fps">0</span>
+
+<!-- Step 1: Build Your Actor Templates -->
+<div class="journey-step">
+    <div class="container">
+        <div class="step-header">
+            <div class="step-number">1</div>
+            <div>
+                <h2 class="step-title">Build Your Actor Templates</h2>
+                <p class="step-description">
+                    Create different types of actors by combining components.
+                    Each actor template defines a blueprint with Transform, Render, Color, and Animation components.
+                    Set how many instances of each template you want.
+                </p>
+            </div>
+        </div>
+
+        <div class="step-content">
+            <div class="step-canvas">
+                <canvas id="step1-canvas"></canvas>
+            </div>
+            <div class="step-controls">
+                <div class="control-section">
+                    <div class="control-label">Create Template</div>
+                    <input type="text" class="control-input" id="template-name" placeholder="Template name" value="Actor">
+
+                    <select class="control-select" id="template-color">
+                        <option value="red">Red Color</option>
+                        <option value="blue">Blue Color</option>
+                        <option value="yellow">Yellow Color</option>
+                        <option value="green">Green Color</option>
+                    </select>
+
+                    <select class="control-select" id="template-shape">
+                        <option value="circle">Circle</option>
+                        <option value="square">Square</option>
+                        <option value="triangle">Triangle</option>
+                    </select>
+
+                    <label>
+                        <input type="checkbox" id="template-animation" checked> Animation Component
+                    </label>
+
+                    <button class="control-button" onclick="journey.step1.createTemplate()">Create Template</button>
+                </div>
+
+                <div class="control-section">
+                    <div class="control-label">Your Templates</div>
+                    <div id="template-list"></div>
+                    <button class="control-button" onclick="journey.step1.spawnActors()">Spawn All Actors</button>
+                </div>
+
+                <div class="status-grid">
+                    <div class="status-item">
+                        <span>Templates:</span>
+                        <span class="status-value" id="step1-templates">0</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Actors:</span>
+                        <span class="status-value" id="step1-actors">0</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Components:</span>
+                        <span class="status-value" id="step1-components">0</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Animated:</span>
+                        <span class="status-value" id="step1-animated">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+<!-- Step 2: Processor System -->
+<div class="journey-step">
+    <div class="container">
+        <div class="step-header">
+            <div class="step-number">2</div>
+            <div>
+                <h2 class="step-title">Processor System</h2>
+                <p class="step-description">
+                    Your actors can now move! Assign movement components that update at different frequencies.
+                    Fast components update at 60 FPS, Slow components at 10 FPS. Watch the difference in motion.
+                </p>
+            </div>
+        </div>
+
+        <div class="step-content">
+            <div class="step-canvas">
+                <canvas id="step2-canvas"></canvas>
+            </div>
+            <div class="step-controls">
+                <div class="control-section">
+                    <div class="control-label">Template Movement Assignment</div>
+                    <div id="template-movement-list"></div>
+                </div>
+
+                <div class="control-section">
+                    <div class="control-label">Bulk Actions</div>
+                    <button class="control-button" onclick="journey.step2.clearAllMovement()">Clear All Movement</button>
+                    <button class="control-button" onclick="journey.step2.randomAssignment()">Random Assignment</button>
+                </div>
+
+                <div class="control-section">
+                    <div class="control-label">Processor Control</div>
+                    <button class="control-button" id="start-processors" onclick="journey.step2.startProcessors()">Start Processors</button>
+                    <button class="control-button" onclick="journey.step2.stopProcessors()">Stop Processors</button>
+                </div>
+
+                <div class="status-grid">
+                    <div class="status-item">
+                        <span>Fast Movers:</span>
+                        <span class="status-value" id="step2-fast">0</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Slow Movers:</span>
+                        <span class="status-value" id="step2-slow">0</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Render FPS:</span>
+                        <span class="status-value" id="step2-render-fps">0</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Logic FPS:</span>
+                        <span class="status-value" id="step2-logic-fps">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Step 3: Query System -->
+<div class="journey-step">
+    <div class="container">
+        <div class="step-header">
+            <div class="step-number">3</div>
+            <div>
+                <h2 class="step-title">Query System</h2>
+                <p class="step-description">
+                    Now query your actor pool! Filter by components, colors, or movement types.
+                    Selected actors will be highlighted. Build complex queries to find exactly what you need.
+                </p>
+            </div>
+        </div>
+
+        <div class="step-content">
+            <div class="step-canvas">
+                <canvas id="step3-canvas"></canvas>
+            </div>
+            <div class="step-controls">
+                <div class="control-section">
+                    <div class="control-label">Component Queries</div>
+                    <button class="control-button" onclick="journey.step3.queryAnimated()">Find Animated</button>
+                    <button class="control-button" onclick="journey.step3.queryMoving()">Find Moving</button>
+                    <button class="control-button" onclick="journey.step3.queryFastMovers()">Find Fast Movers</button>
+                    <button class="control-button" onclick="journey.step3.querySlowMovers()">Find Slow Movers</button>
+                </div>
+
+                <div class="control-section">
+                    <div class="control-label">Color Queries</div>
+                    <button class="control-button" onclick="journey.step3.queryColor('red')">Find Red</button>
+                    <button class="control-button" onclick="journey.step3.queryColor('blue')">Find Blue</button>
+                    <button class="control-button" onclick="journey.step3.queryColor('yellow')">Find Yellow</button>
+                    <button class="control-button" onclick="journey.step3.queryColor('green')">Find Green</button>
+                </div>
+
+                <div class="control-section">
+                    <div class="control-label">Complex Queries</div>
+                    <button class="control-button" onclick="journey.step3.queryRedAndAnimated()">Red + Animated</button>
+                    <button class="control-button" onclick="journey.step3.queryCirclesOnly()">Circles Only</button>
+                    <button class="control-button" onclick="journey.step3.clearHighlight()">Clear Highlight</button>
+                </div>
+
+                <div class="status-grid">
+                    <div class="status-item">
+                        <span>Query Results:</span>
+                        <span class="status-value" id="step3-results">0</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Last Query:</span>
+                        <span class="status-value" id="step3-query">none</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Total Pool:</span>
+                        <span class="status-value" id="step3-total">0</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Highlighted:</span>
+                        <span class="status-value" id="step3-highlighted">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Step 4: Service Integration -->
+<div class="journey-step">
+    <div class="container">
+        <div class="step-header">
+            <div class="step-number">4</div>
+            <div>
+                <h2 class="step-title">Service Registry</h2>
+                <p class="step-description">
+                    Services provide shared functionality across your application using dependency injection.
+                    Components and systems resolve services by unique keys for decoupled architecture.
+                    Demonstrates service registration, resolution, and usage patterns.
+                </p>
+            </div>
+        </div>
+
+        <div class="step-content">
+            <div class="step-canvas">
+                <canvas id="step4-canvas"></canvas>
+            </div>
+            <div class="step-controls">
+                <div class="control-section">
+                    <div class="control-label">Service Controls</div>
+                    <button class="control-button" onclick="journey.step4.enableMouseAttraction()">Enable Mouse Attraction</button>
+                    <button class="control-button" onclick="journey.step4.disableMouseAttraction()">Disable Attraction</button>
+                    <button class="control-button" onclick="journey.step4.addRandomForces()">Add Random Forces</button>
+                </div>
+
+                <div class="control-section">
+                    <div class="control-label">Interaction</div>
+                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 1rem;">
+                        Move mouse over canvas<br>
+                        Click to pulse attraction
+                    </div>
+                </div>
+
+                <div class="status-grid">
+                    <div class="status-item">
+                        <span>Mouse X:</span>
+                        <span class="status-value" id="step4-mouse-x">0</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Mouse Y:</span>
+                        <span class="status-value" id="step4-mouse-y">0</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Service Calls:</span>
+                        <span class="status-value" id="step4-calls">0</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Services Used:</span>
+                        <span class="status-value" id="step4-services">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Step 5: Complete System -->
+<div class="journey-step">
+    <div class="container">
+        <div class="step-header">
+            <div class="step-number">5</div>
+            <div>
+                <h2 class="step-title">Complete System</h2>
+                <p class="step-description">
+                    Everything working together! Your actor pool with all components, processors running at different frequencies,
+                    queries filtering efficiently, and services handling interaction. This is the full power of the ACS.
+                </p>
+            </div>
+        </div>
+
+        <div class="step-content">
+            <div class="step-canvas">
+                <canvas id="step5-canvas"></canvas>
+            </div>
+            <div class="step-controls">
+                <div class="control-section">
+                    <div class="control-label">System Control</div>
+                    <button class="control-button" onclick="journey.step5.startComplete()">Start Complete System</button>
+                    <button class="control-button" onclick="journey.step5.pauseSystem()">Pause/Resume</button>
+                    <button class="control-button" onclick="journey.step5.resetJourney()">Reset Journey</button>
+                </div>
+
+                <div class="control-section">
+                    <div class="control-label">Live Queries</div>
+                    <button class="control-button" onclick="journey.step5.toggleLiveQuery('red')">Toggle Red Filter</button>
+                    <button class="control-button" onclick="journey.step5.toggleLiveQuery('fast')">Toggle Fast Filter</button>
+                    <button class="control-button" onclick="journey.step5.toggleLiveQuery('animated')">Toggle Animated Filter</button>
+                </div>
+
+                <div class="status-grid">
+                    <div class="status-item">
+                        <span>System State:</span>
+                        <span class="status-value" id="step5-state">Ready</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Performance:</span>
+                        <span class="status-value" id="step5-fps">0 FPS</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Active Filters:</span>
+                        <span class="status-value" id="step5-filters">0</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Visible Actors:</span>
+                        <span class="status-value" id="step5-visible">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script type="module" src="./examples/app.ts"></script>
 </body>
 </html>
