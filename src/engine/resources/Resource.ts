@@ -1,4 +1,8 @@
-﻿
+﻿// src/engine/resources/Resource.ts - Phase 2 Implementation
+// Based on existing ServiceRegistry system
+
+import { ServiceRegistry } from "../core/Service.ts";
+
 export enum ResourceStatus {
     UNLOADED,
     LOADING,
@@ -11,6 +15,8 @@ export enum ResourceStatus {
  * Abstract base class for all engine resources.
  * Resources are provided with a service registry at construction time
  * to resolve any services they might need for loading or unloading.
+ *
+ * Phase 2 Extensions: Added compilation support and future streaming hooks.
  */
 export abstract class Resource {
     public readonly uuid: string;
@@ -22,14 +28,36 @@ export abstract class Resource {
      * The service registry provided at construction, for use by derived classes
      * in their performLoad/performUnload methods.
      */
-    protected readonly serviceRegistry: IServiceRegistry;
+    protected readonly serviceRegistry: ServiceRegistry;
+
+    // ======== Phase 2 Additions ========
+
+    /**
+     * Whether the resource has been compiled into GPU-ready format.
+     * Used by MeshResource, ShaderResource, and MaterialResource.
+     */
+    public isCompiled: boolean = false;
+
+    /**
+     * Resource version for streaming and hot-reload support.
+     * Incremented when resource data changes.
+     */
+    public version: number = 1;
+
+    /**
+     * Optional layout descriptor for streaming support.
+     * Will be properly typed when buffer streaming is implemented.
+     */
+    public layout?: unknown; // Future: BufferLayout | ShaderLayout | MaterialLayout
+
+    // ======== End Phase 2 Additions ========
 
     /**
      * @param name A human-readable name for the resource.
      * @param serviceRegistry The service registry for resolving necessary services.
      * @param uuid An optional unique identifier. If not provided, one will be generated.
      */
-    protected constructor(name: string, serviceRegistry: IServiceRegistry, uuid?: string) {
+    protected constructor(name: string, serviceRegistry: ServiceRegistry, uuid?: string) {
         this.name = name;
         this.serviceRegistry = serviceRegistry;
         this.uuid = uuid || `resource-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
@@ -82,6 +110,8 @@ export abstract class Resource {
         } finally {
             this.status = ResourceStatus.UNLOADED;
             this.data = null;
+            // Phase 2: Reset compilation state
+            this.isCompiled = false;
             // console.info(`Resource "${this.name}" (${this.uuid}) marked as unloaded (from status: ${ResourceStatus[previousStatus]}).`);
         }
     }
@@ -89,6 +119,83 @@ export abstract class Resource {
     public isLoaded(): boolean {
         return this.status === ResourceStatus.LOADED;
     }
+
+    // ======== Phase 2 Additions ========
+
+    /**
+     * Compile the resource into GPU-ready format.
+     * Default implementation does nothing - override in subclasses that need compilation.
+     */
+    public async compile(): Promise<void> {
+        // Default: no compilation needed
+        this.isCompiled = true;
+    }
+
+    /**
+     * Check if the resource has been compiled.
+     */
+    public isResourceCompiled(): boolean {
+        return this.isCompiled;
+    }
+
+    /**
+     * Increment the resource version (for change tracking).
+     */
+    protected incrementVersion(): void {
+        this.version++;
+    }
+
+    /**
+     * Create a delta representation of changes since a specific version.
+     * Used for streaming updates. Default implementation returns null.
+     * Override in subclasses that support streaming.
+     *
+     * @param sinceVersion The version to create delta from
+     * @returns Delta object or null if no changes or streaming not supported
+     */
+    public createDelta?(sinceVersion: number): unknown {
+        // Default: no streaming support
+        return null;
+    }
+
+    /**
+     * Apply a delta to update the resource.
+     * Used for streaming updates. Default implementation does nothing.
+     * Override in subclasses that support streaming.
+     *
+     * @param delta The delta to apply
+     */
+    public applyDelta?(delta: unknown): void {
+        // Default: no streaming support
+    }
+
+    /**
+     * Set the resource layout for streaming support.
+     * Will be properly typed when streaming is fully implemented.
+     */
+    public setLayout(layout: unknown): void {
+        this.layout = layout;
+    }
+
+    /**
+     * Get debug information about the resource.
+     */
+    public getDebugInfo(): Record<string, unknown> {
+        return {
+            name: this.name,
+            uuid: this.uuid,
+            status: ResourceStatus[this.status],
+            isLoaded: this.isLoaded(),
+            isCompiled: this.isCompiled,
+            version: this.version,
+            hasLayout: this.layout !== undefined,
+            dataSize: this.data instanceof ArrayBuffer ? this.data.byteLength :
+                this.data instanceof Float32Array ? this.data.byteLength :
+                    this.data ? JSON.stringify(this.data).length : 0
+        };
+    }
+
+    // ======== End Phase 2 Additions ========
 
     /**
      * Abstract method for derived classes to implement loading logic.

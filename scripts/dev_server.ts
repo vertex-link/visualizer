@@ -1,185 +1,502 @@
-﻿// scripts/dev_server.ts
-import {
-    serveDir,
-    type ServeDirOptions,
-} from 'https://deno.land/std@0.224.0/http/file_server.ts';
-import { serve, type ServeOptions } from 'https://deno.land/std@0.224.0/http/server.ts';
-import { extname } from 'https://deno.land/std@0.224.0/path/mod.ts';
-import { transpile, type TranspileOptions } from "https://deno.land/x/emit/mod.ts"; // Updated import
+﻿// scripts/dev_server.ts - Enhanced Development Server
+import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
+import { serveDir } from "https://deno.land/std@0.208.0/http/file_server.ts";
+import { exists } from "https://deno.land/std@0.208.0/fs/exists.ts";
+import { extname, join, resolve } from "https://deno.land/std@0.208.0/path/mod.ts";
 
-const PORT = 8080;
-const WATCH_PATHS = ['./src', './examples'];
+const PORT = 8000;
+const HOST = "localhost";
 
-const clients = new Set<WebSocket>();
-
-function broadcastReload() {
-    for (const client of clients) {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send('reload');
-        }
-    }
+interface ServerConfig {
+    port: number;
+    host: string;
+    cors: boolean;
+    transpileTS: boolean;
+    hotReload: boolean;
+    compression: boolean;
+    verbose: boolean;
 }
 
-async function fileWatcher() {
-    console.log(`Watching for file changes in: ${WATCH_PATHS.join(', ')}...`);
-    const watcher = Deno.watchFs(WATCH_PATHS);
-    let lastReloadTime = 0;
-    const debounceInterval = 500;
+class VertexLinkDevServer {
+    private config: ServerConfig;
+    private connectedClients: Set<WebSocket> = new Set();
+    private watchedFiles: Set<string> = new Set();
 
-    for await (const event of watcher) {
-        if (event.kind !== 'access') {
-            const now = Date.now();
-            if (now - lastReloadTime > debounceInterval) {
-                console.log(
-                    `Change detected: ${event.kind} in ${event.paths.join(', ')}. Reloading...`,
-                );
-                broadcastReload();
-                lastReloadTime = now;
+    constructor(config: Partial<ServerConfig> = {}) {
+        this.config = {
+            port: PORT,
+            host: HOST,
+            cors: true,
+            transpileTS: true,
+            hotReload: true,
+            compression: false,
+            verbose: true,
+            ...config
+        };
+    }
+
+    async start(): Promise<void> {
+        this.printWelcomeMessage();
+
+        // Start file watcher for hot reload
+        if (this.config.hotReload) {
+            this.startFileWatcher();
+        }
+
+        await serve(this.handleRequest.bind(this), {
+            port: this.config.port,
+            hostname: this.config.host,
+            onListen: () => {
+                console.log(`🌐 Server running at http://${this.config.host}:${this.config.port}`);
+                this.printAvailableRoutes();
+            }
+        });
+    }
+
+    private async handleRequest(req: Request): Promise<Response> {
+        const url = new URL(req.url);
+        const pathname = url.pathname;
+
+        // Log requests in verbose mode
+        if (this.config.verbose) {
+            console.log(`${new Date().toLocaleTimeString()} ${req.method} ${pathname}`);
+        }
+
+        try {
+            // Handle CORS preflight
+            if (req.method === "OPTIONS") {
+                return this.createCORSResponse();
+            }
+
+            // Handle WebSocket upgrade for hot reload
+            if (pathname === "/ws" && req.headers.get("upgrade") === "websocket") {
+                return this.handleWebSocketUpgrade(req);
+            }
+
+            // Handle API endpoints
+            if (pathname.startsWith("/api/")) {
+                return this.handleAPIRequest(req, pathname);
+            }
+
+            // Handle special routes
+            const specialResponse = await this.handleSpecialRoutes(req, pathname);
+            if (specialResponse) {
+                return specialResponse;
+            }
+
+            // Handle static files
+            return await this.handleStaticFile(req, pathname);
+
+        } catch (error) {
+            console.error(`❌ Error handling ${pathname}:`, error);
+            return this.createErrorResponse(500, "Internal Server Error", error.message);
+        }
+    }
+
+    private async handleStaticFile(req: Request, pathname: string): Promise<Response> {
+        // Default to examples/index.html for root
+        if (pathname === "/" || pathname === "/index.html") {
+            pathname = "/examples/index.html";
+        }
+
+        // Try to serve the file
+        let filePath = `.${pathname}`;
+
+        // Check if file exists
+        if (!(await exists(filePath))) {
+            // Try common extensions for convenience
+            const alternatives = [
+                `${filePath}.html`,
+                `${filePath}/index.html`,
+                `./examples${pathname}`,
+                `./examples${pathname}.html`,
+                `./examples${pathname}/index.html`
+            ];
+
+            let found = false;
+            for (const alt of alternatives) {
+                if (await exists(alt)) {
+                    filePath = alt;
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                return this.createErrorResponse(404, "File Not Found", `Could not find: ${pathname}`);
             }
         }
-    }
-}
 
-const serveDirOpts: ServeDirOptions = {
-    fsRoot: '.',
-    urlRoot: '',
-    quiet: true,
-    enableCors: true,
-};
-
-async function handleHttpRequest(req: Request): Promise<Response> {
-    const url = new URL(req.url);
-    const pathname = url.pathname;
-    const extension = extname(pathname).toLowerCase();
-    
-    if (extension === '.css') {
-        try {
-            const filePath = `.${pathname}`;
-            const fileContent = await Deno.readTextFile(filePath);
-            return new Response(fileContent, {
-                headers: { 'Content-Type': 'text/css; charset=utf-8' },
-            });
-        } catch (e) {
-            console.error(`Error serving CSS file ${pathname}:`, e);
-            return new Response('Not Found', { status: 404 });
+        // Handle TypeScript files
+        if (this.config.transpileTS && extname(filePath) === ".ts") {
+            return await this.handleTypeScriptFile(filePath);
         }
-    }
-    if (pathname === '/livereload-ws') {
-        const { socket, response } = Deno.upgradeWebSocket(req);
-        clients.add(socket);
-        socket.onclose = () => clients.delete(socket);
-        socket.onerror = (e) => console.error('Live reload WebSocket error:', e);
+
+        // Serve regular files
+        const response = await serveDir(req, {
+            fsRoot: ".",
+            urlRoot: "",
+            quiet: !this.config.verbose,
+        });
+
+        // Add hot reload script to HTML files
+        if (this.config.hotReload && response.headers.get("content-type")?.includes("text/html")) {
+            return await this.injectHotReload(response);
+        }
+
+        // Add CORS headers
+        if (this.config.cors) {
+            this.addCORSHeaders(response);
+        }
+
         return response;
     }
 
-    if (pathname === '/' || pathname === '/index.html') {
+    private async handleTypeScriptFile(filePath: string): Promise<Response> {
         try {
-            let content = await Deno.readTextFile('./examples/index.html');
-            const liveReloadScript = `
-        <script>
-          const socket = new WebSocket('ws://localhost:${PORT}/livereload-ws');
-          socket.addEventListener('message', (event) => {
-            if (event.data === 'reload') {
-              console.log('Reloading page...');
-              window.location.reload();
-            }
-          });
-          socket.addEventListener('open', () => console.log('Live reload connected.'));
-          socket.addEventListener('error', (err) => console.error('Live reload WS error:', err));
-        </script>
-      `;
-            content = content.replace('</body>', `${liveReloadScript}</body>`);
-            return new Response(content, {
-                headers: { 'Content-Type': 'text/html; charset=utf-8' },
-            });
-        } catch (e) {
-            console.error('Error serving index.html:', e);
-            return new Response('Not Found', { status: 404 });
-        }
-    }
+            const source = await Deno.readTextFile(filePath);
 
-    // Handle .ts files: Transpile to JavaScript on-the-fly
-    if (extension === '.ts') {
-        try {
-            const absoluteFilePath = await Deno.realPath(`.${pathname}`); // e.g. ./src/main.ts
-            const fileUrl = new URL(`file://${absoluteFilePath}`);
+            // Simple TypeScript to JavaScript transpilation
+            // For more complex cases, you might want to use the TypeScript compiler API
+            let jsSource = source
+                // Remove TypeScript imports with .ts extensions
+                .replace(/from\s+["'](.+?)\.ts["']/g, 'from "$1.js"')
+                // Remove type annotations (basic)
+                .replace(/:\s*\w+(\[\])?(\s*[=,)])/g, '$2')
+                // Remove interface declarations (basic)
+                .replace(/^interface\s+\w+\s*{[^}]*}/gm, '')
+                // Remove type exports
+                .replace(/^export\s+type\s+.+$/gm, '');
 
-            // Deno_emit's default loader should handle local file imports.
-            // The browser will request imported .ts files, which will also be transpiled by this logic.
-            const transpileOptions: TranspileOptions = {
-                // No specific load function needed for local files, deno_emit handles file:// URLs.
-                // Add compilerOptions if you need to customize TS behavior:
-                compilerOptions: {
-                    // "target": "esnext", // Already in deno.jsonc, but can be specific here
-                    // "module": "esnext",
-                    inlineSourceMap: true, // Helps with debugging in browser dev tools
-                    // "jsx": "react-jsx", // If you were using JSX
+            return new Response(jsSource, {
+                headers: {
+                    "Content-Type": "application/javascript",
+                    ...this.getCORSHeaders()
                 }
-            };
-
-            const result = await transpile(fileUrl, transpileOptions);
-            const emittedJsCode = result.get(fileUrl.href);
-
-            if (typeof emittedJsCode !== 'string') {
-                console.error(`Transpilation failed for ${pathname}. Output:`, emittedJsCode);
-                throw new Error(`Transpilation returned no/invalid code for ${fileUrl.href}`);
-            }
-
-            const headers = new Headers({ 'Content-Type': 'application/javascript; charset=utf-8' });
-            if (serveDirOpts.enableCors) {
-                headers.set('Access-Control-Allow-Origin', '*');
-            }
-            return new Response(emittedJsCode, { headers });
-
-        } catch (e) {
-            console.error(`Error processing TypeScript file ${pathname}:`, e);
-            if (e instanceof Deno.errors.NotFound) {
-                return new Response('Not Found', { status: 404 });
-            }
-            return new Response(`Internal Server Error transpiling TS: ${e.message}`, { status: 500 });
-        }
-    } else if (extension === '.js') { // Serve .js files directly
-        try {
-            const filePath = `.${pathname}`;
-            const fileStat = await Deno.stat(filePath);
-            if (!fileStat.isFile) throw new Deno.errors.NotFound();
-
-            const fileContent = await Deno.readFile(filePath); // Read file content
-
-            const headers = new Headers({ 'Content-Type': 'application/javascript; charset=utf-8' });
-            if (serveDirOpts.enableCors) {
-                headers.set('Access-Control-Allow-Origin', '*');
-            }
-            return new Response(fileContent, { headers }); // Serve content
-        } catch (e) {
-            if (e instanceof Deno.errors.NotFound) {
-                return new Response('Not Found', { status: 404 });
-            }
-            console.error(`Error serving .js file ${pathname}:`, e);
-            return new Response('Internal Server Error', { status: 500 });
+            });
+        } catch (error) {
+            return this.createErrorResponse(500, "TypeScript Transpilation Error", error.message);
         }
     }
 
-    // Fallback to serveDir for other static files (CSS, images, etc.)
-    try {
-        return await serveDir(req, serveDirOpts);
-    } catch (e) {
-        if (e instanceof Deno.errors.NotFound) {
-            return new Response('Not Found', { status: 404 });
+    private async handleAPIRequest(req: Request, pathname: string): Response {
+        const apiPath = pathname.replace("/api/", "");
+
+        switch (apiPath) {
+            case "status":
+                return Response.json({
+                    status: "running",
+                    timestamp: new Date().toISOString(),
+                    config: this.config,
+                    connectedClients: this.connectedClients.size
+                });
+
+            case "examples":
+                return Response.json(await this.getAvailableExamples());
+
+            case "reload":
+                this.broadcastReload();
+                return Response.json({ message: "Reload signal sent" });
+
+            default:
+                return this.createErrorResponse(404, "API Endpoint Not Found", `Unknown API: ${apiPath}`);
         }
-        console.error(`Error in serveDir for ${pathname}:`, e);
-        return new Response('Internal Server Error', { status: 500 });
+    }
+
+    private async handleSpecialRoutes(req: Request, pathname: string): Promise<Response | null> {
+        // Handle favicon
+        if (pathname === "/favicon.ico") {
+            return new Response(null, { status: 204 });
+        }
+
+        // Redirect old paths to examples
+        const redirects: Record<string, string> = {
+            "/test-phase1.html": "/examples/phase1/test-phase1.html",
+            "/test-phase2.html": "/examples/phase2/test-phase2.html",
+            "/phase2-demo.html": "/examples/phase2/demo.html"
+        };
+
+        if (redirects[pathname]) {
+            return Response.redirect(`http://${this.config.host}:${this.config.port}${redirects[pathname]}`, 302);
+        }
+
+        return null;
+    }
+
+    private handleWebSocketUpgrade(req: Request): Response {
+        const { socket, response } = Deno.upgradeWebSocket(req);
+
+        socket.onopen = () => {
+            this.connectedClients.add(socket);
+            console.log(`🔌 WebSocket client connected (${this.connectedClients.size} total)`);
+        };
+
+        socket.onclose = () => {
+            this.connectedClients.delete(socket);
+            console.log(`🔌 WebSocket client disconnected (${this.connectedClients.size} total)`);
+        };
+
+        socket.onerror = (error) => {
+            console.error("❌ WebSocket error:", error);
+            this.connectedClients.delete(socket);
+        };
+
+        return response;
+    }
+
+    private async startFileWatcher(): Promise<void> {
+        const watchPaths = ["./src", "./examples", "./scripts"];
+        console.log("👀 File watcher started for:", watchPaths.join(", "));
+
+        try {
+            for (const path of watchPaths) {
+                if (await exists(path)) {
+                    this.watchDirectory(path);
+                }
+            }
+        } catch (error) {
+            console.warn("⚠️ File watcher setup failed:", error.message);
+        }
+    }
+
+    private async watchDirectory(dirPath: string): Promise<void> {
+        try {
+            const watcher = Deno.watchFs(dirPath);
+
+            // Debounce file changes
+            let timeout: number | null = null;
+
+            for await (const event of watcher) {
+                if (event.kind === "modify" || event.kind === "create") {
+                    if (timeout) clearTimeout(timeout);
+
+                    timeout = setTimeout(() => {
+                        const files = event.paths.filter(p =>
+                            p.endsWith('.ts') || p.endsWith('.js') || p.endsWith('.html') || p.endsWith('.css')
+                        );
+
+                        if (files.length > 0) {
+                            console.log(`📁 File changed: ${files[0]}`);
+                            this.broadcastReload();
+                        }
+                    }, 100);
+                }
+            }
+        } catch (error) {
+            if (this.config.verbose) {
+                console.warn(`⚠️ Could not watch directory ${dirPath}:`, error.message);
+            }
+        }
+    }
+
+    private broadcastReload(): void {
+        const message = JSON.stringify({ type: "reload", timestamp: Date.now() });
+
+        for (const client of this.connectedClients) {
+            try {
+                client.send(message);
+            } catch (error) {
+                console.warn("⚠️ Failed to send reload signal to client:", error.message);
+                this.connectedClients.delete(client);
+            }
+        }
+
+        if (this.connectedClients.size > 0) {
+            console.log(`🔄 Reload signal sent to ${this.connectedClients.size} clients`);
+        }
+    }
+
+    private async injectHotReload(response: Response): Promise<Response> {
+        if (!response.body) return response;
+
+        const text = await response.text();
+        const hotReloadScript = `
+    <script>
+      (function() {
+        console.log('🔥 Hot reload enabled');
+        const ws = new WebSocket('ws://localhost:${this.config.port}/ws');
+        ws.onmessage = function(event) {
+          const data = JSON.parse(event.data);
+          if (data.type === 'reload') {
+            console.log('🔄 Hot reload triggered');
+            location.reload();
+          }
+        };
+        ws.onerror = function() { console.warn('⚠️ Hot reload WebSocket connection failed'); };
+      })();
+    </script>
+  `;
+
+        const modifiedHTML = text.replace('</body>', `${hotReloadScript}</body>`);
+
+        return new Response(modifiedHTML, {
+            headers: response.headers
+        });
+    }
+
+    private async getAvailableExamples(): Promise<any> {
+        const examples: any = {};
+
+        try {
+            const examplesDir = "./examples";
+            if (await exists(examplesDir)) {
+                for await (const entry of Deno.readDir(examplesDir)) {
+                    if (entry.isDirectory) {
+                        examples[entry.name] = await this.scanExampleDirectory(join(examplesDir, entry.name));
+                    } else if (entry.name.endsWith('.html')) {
+                        examples[entry.name] = { type: 'html', path: `/examples/${entry.name}` };
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn("⚠️ Could not scan examples directory:", error.message);
+        }
+
+        return examples;
+    }
+
+    private async scanExampleDirectory(dirPath: string): Promise<any> {
+        const files: any = {};
+
+        try {
+            for await (const entry of Deno.readDir(dirPath)) {
+                if (entry.isFile) {
+                    const ext = extname(entry.name);
+                    files[entry.name] = {
+                        type: ext.slice(1) || 'file',
+                        path: `/${dirPath}/${entry.name}`.replace('./','')
+                    };
+                }
+            }
+        } catch (error) {
+            // Directory might not be readable
+        }
+
+        return files;
+    }
+
+    private createCORSResponse(): Response {
+        return new Response(null, {
+            status: 200,
+            headers: this.getCORSHeaders()
+        });
+    }
+
+    private createErrorResponse(status: number, title: string, message: string): Response {
+        const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>${title}</title>
+      <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background: #1a1a1a; color: white; }
+        h1 { color: #ff6b6b; }
+        .error-box { background: #333; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .back-link { color: #4ecdc4; text-decoration: none; }
+        .back-link:hover { text-decoration: underline; }
+      </style>
+    </head>
+    <body>
+      <h1>⚠️ ${title}</h1>
+      <div class="error-box">
+        <p><strong>Error:</strong> ${message}</p>
+        <p><strong>Status:</strong> ${status}</p>
+      </div>
+      <p><a href="/examples/" class="back-link">← Back to Examples</a></p>
+      <script>
+        setTimeout(() => {
+          console.log('🔄 Auto-refresh in 3 seconds...');
+          setTimeout(() => location.reload(), 3000);
+        }, 1000);
+      </script>
+    </body>
+    </html>
+    `;
+
+        return new Response(html, {
+            status,
+            headers: {
+                "Content-Type": "text/html",
+                ...this.getCORSHeaders()
+            }
+        });
+    }
+
+    private getCORSHeaders(): Record<string, string> {
+        if (!this.config.cors) return {};
+
+        return {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            "Access-Control-Max-Age": "86400"
+        };
+    }
+
+    private addCORSHeaders(response: Response): void {
+        if (!this.config.cors) return;
+
+        const headers = this.getCORSHeaders();
+        for (const [key, value] of Object.entries(headers)) {
+            response.headers.set(key, value);
+        }
+    }
+
+    private printWelcomeMessage(): void {
+        console.log(`
+🚀 Vertex Link Development Server
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚙️  Configuration:
+   • Port: ${this.config.port}
+   • Host: ${this.config.host}
+   • CORS: ${this.config.cors ? '✅' : '❌'}
+   • TypeScript: ${this.config.transpileTS ? '✅' : '❌'}
+   • Hot Reload: ${this.config.hotReload ? '✅' : '❌'}
+   • Compression: ${this.config.compression ? '✅' : '❌'}
+   • Verbose: ${this.config.verbose ? '✅' : '❌'}
+`);
+    }
+
+    private printAvailableRoutes(): void {
+        console.log(`
+🎮 Available Routes:
+━━━━━━━━━━━━━━━━━━━━━━
+
+📱 Main Examples:
+   • http://${this.config.host}:${this.config.port}/
+   • http://${this.config.host}:${this.config.port}/examples/
+
+🧪 Phase 1 Tests:
+   • http://${this.config.host}:${this.config.port}/examples/phase1/
+
+🔬 Phase 2 Tests:
+   • http://${this.config.host}:${this.config.port}/examples/phase2/
+   • http://${this.config.host}:${this.config.port}/examples/phase2/demo.html
+
+📡 API Endpoints:
+   • http://${this.config.host}:${this.config.port}/api/status
+   • http://${this.config.host}:${this.config.port}/api/examples
+   • http://${this.config.host}:${this.config.port}/api/reload
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`);
     }
 }
 
-const serveOptions: ServeOptions = {
-    port: PORT,
-    onListen: ({ hostname, port }) => {
-        console.log(
-            `🚀 Development server running at http://${hostname}:${port}/`,
-        );
-    },
-};
+// Start the server
+if (import.meta.main) {
+    const server = new VertexLinkDevServer({
+        port: parseInt(Deno.env.get("PORT") || "8000"),
+        host: Deno.env.get("HOST") || "localhost",
+        verbose: Deno.env.get("VERBOSE") === "true",
+        hotReload: Deno.env.get("HOT_RELOAD") !== "false"
+    });
 
-fileWatcher().catch((err) => console.error('File watcher crashed:', err));
-serve(handleHttpRequest, serveOptions);
+    try {
+        await server.start();
+    } catch (error) {
+        console.error("❌ Failed to start server:", error);
+        Deno.exit(1);
+    }
+}
