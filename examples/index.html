@@ -3,425 +3,184 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VertexLink ACS - Event System & Dependencies Demo</title>
+    <title>Mini Creature Battle Game</title>
     <style>
-        * {
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f0f0f0;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             margin: 0;
-            padding: 0;
+            padding: 20px;
             box-sizing: border-box;
         }
 
-        :root {
-            --bg-primary: #0a0a0a;
-            --bg-secondary: #1a1a1a;
-            --bg-tertiary: #2a2a2a;
-            --accent-blue: #4a9eff;
-            --accent-green: #44ff44;
-            --accent-red: #ff4444;
-            --accent-yellow: #ffff44;
-            --text-primary: #ffffff;
-            --text-secondary: #cccccc;
-            --text-muted: #888888;
-            --border: #333333;
-        }
-
-        body {
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-            line-height: 1.5;
-            overflow-x: hidden;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-
-        .header {
+        .game-container {
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            padding: 20px;
+            width: 100%;
+            max-width: 600px;
             text-align: center;
-            margin-bottom: 3rem;
         }
 
-        .header h1 {
-            font-size: 2.5rem;
-            font-weight: 300;
-            color: var(--accent-blue);
-            margin-bottom: 0.5rem;
-        }
-
-        .header p {
-            color: var(--text-secondary);
-        }
-
-        .demo-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-            margin-bottom: 2rem;
-        }
-
-        .demo-section {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 1.5rem;
-        }
-
-        .demo-section h2 {
-            font-size: 1.5rem;
-            color: var(--accent-blue);
-            margin-bottom: 1rem;
-            font-weight: 300;
-        }
-
-        .canvas-container {
-            background: var(--bg-primary);
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            position: relative;
-            height: 400px;
-            margin-bottom: 1rem;
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
         }
 
         canvas {
+            background-color: #e0f0e0; /* Light green field */
+            border: 2px solid #a0c0a0; /* Darker green border */
+            border-radius: 8px;
             width: 100%;
-            height: 100%;
+            height: 300px; /* Fixed height for simplicity */
             display: block;
+            margin-bottom: 20px;
         }
 
-        .controls {
+        .battle-ui {
             display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            gap: 15px;
         }
 
-        .button {
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border);
-            color: var(--text-primary);
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            cursor: pointer;
-            font-family: inherit;
-            font-size: 0.9rem;
-            transition: all 0.2s;
+        .creature-info {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            width: 45%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
 
-        .button:hover {
-            background: var(--border);
-            transform: translateY(-1px);
+        .creature-info h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #3498db; /* Blue for player */
+        }
+        .creature-info.enemy h3 {
+            color: #e74c3c; /* Red for enemy */
         }
 
-        .button.active {
-            background: var(--accent-blue);
-            color: var(--bg-primary);
-            font-weight: bold;
-        }
-
-        .event-log {
-            background: var(--bg-primary);
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            padding: 1rem;
-            height: 200px;
-            overflow-y: auto;
-            font-size: 0.8rem;
-            font-family: monospace;
-        }
-
-        .event-entry {
-            padding: 0.25rem 0;
-            border-bottom: 1px solid var(--border);
-            opacity: 0;
-            animation: fadeIn 0.3s ease forwards;
-        }
-
-        @keyframes fadeIn {
-            to { opacity: 1; }
-        }
-
-        .event-type {
-            color: var(--accent-blue);
-            font-weight: bold;
-        }
-
-        .event-payload {
-            color: var(--text-muted);
-            margin-left: 1rem;
-        }
-
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-
-        .stat {
-            background: var(--bg-primary);
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            padding: 0.75rem;
-            text-align: center;
-        }
-
-        .stat-label {
-            color: var(--text-muted);
-            font-size: 0.8rem;
-        }
-
-        .stat-value {
-            color: var(--accent-blue);
-            font-size: 1.5rem;
-            font-weight: bold;
-        }
-
-        .dependency-graph {
-            background: var(--bg-primary);
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            padding: 1rem;
-            margin-top: 1rem;
-        }
-
-        .dependency-node {
-            margin-bottom: 0.5rem;
-            padding: 0.5rem;
-            background: var(--bg-tertiary);
-            border-radius: 4px;
-            border: 1px solid var(--border);
-        }
-
-        .dependency-node.resolved {
-            border-color: var(--accent-green);
-        }
-
-        .dependency-node.missing {
-            border-color: var(--accent-red);
-        }
-
-        .dependency-arrow {
-            color: var(--text-muted);
-            margin: 0 0.5rem;
-        }
-
-        .code-section {
-            background: var(--bg-primary);
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            padding: 1rem;
-            margin-top: 1rem;
-        }
-
-        .code-section h3 {
-            color: var(--text-secondary);
-            font-size: 1rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .code-block {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            padding: 0.75rem;
-            font-size: 0.85rem;
-            overflow-x: auto;
-        }
-
-        .health-bar {
-            width: 100%;
-            height: 6px;
-            background: var(--bg-tertiary);
-            border-radius: 3px;
+        .hp-bar-container {
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            height: 20px;
             overflow: hidden;
-            margin-top: 0.5rem;
+            margin-bottom: 5px;
         }
 
-        .health-fill {
+        .hp-bar {
+            background-color: #2ecc71; /* Green for HP */
             height: 100%;
-            background: var(--accent-green);
-            transition: width 0.3s ease, background-color 0.3s ease;
+            width: 100%;
+            border-radius: 5px 0 0 5px; /* Keep left radius if full */
+            transition: width 0.3s ease-in-out;
+        }
+        .hp-bar.low {
+            background-color: #f1c40f; /* Yellow for low HP */
+        }
+        .hp-bar.critical {
+            background-color: #e74c3c; /* Red for critical HP */
         }
 
-        .health-fill.low {
-            background: var(--accent-red);
+        .hp-text {
+            font-size: 0.9em;
+            color: #555;
         }
 
-        .health-fill.medium {
-            background: var(--accent-yellow);
+        .controls, .battle-actions {
+            margin-bottom: 20px;
         }
 
-        @media (max-width: 1024px) {
-            .demo-grid {
-                grid-template-columns: 1fr;
-            }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.2s;
+            margin: 5px;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+
+        #attack-button {
+            background-color: #e74c3c;
+        }
+        #attack-button:hover {
+            background-color: #c0392b;
+        }
+
+
+        .message-log {
+            background-color: #ecf0f1;
+            border: 1px solid #bdc3c7;
+            border-radius: 5px;
+            padding: 10px;
+            height: 100px;
+            overflow-y: auto;
+            text-align: left;
+            font-size: 0.9em;
+        }
+
+        .message-log p {
+            margin: 0 0 5px 0;
+            padding-bottom: 5px;
+            border-bottom: 1px dashed #ccc;
+        }
+        .message-log p:last-child {
+            border-bottom: none;
         }
     </style>
 </head>
 <body>
-<div class="container">
-    <div class="header">
-        <h1>Event System & Component Dependencies</h1>
-        <p>Interactive demonstration of type-safe events and dependency injection</p>
-    </div>
+<div class="game-container">
+    <h1>Mini Creature Battle</h1>
 
-    <div class="demo-grid">
-        <!-- Events Demo -->
-        <div class="demo-section">
-            <h2>Event System Demo</h2>
+    <canvas id="game-canvas"></canvas>
 
-            <div class="canvas-container">
-                <canvas id="events-canvas"></canvas>
+    <div class="battle-ui">
+        <div class="creature-info player">
+            <h3 id="player-creature-name">Player Creature</h3>
+            <div class="hp-bar-container">
+                <div class="hp-bar" id="player-hp-bar"></div>
             </div>
-
-            <div class="controls">
-                <button class="button" onclick="demo.spawnEntity()">Spawn Entity</button>
-                <button class="button" onclick="demo.damageRandom()">Damage Random</button>
-                <button class="button" onclick="demo.healRandom()">Heal Random</button>
-                <button class="button" onclick="demo.triggerCollisions()">Trigger Collisions</button>
-                <button class="button" onclick="demo.clearEntities()">Clear All</button>
-            </div>
-
-            <h3 style="margin-top: 1rem; margin-bottom: 0.5rem;">Event Log</h3>
-            <div class="event-log" id="event-log"></div>
-
-            <div class="stats">
-                <div class="stat">
-                    <div class="stat-label">Total Events</div>
-                    <div class="stat-value" id="total-events">0</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-label">Active Entities</div>
-                    <div class="stat-value" id="active-entities">0</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-label">Events/Sec</div>
-                    <div class="stat-value" id="events-per-sec">0</div>
-                </div>
-            </div>
+            <p class="hp-text" id="player-hp-text">HP: --/--</p>
         </div>
-
-        <!-- Dependencies Demo -->
-        <div class="demo-section">
-            <h2>Component Dependencies Demo</h2>
-
-            <div class="canvas-container">
-                <canvas id="dependencies-canvas"></canvas>
+        <div class="creature-info enemy">
+            <h3 id="enemy-creature-name">Enemy Creature</h3>
+            <div class="hp-bar-container">
+                <div class="hp-bar" id="enemy-hp-bar"></div>
             </div>
-
-            <div class="controls">
-                <button class="button" onclick="demo.createWarrior()">Create Warrior</button>
-                <button class="button" onclick="demo.createMage()">Create Mage</button>
-                <button class="button" onclick="demo.createRogue()">Create Rogue</button>
-                <button class="button" onclick="demo.addMissingDependencies()">Fix Dependencies</button>
-                <button class="button" onclick="demo.showDependencyInfo()">Show Info</button>
-            </div>
-
-            <h3 style="margin-top: 1rem; margin-bottom: 0.5rem;">Component Dependencies</h3>
-            <div class="dependency-graph" id="dependency-graph">
-                <p style="color: var(--text-muted); text-align: center;">Create entities to see dependencies</p>
-            </div>
-
-            <div class="code-section">
-                <h3>Current Entity Components</h3>
-                <div class="code-block" id="component-info">
-                    // No entity selected
-                </div>
-            </div>
+            <p class="hp-text" id="enemy-hp-text">HP: --/--</p>
         </div>
     </div>
 
-    <!-- Combined Demo -->
-    <div class="demo-section">
-        <h2>Combined Example: Event-Driven Combat with Dependencies</h2>
+    <div class="controls">
+        <button id="find-battle-button">Find Battle</button>
+    </div>
+    <div class="battle-actions" style="display: none;">
+        <button id="attack-button">Attack</button>
+    </div>
 
-        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem;">
-            <div class="canvas-container" style="height: 300px;">
-                <canvas id="combat-canvas"></canvas>
-            </div>
-
-            <div>
-                <h3 style="margin-bottom: 1rem;">Controls</h3>
-                <div class="controls" style="flex-direction: column;">
-                    <button class="button" onclick="demo.startCombat()">Start Combat</button>
-                    <button class="button" onclick="demo.stopCombat()">Stop Combat</button>
-                    <button class="button" onclick="demo.spawnWave()">Spawn Wave</button>
-                    <button class="button" onclick="demo.toggleAutoHeal()">Toggle Auto-Heal</button>
-                </div>
-
-                <h3 style="margin: 1rem 0 0.5rem;">Player Stats</h3>
-                <div id="player-stats">
-                    <div style="margin-bottom: 0.5rem;">
-                        Health: <span id="player-health">100/100</span>
-                        <div class="health-bar">
-                            <div class="health-fill" id="player-health-bar" style="width: 100%"></div>
-                        </div>
-                    </div>
-                    <div style="margin-bottom: 0.5rem;">
-                        Mana: <span id="player-mana">50/50</span>
-                        <div class="health-bar">
-                            <div class="health-fill" id="player-mana-bar" style="width: 100%; background: #4a9eff"></div>
-                        </div>
-                    </div>
-                    <div style="font-size: 0.9rem; color: var(--text-muted);">
-                        Kills: <span id="player-kills">0</span><br>
-                        Level: <span id="player-level">1</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="code-section" style="margin-top: 1rem;">
-            <h3>Example Code: Event-Driven Combat System</h3>
-            <div class="code-block">
-<pre>// Component with dependencies using decorators
-class CombatComponent extends Component {
-    @RequireComponent(HealthComponent)
-    private health!: HealthComponent;
-    
-    @RequireComponent(StatsComponent)
-    private stats!: StatsComponent;
-    
-    @OptionalComponent(ManaComponent)
-    private mana?: ManaComponent;
-    
-    private attackDamage = 10;
-    
-    @OnEvent(EntityDamagedEvent)
-    onDamaged(event: EntityDamagedEvent) {
-        // Type-safe event payload access
-        const { target, damage, source } = event.payload;
-        
-        if (target === this.actor) {
-            // Flash red when damaged
-            this.flashColor('#ff4444');
-            
-            // Counter-attack if we have mana
-            if (source && this.mana && this.mana.current >= 5) {
-                this.castSpell(source);
-            }
-        }
-    }
-    
-    @OnEvent(EntityDiedEvent)
-    onEntityDied(event: EntityDiedEvent) {
-        const { target, killer } = event.payload;
-        
-        if (killer === this.actor) {
-            // Gain XP from kill
-            this.stats.addExperience(10);
-            eventBus.emit(new PlayerKillEvent({ 
-                player: this.actor, 
-                enemy: target 
-            }));
-        }
-    }
-}</pre>
-            </div>
-        </div>
+    <h2>Battle Log</h2>
+    <div class="message-log" id="message-log">
+        <p>Welcome! Click "Find Battle" to start.</p>
     </div>
 </div>
 
