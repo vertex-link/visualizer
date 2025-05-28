@@ -51,7 +51,19 @@ async function handleHttpRequest(req: Request): Promise<Response> {
     const url = new URL(req.url);
     const pathname = url.pathname;
     const extension = extname(pathname).toLowerCase();
-
+    
+    if (extension === '.css') {
+        try {
+            const filePath = `.${pathname}`;
+            const fileContent = await Deno.readTextFile(filePath);
+            return new Response(fileContent, {
+                headers: { 'Content-Type': 'text/css; charset=utf-8' },
+            });
+        } catch (e) {
+            console.error(`Error serving CSS file ${pathname}:`, e);
+            return new Response('Not Found', { status: 404 });
+        }
+    }
     if (pathname === '/livereload-ws') {
         const { socket, response } = Deno.upgradeWebSocket(req);
         clients.add(socket);

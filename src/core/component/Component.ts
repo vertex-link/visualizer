@@ -19,18 +19,18 @@ export type ComponentConstructorParameters<
 
 export default abstract class Component {
     public readonly id: string;
-    readonly #actor: Actor;
+    private readonly _actor: Actor;
 
-    #dependencies = new Map<ComponentClass, Component | undefined>();
-    #dependencyMetadata: ComponentDependencyMetadata[] = [];
-    #initialized = false;
-    #initializing = false; // For circular dependency detection
+    private _dependencies = new Map<ComponentClass, Component | undefined>();
+    private _dependencyMetadata: ComponentDependencyMetadata[] = [];
+    private _initialized = false;
+    private _initializing = false; // For circular dependency detection
 
     constructor(actor: Actor) {
         if (!actor || !(actor instanceof Actor)) {
             throw new Error("Component constructor: Valid Actor instance is required.");
         }
-        this.#actor = actor;
+        this._actor = actor;
         this.id = generateUUID();
 
         // Set up dependency injection from decorators
@@ -38,7 +38,7 @@ export default abstract class Component {
     }
 
     public get actor(): Actor {
-        return this.#actor;
+        return this._actor;
     }
 
     /**
@@ -46,14 +46,14 @@ export default abstract class Component {
      */
     private setupDependencyInjection(): void {
         // Get metadata through the standard reflection approach
-        this.#dependencyMetadata =
+        this._dependencyMetadata=
             Reflect.getOwnMetadata(COMPONENT_DEPENDENCIES_KEY, Object.getPrototypeOf(this)) || [];
 
         // Also check for directly stored metadata on the constructor
         const constructor = this.constructor as any;
         if (constructor._componentDependencies) {
-            this.#dependencyMetadata = [
-                ...this.#dependencyMetadata,
+            this._dependencyMetadata= [
+                ...this._dependencyMetadata,
                 ...constructor._componentDependencies
             ];
 
@@ -61,12 +61,12 @@ export default abstract class Component {
         }
 
         // If we still have no dependencies, try to scan up the prototype chain
-        if (this.#dependencyMetadata.length === 0) {
+        if (this._dependencyMetadata.length === 0) {
             let proto = Object.getPrototypeOf(this);
             while (proto && proto !== Object.prototype) {
                 const metadataOnProto = Reflect.getOwnMetadata(COMPONENT_DEPENDENCIES_KEY, proto);
                 if (metadataOnProto) {
-                    this.#dependencyMetadata = [...this.#dependencyMetadata, ...metadataOnProto];
+                    this._dependencyMetadata= [...this._dependencyMetadata, ...metadataOnProto];
                     console.log(`[DEBUG] Found ${metadataOnProto.length} dependencies on prototype chain for ${this.constructor.name}`);
                     break;
                 }
@@ -74,14 +74,14 @@ export default abstract class Component {
             }
         }
 
-        for (const dep of this.#dependencyMetadata) {
+        for (const dep of this._dependencyMetadata) {
             // Register dependency
-            this.#dependencies.set(dep.componentClass, undefined);
+            this._dependencies.set(dep.componentClass, undefined);
 
             // Set up getter on the property for direct access
             Object.defineProperty(this, dep.propertyKey, {
                 get: () => {
-                    const instance = this.#dependencies.get(dep.componentClass);
+                    const instance = this._dependencies.get(dep.componentClass);
 
                     if (!instance && !dep.optional) {
                         throw new Error(
@@ -102,11 +102,11 @@ export default abstract class Component {
      * Check and resolve dependencies with circular dependency detection
      */
     public checkAndResolveDependencies(): boolean {
-        if (this.#initialized) {
+        if (this._initialized) {
             return true;
         }
 
-        if (this.#initializing) {
+        if (this._initializing) {
             // Circular dependency detected
             console.warn(
                 `Circular dependency detected in ${this.constructor.name}. ` +
@@ -115,14 +115,14 @@ export default abstract class Component {
             return false;
         }
 
-        this.#initializing = true;
+        this._initializing = true;
 
         try {
             // Check all dependencies
             let allResolved = true;
 
-            for (const dep of this.#dependencyMetadata) {
-                const existing = this.#dependencies.get(dep.componentClass);
+            for (const dep of this._dependencyMetadata) {
+                const existing = this._dependencies.get(dep.componentClass);
                 if (existing) continue;
 
                 const component = this.actor.getComponent(dep.componentClass);
@@ -137,7 +137,7 @@ export default abstract class Component {
                         }
                     }
 
-                    this.#dependencies.set(dep.componentClass, component);
+                    this._dependencies.set(dep.componentClass, component);
                 } else if (!dep.optional) {
                     allResolved = false;
                     break;
@@ -145,7 +145,7 @@ export default abstract class Component {
             }
 
             if (allResolved) {
-                this.#initialized = true;
+                this._initialized = true;
 
                 // Register event listeners
                 this.registerComponentEventListeners();
@@ -180,7 +180,7 @@ export default abstract class Component {
 
             return allResolved;
         } finally {
-            this.#initializing = false;
+            this._initializing = false;
         }
     }
 
@@ -217,7 +217,7 @@ export default abstract class Component {
      * Check if component has been initialized
      */
     public get isInitialized(): boolean {
-        return this.#initialized;
+        return this._initialized;
     }
 
     /**
@@ -232,16 +232,16 @@ export default abstract class Component {
         initialized: boolean;
         hasCircularDependency: boolean;
     } {
-        const dependencies = this.#dependencyMetadata.map(dep => ({
+        const dependencies = this._dependencyMetadata.map(dep => ({
             name: dep.componentClass.name,
             required: !dep.optional,
-            resolved: this.#dependencies.get(dep.componentClass) !== undefined
+            resolved: this._dependencies.get(dep.componentClass) !== undefined
         }));
 
         return {
             dependencies,
-            initialized: this.#initialized,
-            hasCircularDependency: this.#initializing
+            initialized: this._initialized,
+            hasCircularDependency: this._initializing
         };
     }
 
@@ -271,7 +271,7 @@ export default abstract class Component {
         }
 
         // Clear dependencies
-        this.#dependencies.clear();
-        this.#initialized = false;
+        this._dependencies.clear();
+        this._initialized = false;
     }
 }
