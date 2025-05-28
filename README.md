@@ -38,7 +38,7 @@ Vertex Link moves away from a monolithic "Engine" class, offering instead a set 
 ### 2.5. Events (src/core/events/Event.ts, src/core/events/Decorators.ts)
 - A robust, type-safe event system based on an EventBus.
 - Events extend a base Event class and define a static eventType.
-- Classes (like Components or Systems) can listen to events using the @OnEvent decorator, which automatically registers and unregisters handlers.
+- Classes (like Components or Actors) can listen to events using the @OnEvent decorator, which automatically registers and unregisters handlers.
 - A global EventBus can be initialized and accessed, or specific instances can be used.
 
 ### 2.6. Processors (src/core/processor/Processor.ts, src/engine/processors/)
@@ -60,7 +60,7 @@ Vertex Link moves away from a monolithic "Engine" class, offering instead a set 
 - Components (like PokemonStatsComponent) are added to Actors, providing data and behaviour. Components automatically attempt to resolve their dependencies (@RequireComponent) once added.
 
 ### Event Handling (examples/game/systems.ts, examples/components/ActionBar.ts):
-- Systems or Components use @OnEvent to listen for specific events (e.g., BattleStartEvent, PlayerChoseMoveEvent).
+- Actors or Components use @OnEvent to listen for specific events (e.g., BattleStartEvent, PlayerChoseMoveEvent).
 - When an event is emitted (using emit(new MyEvent(...))), the corresponding decorated methods are automatically invoked.
 
 ### Update Loops:
