@@ -156,29 +156,37 @@ export class WebGPURenderer implements IRenderer {
     }
 
 
-    setPipeline(pipeline: unknown): void {
+    setPipeline(pipeline: IPipeline): void {
         if (!this.currentRenderPass) {
             console.error('No active render pass');
             return;
         }
-
-        const webgpuPipeline = pipeline as GPURenderPipeline;
+        // Cast to WebGPUPipeline and get the native GPU object
+        const webgpuPipeline = (pipeline as WebGPUPipeline).getGPURenderPipeline();
+        if (!webgpuPipeline) {
+            console.error('Could not get native GPURenderPipeline from IPipeline.');
+            return;
+        }
         this.currentPipeline = webgpuPipeline;
         this.currentRenderPass.setPipeline(webgpuPipeline);
     }
 
-    setBuffer(binding: number, buffer: unknown): void {
+    setBuffer(binding: number, buffer: IBuffer): void {
         if (!this.currentRenderPass) {
             console.error('No active render pass');
             return;
         }
+        // Cast to WebGPUBuffer and get the native GPU object
+        const webgpuBuffer = (buffer as WebGPUBuffer).getGPUBuffer();
+        if (!webgpuBuffer) {
+            console.error('Could not get native GPUBuffer from IBuffer.');
+            return;
+        }
 
-        const webgpuBuffer = buffer as GPUBuffer;
-
-        if (binding === 0) {
+        if (binding === 0) { // Assuming 0 is vertex buffer
             this.currentRenderPass.setVertexBuffer(0, webgpuBuffer);
-        } else if (binding === 1) {
-            // Assume uint16 for now, might need more info later
+        } else if (binding === 1) { // Assuming 1 is index buffer
+            // TODO: Need a way to know the index format (uint16/uint32) from IBuffer
             this.currentRenderPass.setIndexBuffer(webgpuBuffer, 'uint16');
         }
     }
@@ -281,39 +289,19 @@ export class WebGPURenderer implements IRenderer {
         this.depthTexture = null;
     }
 
-    // --- Added methods for Phase 3 ---
+    public createShaderModule(descriptor: GPUShaderModuleDescriptor): GPUShaderModule {
+        if (!this.device) {
+            throw new Error("Cannot create shader module: WebGPU device not initialized.");
+        }
+        return this.device.createShaderModule(descriptor);
+    }
 
     public async createBuffer(descriptor: BufferDescriptor): Promise<IBuffer> {
         if (!this.device) {
             throw new Error("Cannot create buffer: WebGPU device not initialized.");
         }
-        // Add mappableAtCreation if needed for initial data (optional but good)
-        const gpuUsage = this.getGPUUsageFlags(descriptor.usage);
-        const gpuBuffer = this.device.createBuffer({
-            size: descriptor.size,
-            usage: gpuUsage,
-            label: descriptor.label || `Buffer_${descriptor.usage}`,
-            mappedAtCreation: false, // Keep false unless you plan to map immediately
-        });
-
-        return {
-            id: generateUUID(),
-            size: descriptor.size,
-            usage: descriptor.usage,
-            setData: (data: ArrayBuffer | ArrayBufferView, offset: number = 0) => {
-                if (!this.device) throw new Error("Device gone");
-                const arrayBuffer = data instanceof ArrayBuffer ? data : data.buffer;
-                this.device.queue.writeBuffer(gpuBuffer, offset, arrayBuffer);
-            },
-            getData: async (_offset?: number, _length?: number): Promise<ArrayBuffer> => {
-                throw new Error("getData not implemented for this simple buffer wrapper");
-            },
-            destroy: () => {
-                gpuBuffer.destroy();
-            },
-            // Expose internal buffer for WebGPURenderer
-            getGPUBuffer: () => gpuBuffer
-        } as IBuffer & { getGPUBuffer: () => GPUBuffer }; // Add getGPUBuffer for internal use
+        // Return an instance of our WebGPUBuffer class
+        return new WebGPUBuffer(this.device, descriptor);
     }
 
 
@@ -321,7 +309,6 @@ export class WebGPURenderer implements IRenderer {
         if (!this.device) {
             throw new Error("Cannot create pipeline: WebGPU device not initialized.");
         }
-        // Use your WebGPUPipeline class
         return new WebGPUPipeline(this.device, descriptor, this.format);
     }
 

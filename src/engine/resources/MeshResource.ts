@@ -214,7 +214,7 @@ export class MeshResource extends Resource {
     /**
      * Create vertex buffer from mesh data.
      */
-    private async createVertexBuffer(renderer: any): Promise<IBuffer> {
+    private async createVertexBuffer(renderer: IRenderer): Promise<IBuffer> {
         if (!this.meshDescriptor) {
             throw new Error('No mesh data for vertex buffer creation');
         }
@@ -234,7 +234,7 @@ export class MeshResource extends Resource {
     /**
      * Create index buffer from mesh data.
      */
-    private async createIndexBuffer(renderer: any): Promise<IBuffer> {
+    private async createIndexBuffer(renderer: IRenderer): Promise<IBuffer> {
         if (!this.meshDescriptor?.indices) {
             throw new Error('No index data for index buffer creation');
         }
@@ -254,7 +254,7 @@ export class MeshResource extends Resource {
     /**
      * Get renderer from service registry (helper method).
      */
-    private getRenderer(): any {
+    private getRenderer(): IRenderer {
         // This will be properly typed when RenderService is implemented
         // For now, return any available renderer-like service
         const renderService = this.serviceRegistry.resolve(Symbol.for('IRenderService'));

@@ -8,7 +8,6 @@ import { AssetService, IAssetServiceKey } from '../../src/engine/services/AssetS
 import { TransformComponent } from '../../src/engine/rendering/components/TransformComponent.ts';
 import { MeshRendererComponent } from '../../src/engine/rendering/components/MeshRendererComponent.ts';
 import { PerspectiveCamera } from '../../src/engine/rendering/camera/PerspectiveCamera.ts';
-import { CameraComponent } from '../../src/engine/rendering/camera/CameraComponent.ts'; // Ensure this path is correct
 import { RenderManagerComponent } from '../../src/engine/rendering/systems/RenderManagerComponent.ts'; // Ensure this path is correct
 import { ShaderDescriptor } from '../../src/engine/resources/ShaderResource.ts';
 import { RotatingComponent } from './RotatingComponent.ts';
@@ -57,17 +56,7 @@ fn vs_main(input: VertexInput) -> VertexOutput {
 
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4f {
-    let lightDir = normalize(vec3f(0.5, 1.0, 0.5));
-    let normal = normalize(input.normal);
-    let diffuse = max(dot(normal, lightDir), 0.2) * 0.7;
-    let gradientFactor = (input.worldPos.y + 1.0) * 0.5;
-    let gradientColor = mix(
-        vec3f(0.2, 0.3, 0.8),
-        vec3f(0.8, 0.9, 1.0),
-        gradientFactor
-    );
-    let finalColor = mix(gradientColor, uniforms.color.rgb, 0.5) * diffuse + uniforms.color.rgb * 0.1;
-    return vec4f(finalColor, uniforms.color.a);
+    return vec4f(1.0, 0.0, 1.0, 1.0); // Bright magenta
 }
 `;
 
@@ -146,7 +135,7 @@ class DemoApp {
         // 5. Create Camera Actor
         logStatus("Creating camera...");
         const cameraActor = new PerspectiveCamera("MainCamera", 45 * (Math.PI / 180), canvas.width / canvas.height, 0.1, 100);
-        cameraActor.setPosition(0, 2, 5); // Position the camera
+        cameraActor.setPosition(0, 2, 10); // Position the camera
         cameraActor.lookAt([0, 0, 0]);
         this.scene.addActor(cameraActor);
 
@@ -155,10 +144,9 @@ class DemoApp {
         const sceneManager = new Actor("SceneManager");
         sceneManager.addComponent(RenderManagerComponent, this.scene, this.serviceRegistry);
         this.scene.addActor(sceneManager);
-
-        // 7. Ensure dependencies are resolved (important after adding all actors/components)
-        this.scene.getAllActors().forEach(actor => actor.resolveDependencies());
-
+        
+        console.log(this.scene);
+        
         logStatus("Scene setup complete.");
     }
 }

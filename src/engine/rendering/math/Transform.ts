@@ -20,21 +20,53 @@ export class Transform {
     }
 
     /**
-     * Create a perspective projection matrix.
-     * @param fov Field of view in radians
-     * @param aspect Aspect ratio (width/height)
-     * @param near Near clipping plane
-     * @param far Far clipping plane
+     * Create a perspective projection matrix suitable for WebGPU (Z maps to [0, 1]).
+     * Assumes a right-handed view space where -Z is forward.
+     * @param fovYRadians Field of view in the Y direction, in radians.
+     * @param aspect Aspect ratio (width / height).
+     * @param near Near clipping plane distance (must be positive).
+     * @param far Far clipping plane distance (must be positive and > near).
      */
-    static perspective(fov: number, aspect: number, near: number, far: number): Mat4 {
-        const f = 1.0 / Math.tan(fov * 0.5);
-        const rangeInv = 1.0 / (near - far);
+    static perspective(fovYRadians: number, aspect: number, near: number, far: number): Mat4 {
+        const f = 1.0 / Math.tan(fovYRadians / 2);
+        const out = new Float32Array(16);
+
+        out[0] = f / aspect;
+        out[1] = 0;
+        out[2] = 0;
+        out[3] = 0;
+
+        out[4] = 0;
+        out[5] = f;
+        out[6] = 0;
+        out[7] = 0;
+
+        out[8] = 0;
+        out[9] = 0;
+
+        // Column 2 (0-indexed) or Z-related column for column-major matrix
+        out[10] = far / (far - near);
+        out[11] = -1.0; // This makes w_clip = -z_view (if z_view is distance into screen along -Z view axis)
+
+        // Column 3 (0-indexed) or Translation column
+        out[12] = 0;
+        out[13] = 0;
+        out[14] = -(far * near) / (far - near);
+        out[15] = 0.0;
+
+        return out;
+    }
+
+    static orthographic(left: number, right: number, bottom: number, top: number, near: number, far: number): Mat4 {
+        const lr = 1 / (left - right);
+        const bt = 1 / (bottom - top);
+        const nf = 1 / (near - far);
 
         return new Float32Array([
-            f / aspect, 0, 0, 0,
-            0, f, 0, 0,
-            0, 0, (near + far) * rangeInv, -1,
-            0, 0, near * far * rangeInv * 2, 0
+            -2 * lr, 0, 0, 0,
+            0, -2 * bt, 0, 0,
+            0, 0, 2 * nf, 0,
+            (left + right) * lr, (top + bottom) * bt, (far + near) * nf, 1
         ]);
     }
 
@@ -79,6 +111,10 @@ export class Transform {
         return result;
     }
 
+    static add(a: Vec3, b: Vec3): Vec3 {
+        return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+    }
+
     /**
      * Vector subtraction.
      */
@@ -118,6 +154,65 @@ export class Transform {
         const len = Transform.length(v);
         if (len === 0) return [0, 0, 0];
         return [v[0] / len, v[1] / len, v[2] / len];
+    }
+
+    /**
+     * Creates a quaternion from an axis and an angle.
+     * @param axis The axis of rotation (must be normalized).
+     * @param angle The angle of rotation in radians.
+     */
+    static fromAxisAngle(axis: Vec3, angle: number): Quat {
+        const halfAngle = angle * 0.5;
+        const s = Math.sin(halfAngle);
+        return [
+            axis[0] * s,
+            axis[1] * s,
+            axis[2] * s,
+            Math.cos(halfAngle)
+        ];
+    }
+
+    /**
+     * Multiplies two quaternions (q1 * q2).
+     */
+    static multiplyQuat(q1: Quat, q2: Quat): Quat {
+        const q1x = q1[0], q1y = q1[1], q1z = q1[2], q1w = q1[3];
+        const q2x = q2[0], q2y = q2[1], q2z = q2[2], q2w = q2[3];
+
+        return [
+            q1w * q2x + q1x * q2w + q1y * q2z - q1z * q2y, // x
+            q1w * q2y - q1x * q2z + q1y * q2w + q1z * q2x, // y
+            q1w * q2z + q1x * q2y - q1y * q2x + q1z * q2w, // z
+            q1w * q2w - q1x * q2x - q1y * q2y - q1z * q2z  // w
+        ];
+    }
+
+    /**
+     * Normalizes a quaternion.
+     */
+    static normalizeQuat(q: Quat): Quat {
+        let len = Math.sqrt(q[0]*q[0] + q[1]*q[1] + q[2]*q[2] + q[3]*q[3]);
+        if (len === 0) {
+            return [0, 0, 0, 1]; // Default to identity
+        }
+        len = 1 / len;
+        return [q[0]*len, q[1]*len, q[2]*len, q[3]*len];
+    }
+
+    static transformQuat(v: Vec3, q: Quat): Vec3 {
+        const [qx, qy, qz, qw] = q;
+        const [vx, vy, vz] = v;
+
+        const qx2 = qx * 2, qy2 = qy * 2, qz2 = qz * 2;
+        const wx2 = qw * qx2, wy2 = qw * qy2, wz2 = qw * qz2;
+        const xx2 = qx * qx2, xy2 = qx * qy2, xz2 = qx * qz2;
+        const yy2 = qy * qy2, yz2 = qy * qz2, zz2 = qz * qz2;
+
+        return [
+            vx * (1 - yy2 - zz2) + vy * (xy2 - wz2) + vz * (xz2 + wy2),
+            vx * (xy2 + wz2) + vy * (1 - xx2 - zz2) + vz * (yz2 - wx2),
+            vx * (xz2 - wy2) + vy * (yz2 + wx2) + vz * (1 - xx2 - yy2)
+        ];
     }
 
     /**

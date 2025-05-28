@@ -247,7 +247,7 @@ export class MaterialResource extends Resource {
     /**
      * Create render pipeline from material descriptor.
      */
-    private async createPipeline(renderer: any): Promise<IPipeline> {
+    private async createPipeline(renderer: IRenderer): Promise<IPipeline> {
         if (!this.materialDescriptor) {
             throw new Error('No material data for pipeline creation');
         }
@@ -368,7 +368,7 @@ export class MaterialResource extends Resource {
     /**
      * Get renderer from service registry (helper method).
      */
-    private getRenderer(): any {
+    private getRenderer(): IRenderer {
         // This will be properly typed when RenderService is implemented
         const renderService = this.serviceRegistry.resolve(Symbol.for('IRenderService'));
         return renderService?.getRenderer();

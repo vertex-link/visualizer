@@ -3,7 +3,8 @@
 import Component from '../../src/core/component/Component.ts';
 import { RenderUpdate } from '../../src/engine/processors/RenderProcessor.ts';
 import { RequireComponent } from '../../src/core/component/Decorators.ts';
-import { TransformComponent } from '../../src/engine/rendering/components/TransformComponent.ts';
+import { TransformComponent, Vec3 } from '../../src/engine/rendering/components/TransformComponent.ts';
+import { Transform } from '../../src/engine/rendering/math/Transform.ts'; // Import Transform
 
 @RequireComponent(TransformComponent)
 export class RotatingComponent extends Component {
@@ -18,11 +19,25 @@ export class RotatingComponent extends Component {
     update(deltaTime: number): void {
         if (!this.transform) return;
 
-        const currentRotation = this.transform.rotation;
-        const delta = this.speed * deltaTime;
+        const deltaAngle = this.speed * deltaTime;
 
-        // Simple Y-axis rotation accumulation (more robust would use quaternion math)
-        const [x, y, z] = this.transform.getEulerAngles(); // Assuming getEulerAngles exists or we use setRotationEuler
-        this.transform.setRotationEuler(x, y + delta, z);
+        // Define the axis of rotation (e.g., world Y-axis)
+        const rotationAxis: Vec3 = [0, 1, 0]; // Or [1,0,0] for X, [0,0,1] for Z
+
+        // Create a quaternion for the incremental rotation
+        const deltaRotation = Transform.fromAxisAngle(rotationAxis, deltaAngle);
+
+        // Apply the rotation: newRotation = deltaRotation * currentRotation
+        // Quaternion multiplication order matters. Typically for object space rotations that accumulate,
+        // it's deltaRotation * current. For world space, it might be current * deltaRotation.
+        // Let's assume we want to rotate in object's local space around its Y axis, or a fixed world Y.
+        // If always rotating around world Y:
+        this.transform.rotation = Transform.multiplyQuat(deltaRotation, this.transform.rotation);
+
+        // It's good practice to re-normalize the quaternion after repeated multiplications
+        // to prevent floating-point drift.
+        this.transform.rotation = Transform.normalizeQuat(this.transform.rotation);
+
+        this.transform.markDirty(); // Important: signal that the world matrix needs recalculation
     }
 }

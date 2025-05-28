@@ -84,7 +84,7 @@ export class WebGPUPipeline implements IPipeline {
                 },
                 primitive: {
                     topology: 'triangle-list',
-                    cullMode: 'back',
+                    cullMode: 'none',
                     frontFace: 'ccw'
                 },
                 depthStencil: depthStencilState // Use the defined depth state

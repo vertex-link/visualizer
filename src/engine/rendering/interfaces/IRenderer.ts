@@ -1,68 +1,52 @@
 ﻿// src/engine/rendering/interfaces/IRenderer.ts
 
+import { IBuffer, BufferDescriptor } from "./IBuffer.ts";
+import { IPipeline, PipelineDescriptor } from "./IPipeline.ts";
+
 /**
  * Basic renderer interface for graphics API abstraction.
- * Keeps the API minimal while allowing for future expansion.
+ * (Updated for better type safety and resource creation)
  */
 export interface IRenderer {
-    /**
-     * Initialize the renderer with a canvas element.
-     * @param canvas The HTML canvas element to render to
-     */
+    /** Initialize the renderer */
     initialize(canvas: HTMLCanvasElement): Promise<void>;
 
-    /**
-     * Begin a new frame for rendering.
-     * @returns True if frame began successfully
-     */
+    /** Begin a new frame */
     beginFrame(): boolean;
 
-    /**
-     * End the current frame and present to screen.
-     */
+    /** End the current frame */
     endFrame(): void;
 
-    /**
-     * Set the current render pipeline.
-     * @param pipeline The pipeline to use for subsequent draw calls
-     */
-    setPipeline(pipeline: unknown): void;
+    /** Set the current render pipeline */
+    setPipeline(pipeline: IPipeline): void; // Use IPipeline
 
-    /**
-     * Bind a buffer to the current pipeline.
-     * @param binding The binding point/slot
-     * @param buffer The buffer to bind
-     */
-    setBuffer(binding: number, buffer: unknown): void;
+    /** Bind a buffer */
+    setBuffer(binding: number, buffer: IBuffer): void; // Use IBuffer
 
-    /**
-     * Set uniform data for the current pipeline.
-     * @param binding The binding point/slot
-     * @param data The uniform data to set
-     */
+    /** Set uniform data */
     setUniforms(binding: number, data: ArrayBuffer): void;
 
-    /**
-     * Draw primitives using the current pipeline and buffers.
-     * @param vertexCount Number of vertices to draw
-     * @param instanceCount Number of instances to draw (default: 1)
-     */
+    /** Draw primitives */
     draw(vertexCount: number, instanceCount?: number): void;
 
-    /**
-     * Draw indexed primitives.
-     * @param indexCount Number of indices to draw
-     * @param instanceCount Number of instances to draw (default: 1)
-     */
+    /** Draw indexed primitives */
     drawIndexed(indexCount: number, instanceCount?: number): void;
 
-    /**
-     * Get the current canvas size.
-     */
+    /** Get canvas size */
     getCanvasSize(): { width: number; height: number };
 
-    /**
-     * Cleanup and dispose of renderer resources.
-     */
+    /** Dispose of resources */
     dispose(): void;
+
+    /** Create a buffer resource */
+    createBuffer(descriptor: BufferDescriptor): Promise<IBuffer>;
+
+    /** Create a pipeline resource */
+    createPipeline(descriptor: PipelineDescriptor): Promise<IPipeline>;
+
+    /** Record draw calls for stats (optional but good to have in interface) */
+    recordDrawCall(vertexCount: number, indexCount?: number): void;
+
+    /** Set the render service (optional) */
+    setRenderService?(service: any): void; // Using 'any' as IRenderService might not be fully defined here
 }

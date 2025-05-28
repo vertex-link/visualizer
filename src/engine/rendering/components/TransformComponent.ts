@@ -1,6 +1,4 @@
-﻿// src/engine/rendering/components/TransformComponent.ts
-
-import Component from "../../../core/component/Component.ts";
+﻿import Component from "../../../core/component/Component.ts";
 import Actor from "../../../core/Actor.ts";
 
 // Type aliases for 3D math (simple arrays for now)
@@ -146,5 +144,36 @@ export class TransformComponent extends Component {
         matrix[15] = 1;
 
         return matrix;
+    }
+    /**
+     * Get Euler angles (in radians) from the current rotation quaternion.
+     * Returns [roll, pitch, yaw] which typically correspond to [x, y, z] rotations.
+     * Note: Euler angle conversion can have multiple solutions and gimbal lock issues,
+     * but this is a common approach.
+     * @returns A Vec3 representing [roll, pitch, yaw] in radians.
+     */
+    public getEulerAngles(): Vec3 {
+        const [x, y, z, w] = this.rotation;
+
+        // Roll (x-axis rotation)
+        const sinr_cosp = 2 * (w * x + y * z);
+        const cosr_cosp = 1 - 2 * (x * x + y * y);
+        const roll = Math.atan2(sinr_cosp, cosr_cosp);
+
+        // Pitch (y-axis rotation)
+        const sinp = 2 * (w * y - z * x);
+        let pitch;
+        if (Math.abs(sinp) >= 1) {
+            pitch = Math.PI / 2 * Math.sign(sinp); // Use 90 degrees if out of range
+        } else {
+            pitch = Math.asin(sinp);
+        }
+
+        // Yaw (z-axis rotation)
+        const siny_cosp = 2 * (w * z + x * y);
+        const cosy_cosp = 1 - 2 * (y * y + z * z);
+        const yaw = Math.atan2(siny_cosp, cosy_cosp);
+
+        return [roll, pitch, yaw];
     }
 }

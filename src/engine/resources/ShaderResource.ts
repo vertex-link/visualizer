@@ -1,7 +1,9 @@
-﻿// src/engine/resources/ShaderResource.ts
+﻿/// <reference types="@webgpu/types" />
 
 import { Resource, ResourceStatus } from "./Resource.ts";
 import { ServiceRegistry } from "../../core/Service.ts";
+import { IRenderService, IRenderServiceKey } from "../services/RenderService.ts"; // Import IRenderService
+import { WebGPURenderer } from "../../webgpu/WebGPURenderer.ts"; // Import WebGPURenderer
 
 /**
  * Shader stage types supported by the engine.
@@ -31,7 +33,7 @@ export interface ShaderDescriptor {
  */
 export interface CompiledShader {
     stage: ShaderStage;
-    module: unknown; // GPU-specific shader module (GPUShaderModule for WebGPU)
+    module: GPUShaderModule; // GPU-specific shader module (GPUShaderModule for WebGPU)
     entryPoint: string;
     source: string;
 }
@@ -43,11 +45,7 @@ export interface CompiledShader {
 export class ShaderResource extends Resource {
     private shaderDescriptor: ShaderDescriptor | null = null;
     private compiledShaders: Map<ShaderStage, CompiledShader> = new Map();
-
-    // Compiled state
     public isCompiled: boolean = false;
-
-    // Future streaming support
     public version: number = 1;
 
     constructor(name: string, serviceRegistry: ServiceRegistry, uuid?: string) {
@@ -254,28 +252,21 @@ export class ShaderResource extends Resource {
     /**
      * Compile a specific shader stage.
      */
-    private async compileStage(stage: ShaderStage, renderer: any): Promise<CompiledShader> {
+    private async compileStage(stage: ShaderStage, renderer: WebGPURenderer): Promise<CompiledShader> {
         if (!this.shaderDescriptor) {
             throw new Error('No shader data for compilation');
         }
 
         let source: string;
         switch (stage) {
-            case ShaderStage.VERTEX:
-                source = this.shaderDescriptor.vertexSource!;
-                break;
-            case ShaderStage.FRAGMENT:
-                source = this.shaderDescriptor.fragmentSource!;
-                break;
-            case ShaderStage.COMPUTE:
-                source = this.shaderDescriptor.computeSource!;
-                break;
-            default:
-                throw new Error(`Unsupported shader stage: ${stage}`);
+            case ShaderStage.VERTEX: source = this.shaderDescriptor.vertexSource!; break;
+            case ShaderStage.FRAGMENT: source = this.shaderDescriptor.fragmentSource!; break;
+            case ShaderStage.COMPUTE: source = this.shaderDescriptor.computeSource!; break;
+            default: throw new Error(`Unsupported shader stage: ${stage}`);
         }
 
-        // Compile through renderer
-        const module = await renderer.createShaderModule({
+        // Compile through renderer (This call should now work and be type-safe)
+        const module = renderer.createShaderModule({ // No 'await' needed
             code: source,
             label: `${this.name}_${stage}`
         });
@@ -287,14 +278,14 @@ export class ShaderResource extends Resource {
             source
         };
     }
-
+    
     /**
      * Get renderer from service registry (helper method).
      */
-    private getRenderer(): any {
-        // This will be properly typed when RenderService is implemented
-        const renderService = this.serviceRegistry.resolve(Symbol.for('IRenderService'));
-        return renderService?.getRenderer();
+    private getRenderer(): WebGPURenderer | null {
+        const renderService = this.serviceRegistry.resolve<IRenderService>(IRenderServiceKey);
+        // Cast to WebGPURenderer, as we specifically need its methods here.
+        return renderService?.getRenderer() as WebGPURenderer | null;
     }
 
     /**
