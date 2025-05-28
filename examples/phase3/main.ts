@@ -12,6 +12,7 @@ import { RenderManagerComponent } from '../../src/engine/rendering/systems/Rende
 import { ShaderDescriptor } from '../../src/engine/resources/ShaderResource.ts';
 import { RotatingComponent } from './RotatingComponent.ts';
 import { WebGPURenderer } from '../../src/webgpu/WebGPURenderer.ts';
+import {CameraComponent} from "../../src/engine/rendering/camera/CameraComponent.ts";
 
 // --- Global Setup ---
 const statusDiv = document.getElementById('status')!;
@@ -21,19 +22,19 @@ function logStatus(message: string) {
     console.log(message);
     statusDiv.textContent = message;
 }
-
 // --- Shader Source (Embedded for simplicity) ---
 const basicShaderSource = `
+// Debug shader to test if geometry is rendering at all
 struct VertexInput {
     @location(0) position: vec3f,
-    @location(1) normal: vec3f, // Added, even if not used, matches GeometryUtils
-    @location(2) uv: vec2f,     // Added
+    @location(1) normal: vec3f,
+    @location(2) uv: vec2f,
 }
 
 struct VertexOutput {
     @builtin(position) position: vec4f,
     @location(0) worldPos: vec3f,
-    @location(1) normal: vec3f,
+    @location(1) color: vec3f,
 }
 
 struct Uniforms {
@@ -47,16 +48,25 @@ struct Uniforms {
 @vertex
 fn vs_main(input: VertexInput) -> VertexOutput {
     var output: VertexOutput;
+    
+    // Transform position
     output.position = uniforms.mvpMatrix * vec4f(input.position, 1.0);
+    
+    // Pass world position
     let worldPos4 = uniforms.modelMatrix * vec4f(input.position, 1.0);
     output.worldPos = worldPos4.xyz;
-    output.normal = (uniforms.modelMatrix * vec4f(input.normal, 0.0)).xyz; // Added
+    
+    // Debug: Use position as color to see if vertices are transformed
+    output.color = input.position * 0.5 + 0.5; // Normalize to 0-1 range
+    
     return output;
 }
 
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4f {
-    return vec4f(1.0, 0.0, 1.0, 1.0); // Bright magenta
+    // Debug: Mix position-based color with uniform color
+    let debugColor = mix(input.color, uniforms.color.rgb, 0.7);
+    return vec4f(debugColor, 1.0);
 }
 `;
 
@@ -137,6 +147,31 @@ class DemoApp {
         const cameraActor = new PerspectiveCamera("MainCamera", 45 * (Math.PI / 180), canvas.width / canvas.height, 0.1, 100);
         cameraActor.setPosition(0, 2, 10); // Position the camera
         cameraActor.lookAt([0, 0, 0]);
+        console.log(cameraActor);
+        const mainCameraComponent = cameraActor.getComponent(CameraComponent);
+        if (mainCameraComponent) {
+            const updateCameraAspect = () => {
+                if (canvas.clientWidth > 0 && canvas.clientHeight > 0) { // Use clientWidth/Height
+                    const newAspect = canvas.clientWidth / canvas.clientHeight;
+                    if (mainCameraComponent.perspectiveConfig.aspect !== newAspect) {
+                        mainCameraComponent.setAspectRatio(newAspect);
+                        console.log(`[DemoApp] Camera aspect ratio updated to: ${newAspect.toFixed(2)} (Canvas: ${canvas.clientWidth}x${canvas.clientHeight})`);
+                    }
+                }
+            };
+
+            // Initial set
+            updateCameraAspect();
+
+            // Observe canvas resize
+            const resizeObserver = new ResizeObserver(entries => {
+                for (let entry of entries) { // eslint-disable-line @typescript-eslint/no-unused-vars
+                    updateCameraAspect();
+                }
+            });
+            resizeObserver.observe(canvas);
+        }
+        
         this.scene.addActor(cameraActor);
 
         // 6. Create Scene Manager Actor

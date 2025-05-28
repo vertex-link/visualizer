@@ -71,42 +71,64 @@ export class Transform {
     }
 
     /**
-     * Create a view matrix looking at a target.
+     * Create a view matrix looking at a target, outputting in column-major order.
      * @param eye Camera position
-     * @param target Look-at target
+     * @param target Look-at target point in world space
      * @param up Up vector (usually [0, 1, 0])
      */
     static lookAt(eye: Vec3, target: Vec3, up: Vec3): Mat4 {
-        const zAxis = Transform.normalize(Transform.subtract(eye, target));
+        const zAxis = Transform.normalize(Transform.subtract(eye, target)); // Points from target to eye (camera's +Z)
         const xAxis = Transform.normalize(Transform.cross(up, zAxis));
         const yAxis = Transform.cross(zAxis, xAxis);
 
+        const tx = -Transform.dot(xAxis, eye);
+        const ty = -Transform.dot(yAxis, eye);
+        const tz = -Transform.dot(zAxis, eye);
+
+        // Populate in column-major order for the Float32Array
         return new Float32Array([
-            xAxis[0], yAxis[0], zAxis[0], 0,
-            xAxis[1], yAxis[1], zAxis[1], 0,
-            xAxis[2], yAxis[2], zAxis[2], 0,
-            -Transform.dot(xAxis, eye),
-            -Transform.dot(yAxis, eye),
-            -Transform.dot(zAxis, eye),
-            1
+            xAxis[0], xAxis[1], xAxis[2], 0,  // Column 0: X basis vector
+            yAxis[0], yAxis[1], yAxis[2], 0,  // Column 1: Y basis vector
+            zAxis[0], zAxis[1], zAxis[2], 0,  // Column 2: Z basis vector
+            tx,       ty,       tz,       1   // Column 3: Translation
         ]);
     }
 
     /**
-     * Multiply two 4x4 matrices.
+     * **REVISED**: Multiply two 4x4 matrices (a * b), assuming a, b, and result are column-major.
      */
     static multiply(a: Mat4, b: Mat4): Mat4 {
         const result = new Float32Array(16);
 
-        for (let i = 0; i < 4; i++) {
-            for (let j = 0; j < 4; j++) {
-                result[i * 4 + j] =
-                    a[i * 4 + 0] * b[0 * 4 + j] +
-                    a[i * 4 + 1] * b[1 * 4 + j] +
-                    a[i * 4 + 2] * b[2 * 4 + j] +
-                    a[i * 4 + 3] * b[3 * 4 + j];
-            }
-        }
+        const a00 = a[0],  a10 = a[1],  a20 = a[2],  a30 = a[3];  // First column of A
+        const a01 = a[4],  a11 = a[5],  a21 = a[6],  a31 = a[7];  // Second column of A
+        const a02 = a[8],  a12 = a[9],  a22 = a[10], a32 = a[11]; // Third column of A
+        const a03 = a[12], a13 = a[13], a23 = a[14], a33 = a[15]; // Fourth column of A
+
+        const b00 = b[0],  b10 = b[1],  b20 = b[2],  b30 = b[3];  // First column of B
+        const b01 = b[4],  b11 = b[5],  b21 = b[6],  b31 = b[7];  // Second column of B
+        const b02 = b[8],  b12 = b[9],  b22 = b[10], b32 = b[11]; // Third column of B
+        const b03 = b[12], b13 = b[13], b23 = b[14], b33 = b[15]; // Fourth column of B
+
+        result[0]  = a00 * b00 + a01 * b10 + a02 * b20 + a03 * b30;
+        result[1]  = a10 * b00 + a11 * b10 + a12 * b20 + a13 * b30;
+        result[2]  = a20 * b00 + a21 * b10 + a22 * b20 + a23 * b30;
+        result[3]  = a30 * b00 + a31 * b10 + a32 * b20 + a33 * b30;
+
+        result[4]  = a00 * b01 + a01 * b11 + a02 * b21 + a03 * b31;
+        result[5]  = a10 * b01 + a11 * b11 + a12 * b21 + a13 * b31;
+        result[6]  = a20 * b01 + a21 * b11 + a22 * b21 + a23 * b31;
+        result[7]  = a30 * b01 + a31 * b11 + a32 * b21 + a33 * b31;
+
+        result[8]  = a00 * b02 + a01 * b12 + a02 * b22 + a03 * b32;
+        result[9]  = a10 * b02 + a11 * b12 + a12 * b22 + a13 * b32;
+        result[10] = a20 * b02 + a21 * b12 + a22 * b22 + a23 * b32;
+        result[11] = a30 * b02 + a31 * b12 + a32 * b22 + a33 * b32;
+
+        result[12] = a00 * b03 + a01 * b13 + a02 * b23 + a03 * b33;
+        result[13] = a10 * b03 + a11 * b13 + a12 * b23 + a13 * b33;
+        result[14] = a20 * b03 + a21 * b13 + a22 * b23 + a23 * b33;
+        result[15] = a30 * b03 + a31 * b13 + a32 * b23 + a33 * b33;
 
         return result;
     }

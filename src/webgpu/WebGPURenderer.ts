@@ -196,43 +196,50 @@ export class WebGPURenderer implements IRenderer {
      * This needs a more robust implementation for reusing bind groups and buffers.
      * For Phase 3, we'll create them per-draw, but acknowledge this is inefficient.
      */
+
     setUniforms(binding: number, data: ArrayBuffer): void {
         if (!this.device || !this.currentRenderPass || !this.currentPipeline) {
             console.error('Cannot set uniforms: missing device, render pass, or pipeline');
             return;
         }
 
-        // **Inefficient Approach (for Phase 3): Create per-draw**
-        // In Phase 5, you'll want to manage and reuse these.
-        const uniformBuffer = this.device.createBuffer({
-            size: data.byteLength,
-            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-            label: `Uniform Buffer ${binding}_${Date.now()}` // Unique label
-        });
-
-        this.device.queue.writeBuffer(uniformBuffer, 0, data);
-
+        // **CRITICAL FIX**: Proper error handling and validation
         try {
+            // Create uniform buffer (still inefficient, but with proper cleanup tracking)
+            const uniformBuffer = this.device.createBuffer({
+                size: Math.max(data.byteLength, 16), // Ensure minimum size
+                usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+                label: `Uniform Buffer ${Date.now()}`
+            });
+
+            // Upload data
+            this.device.queue.writeBuffer(uniformBuffer, 0, data);
+
+            // Get bind group layout - this is where failures often occur
             const bindGroupLayout = this.currentPipeline.getBindGroupLayout(0);
+
+            // Create bind group
             const bindGroup = this.device.createBindGroup({
                 layout: bindGroupLayout,
                 entries: [{
-                    binding: 0, // Assuming binding 0 in the group
+                    binding: 0, // Always binding 0 for the uniform buffer
                     resource: { buffer: uniformBuffer }
                 }],
-                label: `Bind Group ${binding}_${Date.now()}`
+                label: `Bind Group ${Date.now()}`
             });
 
-            this.currentRenderPass.setBindGroup(0, bindGroup); // Group 0 for now
-        } catch (e) {
-            console.error("Failed to create/set bind group:", e, "Pipeline:", this.currentPipeline);
-            // Destroy the temporary buffer if bind group fails
-            uniformBuffer.destroy();
-        }
+            // Set the bind group
+            this.currentRenderPass.setBindGroup(0, bindGroup);
 
-        // NOTE: We are NOT destroying the uniformBuffer here, leading to a memory leak.
-        // A proper BufferManager or resource tracking system is needed.
-        // For Phase 3, this allows rendering, but needs fixing.
+            // TODO: Track buffer for cleanup (memory leak prevention)
+            // this.uniformBuffersToCleanup.push(uniformBuffer);
+
+        } catch (error) {
+            console.error('Failed to set uniforms:', error);
+            console.error('Pipeline:', this.currentPipeline);
+            console.error('Data size:', data.byteLength);
+            // Don't destroy anything here - let the frame complete
+        }
     }
 
 

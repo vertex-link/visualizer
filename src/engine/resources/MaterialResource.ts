@@ -14,7 +14,6 @@ export type UniformValue = number | number[] | Float32Array | Int32Array | Uint3
  * Uniform descriptor for material properties.
  */
 export interface UniformDescriptor {
-    binding: number;
     type: 'float' | 'vec2' | 'vec3' | 'vec4' | 'mat4' | 'int' | 'uint';
     size: number; // Size in bytes
     value: UniformValue;
@@ -282,41 +281,6 @@ export class MaterialResource extends Resource {
     }
 
     /**
-     * Update uniform buffer with current uniform values.
-     */
-    private updateUniformBuffer(): void {
-        if (this.uniformData.size === 0) {
-            this.uniformBuffer = null;
-            return;
-        }
-
-        // Calculate total buffer size
-        let totalSize = 0;
-        const sortedUniforms = Array.from(this.uniformData.entries())
-            .sort(([, a], [, b]) => a.binding - b.binding);
-
-        for (const [name, uniform] of sortedUniforms) {
-            // Align to 16-byte boundaries for uniform buffers (WebGPU requirement)
-            totalSize = Math.ceil(totalSize / 16) * 16;
-            totalSize += uniform.size;
-        }
-
-        // Create buffer
-        this.uniformBuffer = new ArrayBuffer(totalSize);
-        const view = new DataView(this.uniformBuffer);
-
-        // Pack uniform data
-        let offset = 0;
-        for (const [name, uniform] of sortedUniforms) {
-            // Align offset
-            offset = Math.ceil(offset / 16) * 16;
-
-            this.packUniformValue(view, offset, uniform);
-            offset += uniform.size;
-        }
-    }
-
-    /**
      * Pack a uniform value into the buffer.
      */
     private packUniformValue(view: DataView, offset: number, uniform: UniformDescriptor): void {
@@ -389,5 +353,130 @@ export class MaterialResource extends Resource {
             };
         }
         return null;
+    }
+
+    /**
+     * **FIXED**: Update uniform buffer with proper WebGPU alignment
+     */
+    private updateUniformBuffer(): void {
+        if (this.uniformData.size === 0) {
+            this.uniformBuffer = null;
+            return;
+        }
+
+        // Calculate total buffer size with proper WebGPU alignment
+        let totalSize = 0;
+        const uniformEntries = Array.from(this.uniformData.entries());
+
+        // Sort by name for consistent layout (not by binding)
+        uniformEntries.sort(([a], [b]) => a.localeCompare(b));
+
+        for (const [name, uniform] of uniformEntries) {
+            // WebGPU requires specific alignment for different types
+            const alignment = this.getUniformAlignment(uniform.type);
+            totalSize = Math.ceil(totalSize / alignment) * alignment;
+            totalSize += uniform.size;
+        }
+
+        // Round up to multiple of 16 (required by WebGPU)
+        totalSize = Math.ceil(totalSize / 16) * 16;
+
+        // Create buffer
+        this.uniformBuffer = new ArrayBuffer(totalSize);
+        const view = new DataView(this.uniformBuffer);
+
+        // Pack uniform data with proper alignment
+        let offset = 0;
+        for (const [name, uniform] of uniformEntries) {
+            const alignment = this.getUniformAlignment(uniform.type);
+            offset = Math.ceil(offset / alignment) * alignment;
+
+            this.packUniformValue(view, offset, uniform);
+            offset += uniform.size;
+        }
+    }
+
+    /**
+     * Get required alignment for uniform types (WebGPU spec)
+     */
+    private getUniformAlignment(type: string): number {
+        switch (type) {
+            case 'float':
+            case 'int':
+            case 'uint':
+                return 4;
+            case 'vec2':
+                return 8;
+            case 'vec3':
+            case 'vec4':
+                return 16;
+            case 'mat4':
+                return 16; // Each column is vec4 aligned
+            default:
+                return 4;
+        }
+    }
+
+    /**
+     * Create basic material with corrected uniform layout
+     */
+    static createBasicMaterial(
+        name: string,
+        serviceRegistry: ServiceRegistry,
+        shader: ShaderResource,
+        color: number[] = [1.0, 0.5, 0.2, 1.0]
+    ): MaterialResource {
+        const material = new MaterialResource(name, serviceRegistry);
+
+        // Identity matrices for initialization
+        const identity = new Float32Array([
+            1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1
+        ]);
+
+        const uniforms: Record<string, UniformDescriptor> = {
+            // Order matters for buffer layout - keep consistent
+            mvpMatrix: {
+                type: 'mat4',
+                size: 64,
+                value: new Float32Array(identity)
+            },
+            modelMatrix: {
+                type: 'mat4',
+                size: 64,
+                value: new Float32Array(identity)
+            },
+            color: {
+                type: 'vec4',
+                size: 16,
+                value: new Float32Array(color)
+            }
+        };
+
+        const vertexLayout: VertexLayout = {
+            stride: 32, // position(12) + normal(12) + uv(8)
+            attributes: [
+                { location: 0, format: 'float32x3', offset: 0 },  // position
+                { location: 1, format: 'float32x3', offset: 12 }, // normal  
+                { location: 2, format: 'float32x2', offset: 24 }  // uv
+            ]
+        };
+
+        const descriptor: MaterialDescriptor = {
+            shader,
+            uniforms,
+            vertexLayout,
+            renderState: {
+                cullMode: 'back',
+                depthWrite: true,
+                depthTest: true,
+                blendMode: 'none'
+            }
+        };
+
+        material.setMaterialData(descriptor);
+        return material;
     }
 }

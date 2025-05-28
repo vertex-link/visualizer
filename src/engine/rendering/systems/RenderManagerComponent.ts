@@ -23,13 +23,13 @@ interface Renderable {
     meshRenderer: MeshRendererComponent;
     worldMatrix: Mat4;
 }
+// src/engine/rendering/systems/RenderManagerComponent.ts - Simplified version
 
 export class RenderManagerComponent extends Component {
     private scene: Scene;
     private renderService!: IRenderService;
     private assetService!: IAssetService;
     private serviceRegistry: ServiceRegistry;
-    private frameCount: number = 0; // For logging once
 
     constructor(actor: Actor, scene: Scene, serviceRegistry: ServiceRegistry) {
         super(actor);
@@ -37,139 +37,134 @@ export class RenderManagerComponent extends Component {
         this.serviceRegistry = serviceRegistry;
         this.renderService = this.serviceRegistry.resolve<IRenderService>(IRenderServiceKey)!;
         this.assetService = this.serviceRegistry.resolve<IAssetService>(IAssetServiceKey)!;
-        if (!this.renderService) throw new Error("RenderService not found!");
-        if (!this.assetService) throw new Error("AssetService not found!");
-        console.log("RenderManagerComponent initialized.");
+
+        if (!this.renderService || !this.assetService) {
+            throw new Error("Required services not found!");
+        }
+
+        console.log("✅ RenderManagerComponent initialized");
     }
 
     @RenderUpdate()
     public render(deltaTime: number): void {
-        this.frameCount++;
-        if (this.frameCount % 300 === 1) { // Log sparsely to avoid flooding
-            console.log(`[RenderManager] Frame: ${this.frameCount}, DeltaTime: ${deltaTime.toFixed(4)}`);
-        }
-
-        if (!this.renderService || !this.renderService.isInitialized()) {
-            if (this.frameCount % 300 === 1) console.warn("[RenderManager] RenderService not initialized or not active.");
+        // Early exit checks
+        if (!this.renderService?.isInitialized()) {
+            console.warn("⚠️ RenderService not ready");
             return;
         }
-        if (this.renderService.isFrameActive() && this.frameCount % 300 === 1) {
-            console.warn("[RenderManager] Frame already active. Skipping.");
-            // return; // This might be too aggressive if isFrameActive is not reset properly.
-        }
-
 
         const renderer = this.renderService.getRenderer();
         if (!renderer) {
-            if (this.frameCount % 300 === 1) console.warn("[RenderManager] No renderer found.");
+            console.warn("⚠️ No renderer available");
             return;
         }
 
+        // Find active camera
         const activeCamera = this.findActiveCamera();
         if (!activeCamera) {
-            if (this.frameCount % 300 === 1) console.warn("[RenderManager] No active camera found.");
+            console.warn("⚠️ No active camera found");
             return;
         }
 
+        // Query renderables
         const renderables = this.queryRenderables();
         if (renderables.length === 0) {
-            // Sparsely log this too, it might be normal if scene is empty
-            if (this.frameCount % 300 === 1) console.log("[RenderManager] No renderables found.");
+            console.log("ℹ️ No renderables in scene");
             return;
         }
-        if (this.frameCount % 300 === 1) console.log(`[RenderManager] Found ${renderables.length} renderables.`);
 
-
+        // Begin frame
         if (!this.renderService.beginFrame()) {
-            console.error("[RenderManager] Failed to begin frame");
+            console.error("❌ Failed to begin frame");
             return;
         }
 
-        const viewMatrix = activeCamera.getViewMatrix();
-        const projectionMatrix = activeCamera.getProjectionMatrix();
-        const viewProjectionMatrix = activeCamera.getViewProjectionMatrix();
+        try {
+            // Get camera matrices
+            const viewProjectionMatrix = activeCamera.getViewProjectionMatrix();
 
-        if (this.frameCount % 300 === 1) {
-            console.log("[RenderManager] Active Camera VP Matrix:", viewProjectionMatrix);
+            console.log(`🎬 Rendering ${renderables.length} objects`);
+
+            // Render each object
+            for (const renderable of renderables) {
+                this.renderObject(renderer, renderable, viewProjectionMatrix);
+            }
+
+        } catch (error) {
+            console.error("❌ Render error:", error);
+        } finally {
+            this.renderService.endFrame();
+        }
+    }
+
+    private renderObject(renderer: IRenderer, renderable: Renderable, viewProjectionMatrix: Mat4): void {
+        const mesh = renderable.meshRenderer.mesh as MeshResource;
+        const material = renderable.meshRenderer.material as MaterialResource;
+
+        // Validate resources
+        if (!mesh?.isLoaded() || !material?.isLoaded()) {
+            console.warn(`⚠️ Resources not loaded for ${renderable.meshRenderer.actor.label}`);
+            return;
         }
 
-        for (const renderable of renderables) {
-            const mesh = renderable.meshRenderer.mesh as MeshResource | null;
-            const material = renderable.meshRenderer.material as MaterialResource | null;
+        if (!mesh.isCompiled || !material.isCompiled) {
+            console.warn(`⚠️ Resources not compiled for ${renderable.meshRenderer.actor.label}`);
+            return;
+        }
 
-            if (this.frameCount % 300 === 1 && renderable.meshRenderer.actor) {
-                console.log(`[RenderManager] Processing renderable: ${renderable.meshRenderer.actor.label}`);
-            }
+        const pipeline = material.getPipeline();
+        const vertexBuffer = mesh.getVertexBuffer();
+        const indexBuffer = mesh.getIndexBuffer();
 
+        if (!pipeline || !vertexBuffer) {
+            console.warn(`⚠️ Missing pipeline/buffers for ${renderable.meshRenderer.actor.label}`);
+            return;
+        }
 
-            if (!mesh || !material) {
-                if (this.frameCount % 300 === 1) console.warn("[RenderManager] Skipping renderable due to missing mesh or material.");
-                continue;
-            }
-            if (!mesh.isLoaded() || !material.isLoaded()) {
-                if (this.frameCount % 300 === 1) console.warn(`[RenderManager] Skipping ${renderable.meshRenderer.actor.label}: Mesh loaded: ${mesh.isLoaded()}, Material loaded: ${material.isLoaded()}`);
-                continue;
-            }
-            if (!mesh.isCompiled || !material.isCompiled) {
-                if (this.frameCount % 300 === 1) console.warn(`[RenderManager] Skipping ${renderable.meshRenderer.actor.label}: Mesh compiled: ${mesh.isCompiled}, Material compiled: ${material.isCompiled}`);
-                continue;
-            }
-
-
-            const pipeline: IPipeline | null = material.getPipeline();
-            const vertexBuffer: IBuffer | null = mesh.getVertexBuffer();
-            const indexBuffer: IBuffer | null = mesh.getIndexBuffer();
-
-            if (!pipeline || !vertexBuffer) {
-                if (this.frameCount % 300 === 1) console.warn(`[RenderManager] Skipping ${renderable.meshRenderer.actor.label} due to missing pipeline or vertexBuffer.`);
-                continue;
-            }
-
+        try {
+            // Calculate matrices
             const worldMatrix = renderable.worldMatrix;
             const mvpMatrix = Transform.multiply(viewProjectionMatrix, worldMatrix);
 
-            if (this.frameCount % 300 === 1) {
-                console.log(`[RenderManager] ${renderable.meshRenderer.actor.label} - World Matrix:`, worldMatrix);
-                console.log(`[RenderManager] ${renderable.meshRenderer.actor.label} - MVP Matrix:`, mvpMatrix);
-                console.log(`[RenderManager] ${renderable.meshRenderer.actor.label} - Mesh Vertices: ${mesh.vertexCount}, Indices: ${mesh.indexCount}`);
-            }
+            // Update material uniforms
+            material.setUniform("mvpMatrix", mvpMatrix);
+            material.setUniform("modelMatrix", worldMatrix);
 
-            material.setUniform("mvpMatrix", mvpMatrix as Float32Array);
-            material.setUniform("modelMatrix", worldMatrix as Float32Array);
             const uniformBuffer = material.getUniformBuffer();
-
-            if (uniformBuffer) {
-                if (this.frameCount % 300 === 1) {
-                    console.log(`[RenderManager] ${renderable.meshRenderer.actor.label} - UniformBuffer size: ${uniformBuffer.byteLength}`);
-                    console.log(`[RenderManager] ${renderable.meshRenderer.actor.label} - Setting pipeline, uniforms, buffers, and drawing.`);
-                }
-                renderer.setPipeline(pipeline);
-                renderer.setUniforms(0, uniformBuffer);
-                renderer.setBuffer(0, vertexBuffer);
-
-                if (indexBuffer && mesh.hasIndices) {
-                    renderer.setBuffer(1, indexBuffer);
-                    renderer.drawIndexed(mesh.indexCount);
-                } else {
-                    renderer.draw(mesh.vertexCount);
-                }
-                renderer.recordDrawCall(mesh.vertexCount, mesh.hasIndices ? mesh.indexCount : undefined);
-            } else {
-                if (this.frameCount % 300 === 1) console.warn(`[RenderManager] ${renderable.meshRenderer.actor.label} - UniformBuffer is null.`);
+            if (!uniformBuffer) {
+                console.warn(`⚠️ No uniform buffer for ${renderable.meshRenderer.actor.label}`);
+                return;
             }
-        }
 
-        this.renderService.endFrame();
+            console.log(`🎯 Rendering ${renderable.meshRenderer.actor.label}: vertices=${mesh.vertexCount}, indices=${mesh.indexCount}`);
+
+            // Set render state
+            renderer.setPipeline(pipeline);
+            renderer.setUniforms(0, uniformBuffer);
+            renderer.setBuffer(0, vertexBuffer); // Vertex buffer
+
+            // Draw
+            if (indexBuffer && mesh.hasIndices) {
+                renderer.setBuffer(1, indexBuffer); // Index buffer  
+                renderer.drawIndexed(mesh.indexCount);
+            } else {
+                renderer.draw(mesh.vertexCount);
+            }
+
+        } catch (error) {
+            console.error(`❌ Failed to render ${renderable.meshRenderer.actor.label}:`, error);
+        }
     }
 
-    // ... (keep findActiveCamera and queryRenderables) ...
     private findActiveCamera(): CameraComponent | null {
         const query = this.scene.query().withComponent(CameraComponent);
-        const results = query.execute(this.scene);
+        const results = query.execute();
+
         for (const actor of results) {
-            const cam = actor.getComponent(CameraComponent);
-            if (cam && cam.isActive) {
-                return cam;
+            const camera = actor.getComponent(CameraComponent);
+            if (camera?.isActive) {
+                console.log(`📷 Using camera: ${actor.label}`);
+                return camera;
             }
         }
         return null;
@@ -180,31 +175,26 @@ export class RenderManagerComponent extends Component {
             .withComponent(TransformComponent)
             .withComponent(MeshRendererComponent);
 
-        const results = query.execute(this.scene);
+        const results = query.execute();
         const renderables: Renderable[] = [];
 
         for (const actor of results) {
             const transform = actor.getComponent(TransformComponent);
             const meshRenderer = actor.getComponent(MeshRendererComponent);
 
-            // Ensure isRenderable is callable
-            const mrComponent = meshRenderer as (MeshRendererComponent & { isRenderable?: () => boolean; });
-
-
-            if (transform && mrComponent && typeof mrComponent.isRenderable === 'function' && mrComponent.isRenderable()) {
+            if (transform && meshRenderer && meshRenderer.isRenderable()) {
                 renderables.push({
                     transform,
-                    meshRenderer: mrComponent,
+                    meshRenderer,
                     worldMatrix: transform.getWorldMatrix(),
                 });
-            } else if (this.frameCount % 300 === 1 && mrComponent && typeof mrComponent.isRenderable !== 'function'){
-                console.warn(`[RenderManager] queryRenderables: ${actor.label}'s MeshRendererComponent is missing isRenderable or it's not a function.`);
-            } else if (this.frameCount % 300 === 1 && mrComponent && !mrComponent.isRenderable()){
-                console.warn(`[RenderManager] queryRenderables: ${actor.label} is not renderable. Mesh: ${mrComponent.mesh}, Material: ${mrComponent.material}, Enabled: ${mrComponent.enabled}`);
-                if(mrComponent.mesh) console.log("Mesh loaded:", (mrComponent.mesh as MeshResource).isLoaded(), "Mesh compiled:", (mrComponent.mesh as MeshResource).isCompiled);
-                if(mrComponent.material) console.log("Material loaded:", (mrComponent.material as MaterialResource).isLoaded(), "Material compiled:", (mrComponent.material as MaterialResource).isCompiled);
+
+                console.log(`✅ Found renderable: ${actor.label}`);
+            } else {
+                console.log(`❌ Skipping non-renderable: ${actor.label}`);
             }
         }
+
         return renderables;
     }
 }

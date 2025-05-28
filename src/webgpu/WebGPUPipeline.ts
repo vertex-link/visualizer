@@ -48,50 +48,70 @@ export class WebGPUPipeline implements IPipeline {
         try {
             const vertexShaderModule = this.device.createShaderModule({
                 code: descriptor.vertexShader,
-                label: `${this.label}_vertex`
+                label: `${this.label}_vertex_module`
             });
 
             const fragmentShaderModule = this.device.createShaderModule({
                 code: descriptor.fragmentShader,
-                label: `${this.label}_fragment`
+                label: `${this.label}_fragment_module`
             });
 
             const vertexBufferLayout = this.createWebGPUVertexLayout(descriptor.vertexLayout);
 
-            // --- Depth Stencil State Added ---
             const depthStencilState: GPUDepthStencilState = {
                 depthWriteEnabled: true,
-                depthCompare: 'less', // Standard depth test: Draw if closer
-                format: 'depth24plus', // Must match the depth texture format in Renderer
+                depthCompare: 'less',
+                format: 'depth24plus',
             };
-            // --- End Depth Stencil State ---
 
+            // --- ** Explicit Bind Group Layout Definition ** ---
+            // This defines what group 0 expects: one uniform buffer at binding 0.
+            const bindGroupLayout = this.device.createBindGroupLayout({
+                label: `${this.label}_BindGroupLayout_Group0`,
+                entries: [
+                    {
+                        binding: 0, // Corresponds to @binding(0) in your shader
+                        visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, // Accessible in both VS & FS
+                        buffer: {
+                            type: 'uniform',
+                        },
+                    },
+                ],
+            });
+
+            // Create the overall pipeline layout using the explicit bind group layout(s).
+            // For this pipeline, we only have one bind group (group 0).
+            const explicitPipelineLayout = this.device.createPipelineLayout({
+                label: `${this.label}_PipelineLayout`,
+                bindGroupLayouts: [bindGroupLayout], // Array of BGLs, for group 0, 1, 2...
+            });
+            // --- ** End of Explicit Layout Definition ** ---
 
             this.pipeline = this.device.createRenderPipeline({
                 label: this.label,
-                layout: 'auto',
+                layout: explicitPipelineLayout, // <--- USE THE EXPLICIT LAYOUT
                 vertex: {
                     module: vertexShaderModule,
-                    entryPoint: descriptor.entryPoints?.vertex || 'vs_main', // Use entry points
+                    entryPoint: descriptor.entryPoints?.vertex || 'vs_main',
                     buffers: [vertexBufferLayout]
                 },
                 fragment: {
                     module: fragmentShaderModule,
-                    entryPoint: descriptor.entryPoints?.fragment || 'fs_main', // Use entry points
+                    entryPoint: descriptor.entryPoints?.fragment || 'fs_main',
                     targets: [{
-                        format: this.preferredFormat // Use stored format
+                        format: this.preferredFormat
                     }]
                 },
                 primitive: {
                     topology: 'triangle-list',
-                    cullMode: 'none',
+                    cullMode: 'none', // Keep as 'none' for debugging, or set to 'back'
                     frontFace: 'ccw'
                 },
-                depthStencil: depthStencilState // Use the defined depth state
+                depthStencil: depthStencilState
             });
 
             this.isCompiled = true;
-            console.log(`Pipeline '${this.label}' compiled successfully`);
+            console.log(`Pipeline '${this.label}' compiled successfully with explicit layout.`);
 
         } catch (error) {
             console.error(`Failed to compile pipeline '${this.label}':`, error);
@@ -99,7 +119,6 @@ export class WebGPUPipeline implements IPipeline {
             throw error;
         }
     }
-
 
     private createWebGPUVertexLayout(layout: VertexLayout): GPUVertexBufferLayout {
         const attributes: GPUVertexAttribute[] = layout.attributes.map(attr => ({
