@@ -1,189 +1,98 @@
-﻿# Framework Architectural Overview & Decisions
-
-This document outlines the architectural decisions for a modular and flexible application framework, suitable for game development or other interactive applications. The design prioritizes decoupling, testability, and a balance between ease of use for common scenarios and robustness for complex ones.
-
+﻿# Vertex Link - Modular TypeScript Game Engine/Framework
+This document outlines the architecture of Vertex Link, a modular and flexible TypeScript framework designed for game development and interactive applications. It prioritizes decoupling, testability, and an event-driven, component-based structure.
 ## 1. Core Philosophy
-
-The framework is built around a loosely coupled architecture, moving away from a monolithic "Engine" class. Instead, it provides a set of core concepts and a structured way to manage cross-cutting concerns (Services). The primary goal is to allow developers to compose applications by combining Actors, Components, Systems, and Services with clear responsibilities and lifecycles.
+Vertex Link moves away from a monolithic "Engine" class, offering instead a set of core concepts and a structured way to manage application logic and state. It leverages modern TypeScript features, including decorators for events and update loops, and promotes a loosely coupled architecture. Developers compose applications by combining:
+- **Scenes**: Manage collections of Actors and provide querying capabilities.
+- **Actors**: Represent individual entities within a scene.
+- **Components**: Encapsulate data and behaviour, attached to Actors.
+- **Services**: Provide shared, cross-cutting functionalities.
+- **Processors**: Manage update loops (e.g., rendering, physics).
+- **Events**: Facilitate communication between decoupled parts.
 
 ## 2. Core Entities & Their Roles
+### 2.1. Actors (src/core/Actor.ts)
+- Represent individual entities (player, enemy, UI element).
+- Act as containers for Components.
+- Have a lifecycle and manage their components.
+- Can have methods decorated to run in Processor update loops.
 
-The framework defines the following primary entity types:
+### 2.2. Components (src/core/component/Component.ts)
+- Hold data and implement specific functionalities for an Actor.
+- Define an Actor's characteristics and state.
+- Feature a dependency injection system using decorators (@RequireComponent, @OptionalComponent).
+- Can have methods decorated to run in Processor update loops or handle events.
+- Their lifecycle is tied to their parent Actor and dependency resolution.
 
-### 2.1. Services
+### 2.3. Services (src/core/Service.ts)
+- Provide shared functionalities across the application (e.g., Logging, Pokemon Data).
+- Defined by an IService interface with optional lifecycle methods (initialize, update, dispose).
+- Registered and resolved using unique ServiceKey symbols via a ServiceRegistry.
+- The framework doesn't enforce a single global ServiceManager; instead, ServiceRegistry instances can be created and managed as needed (e.g., per-scene or globally by the application).
 
-Services provide shared functionalities and manage resources across different parts of the application.
+### 2.4. Scenes (src/core/scene/Scene.ts)
+- Manage collections of Actors.
+- Provide efficient querying capabilities for Actors based on their components or tags using a QueryBuilder.
+- Can have their own EventBus or share one.
+- Handle adding, removing, and indexing actors.
 
-*   **`IService` (Contract - Interface):**
-    *   A base interface that all service contracts can extend.
-    *   Defines optional lifecycle methods: `initialize?(): Promise<void> | void`, `update?(deltaTime: number): void`, `dispose?(): Promise<void> | void`.
-    *   Example:
-        ```typescript
-        // contracts/IService.ts
-        export interface IService {
-          initialize?(): Promise<void> | void;
-          update?(deltaTime: number): void;
-          dispose?(): Promise<void> | void;
-        }
-        ```
+### 2.5. Events (src/core/events/Event.ts, src/core/events/Decorators.ts)
+- A robust, type-safe event system based on an EventBus.
+- Events extend a base Event class and define a static eventType.
+- Classes (like Components or Systems) can listen to events using the @OnEvent decorator, which automatically registers and unregisters handlers.
+- A global EventBus can be initialized and accessed, or specific instances can be used.
 
-*   **Service Keys (`Symbol`):**
-    *   Unique `Symbol` instances are used as keys for registering and resolving services. This ensures type safety and prevents naming collisions.
-    *   Example:
-        ```typescript
-        // contracts/ILoggingService.ts
-        export const ILoggingServiceKey = Symbol.for('ILoggingService');
+### 2.6. Processors (src/core/processor/Processor.ts, src/engine/processors/)
+- Manage distinct update loops.
+- The framework provides a RenderProcessor (using requestAnimationFrame) and a FixedTickProcessor (using setInterval).
+- Methods within Actors or Components can be hooked into these loops using decorators like @RenderUpdate or @FixedTickUpdate.
+- Processors are managed by a ProcessorRegistry, allowing custom processors and decorators to be added.
 
-        export interface ILoggingService extends IService { /* ... */ }
-        ```
+## 3. How It Works (Conceptual Flow)
+### Initialization (examples/app.ts):
+- An EventBus is initialized.
+- A ServiceRegistry is created, and services (like PokemonService) are registered.
+- Processors (like RenderProcessor, FixedTickProcessor) would typically be registered with the ProcessorRegistry and started here (though not explicitly shown in examples/app.ts).
+- A main application/UI layer (like Vue.js in the example) is set up.
 
-*   **`ServiceRegistry` (Class - Instance-based Management):**
-    *   Manages a collection of service instances mapped by their `ServiceKey`.
-    *   Responsible for the lifecycle of its registered services: `initializeAll()`, `updateAll()`, `disposeAll()`.
-    *   Can be instantiated multiple times to create different service scopes (e.g., one for global services, one per canvas/rendering context).
-    *   Example Snippet:
-        ```typescript
-        // core/ServiceRegistry.ts
-        export class ServiceRegistry implements IServiceRegistry {
-          private services: Map<ServiceKey, IService> = new Map();
-          // ...
-          public register<T extends IService>(key: ServiceKey, instance: T): void { /* ... */ }
-          public resolve<T extends IService>(key: ServiceKey): T | undefined { /* ... */ }
-          public async initializeAll(): Promise<void> { /* ... */ }
-          // ...
-        }
-        ```
+### Scene & Actors (examples/components/BattleScreen.ts):
+- A Scene is created, often using the main EventBus.
+- Actors are created and added to the Scene.
+- Components (like PokemonStatsComponent) are added to Actors, providing data and behaviour. Components automatically attempt to resolve their dependencies (@RequireComponent) once added.
 
-*   **`ServiceManager` (Static Facade):**
-    *   Provides convenient static methods for interacting with a *default, internally managed* `ServiceRegistry` instance.
-    *   Simplifies service access for common use cases.
-    *   Methods include:
-        *   `ServiceManager.register<T extends IService>(key: ServiceKey, instance: T): void`
-        *   `ServiceManager.resolve<T extends IService>(key: ServiceKey): T | undefined`
-        *   `ServiceManager.isRegistered(key: ServiceKey): boolean`
-        *   `ServiceManager.initializeDefaultServices(): Promise<void>`
-        *   `ServiceManager.updateDefaultServices(deltaTime: number): void`
-        *   `ServiceManager.disposeDefaultServices(): Promise<void>`
-        *   `ServiceManager.S_TEST_ONLY_setRegistry(newRegistry: IServiceRegistry): void` (for testing)
-    *   Example Usage:
-        ```typescript
-        // main.ts
-        import { ServiceManager } from './core/ServiceManager';
-        import { ConsoleLoggingService } from './services/ConsoleLoggingService';
-        import { ILoggingServiceKey } from './contracts/ILoggingService';
+### Event Handling (examples/game/systems.ts, examples/components/ActionBar.ts):
+- Systems or Components use @OnEvent to listen for specific events (e.g., BattleStartEvent, PlayerChoseMoveEvent).
+- When an event is emitted (using emit(new MyEvent(...))), the corresponding decorated methods are automatically invoked.
 
-        ServiceManager.register(ILoggingServiceKey, new ConsoleLoggingService());
-        await ServiceManager.initializeDefaultServices();
-        const logger = ServiceManager.resolve(ILoggingServiceKey)?.getLogger('App');
-        ```
+### Update Loops:
+- If an Actor or Component has a method decorated with @RenderUpdate or @FixedTickUpdate, the corresponding Processor will call it during its loop, passing the deltaTime.
 
-*   **Registration & Resolution:**
-    *   Services are explicitly registered using their key and an instance.
-    *   Consumers resolve services by their key, relying on the interface contract.
+### Data Flow:
+- Components primarily hold state.
+- Events communicate changes or requests between different parts.
+- Services provide access to external data or shared logic.
+- Vue components (in the example) react to changes in state and emit events based on user interaction.
 
-### 2.2. Actors
+## 4. Key Architectural Features
+- **Modularity & Decoupling**: Services, Events, and the ECS-like (Actor-Component) structure promote low coupling.
+- **Testability**: Decoupled parts are easier to test in isolation. Mock services and event buses can be injected.
+- **Event-Driven**: Central EventBus and @OnEvent decorators simplify communication.
+- **Decorator-Based**: Simplifies hooking into update loops (@RenderUpdate) and handling events (@OnEvent), and managing dependencies (@RequireComponent).
+- **Flexible Scoping**: While a global EventBus is common, ServiceRegistry instances can be scoped.
+- **Scene Management**: Scene provides a container for actors and querying.
 
-*   Represent individual entities or objects within the application (e.g., player, enemy, UI element).
-*   Act as containers for `Components`.
-*   Possess their own lifecycle (e.g., `initializeActor`, `updateActor`, `disposeActor`), typically managed by the application or a world/scene manager.
-*   Are provided with the necessary context (e.g., access to the `ServiceManager` or a specific `ServiceRegistry` instance) to allow their `Components` and scripts to access services.
+## 5. Getting Started (Based on Example)
+1. **Set up HTML (examples/index.html)**: Create a basic HTML file, include Vue.js (or your chosen view layer), and link your main application script.
+2. **Define Services (examples/services/PokemonService.ts)**: Create interfaces and implementations for any shared services you need.
+3. **Define Components (examples/game/components.ts)**: Create Component classes to hold data and logic for your actors.
+4. **Define Events (examples/game/events.ts)**: Define the Event classes that will drive communication.
+5. **Create Systems/Event Handlers (examples/game/systems.ts)**: Implement classes with @OnEvent methods to handle game logic.
+6. **Build UI/Views (examples/components/*.ts)**: Create UI components that interact with the engine by:
+    - Accessing services.
+    - Creating Actors and adding Components.
+    - Emitting events based on user input.
+    - Listening to events to update the UI.
 
-### 2.3. Components
+7. **Bootstrap (examples/app.ts)**: Initialize the EventBus, ServiceRegistry, register services, and mount your application.
+8. **Run Dev Server (scripts/dev_server.ts)**: Use the Deno-based development server to transpile TypeScript and serve your application with live reload.
 
-*   Hold data and/or simple, self-contained logic associated with an `Actor`.
-*   Define the characteristics and state of an `Actor`.
-*   Examples: `TransformComponent`, `RenderableComponent`, `HealthComponent`.
-*   Their lifecycle is typically tied to their parent `Actor`.
-*   Access services through the context provided by their `Actor` or via `ServiceManager`. Complex interactions with other Actors or global state are usually deferred to `Systems`.
-
-### 2.4. Systems
-
-*   Implement the core logic and behaviors of the application.
-*   Operate on collections of `Actors` based on the `Components` they possess (e.g., a `RenderSystem` processes all Actors with `TransformComponent` and `RenderableComponent`).
-*   Are generally stateless or manage state related to their specific function, not per-Actor state (which resides in Components).
-*   Receive access to services (via `ServiceManager` or a passed-in `ServiceRegistry`) to perform their tasks.
-*   Have their own lifecycle (e.g., `initializeSystem`, `updateSystem`, `disposeSystem`), managed by the application's main loop or a dedicated system orchestrator.
-
-### 2.5. Resources
-
-*   Represent shared data assets or configurations used by the application.
-*   Examples: Textures, 3D models, audio files, level data, game settings.
-*   Typically managed by a dedicated `ResourceManagerService` (which itself is an `IService`).
-*   This service would handle loading, unloading, caching, and providing access to these resources.
-*   Systems, Components, or other Services can request resources from the `ResourceManagerService`.
-
-## 3. Architectural Overview Diagram (Conceptual)
-```
-+------------------------+     +-------------------------+     +--------------------+
-|     ServiceManager     |---->| DefaultServiceRegistry |---->| RegisteredServices |
-|    (Static Facade)     |     |  (Manages Lifecycles)  |     | (ILogging, IInput) |
-+------------------------+     +-------------------------+     +--------------------+
-            ^                            
-            |                            
-            | (resolve/register)         
-            |                            
-            v                            
-+------------------------+     +------------------------+     +--------------------+
-|        Systems         |<--->|         Actors         |<--->|    Components      |
-| (e.g. RenderSystem,    |     | (Entities in the world)|     | (Data containers)  |
-|    PhysicsSystem)      |     +------------------------+     +--------------------+
-+------------------------+                
-            ^                            
-            |                            
-            | (uses services like IResourceManager, IPhysicsService)
-            |                            
-+------------------------+               
-|      Resources         |               
-|  (Textures, Models)    |               
-|  (via IResourceMgr)    |               
-+------------------------+               
- ```
-Note: Multiple `ServiceRegistry` instances can exist for different scopes, not just the default one managed by `ServiceManager`.*
-
-## 4. Strengths of the Architecture
-
-*   **Modularity and Decoupling:**
-    *   Services are accessed via interfaces and unique keys, not concrete classes, reducing direct dependencies.
-    *   Systems operate on Actors based on their Components, promoting separation of concerns.
-    *   Actors are primarily data containers (via Components), with logic handled by Systems or specialized Actor Scripts/Components.
-*   **Testability:**
-    *   `ServiceManager.S_TEST_ONLY_setRegistry()` allows injecting mock/test registries.
-    *   Individual services, systems, and components can be tested in isolation by providing mock dependencies.
-*   **Flexibility in Scoping:**
-    *   The `ServiceRegistry` can be instantiated multiple times, allowing for different scopes of services (e.g., global, per-scene, per-UI panel).
-    *   The `ServiceManager` provides a convenient default for the most common "global" scope.
-*   **Clear Lifecycles:**
-    *   `IService` provides optional standard lifecycle methods (`initialize`, `update`, `dispose`).
-    *   `ServiceRegistry` and `ServiceManager` manage the invocation of these lifecycle methods for registered services.
-    *   Actors, Components, and Systems will also have their own defined lifecycles, to be managed by the application.
-*   **Reduced Boilerplate for Common Cases:**
-    *   `ServiceManager` offers a simple static API for registering and resolving services from the default registry.
-*   **Scalability:**
-    *   The architecture supports adding new services, systems, and component types without extensive modifications to existing core framework code.
-*   **Adaptability:**
-    *   The core is not tied to a specific rendering engine or platform. Platform-specific features are implemented as specific services (e.g., `WebGLRenderService`, `DOMInputService`).
-
-## 5. Weaknesses & Considerations
-
-*   **Initial Setup Complexity:** While `ServiceManager` simplifies default usage, understanding the roles of `ServiceKey`, `IService`, `ServiceRegistry`, and `ServiceManager` requires an initial learning curve.
-*   **Service Discovery:**
-    *   Relying on `Symbol` keys for service lookup is type-safe but requires careful management of these keys.
-    *   Developers must ensure that the correct key is used for registration and resolution.
-*   **Lifecycle Orchestration for Actors/Systems:**
-    *   The framework defines *that* Actors, Components, and Systems have lifecycles, but it doesn't provide a built-in "world manager" or "system orchestrator." The application developer is responsible for creating and managing these higher-level orchestrators (e.g., a main game loop that updates systems, a scene graph that manages actors). This is a deliberate choice for flexibility but adds responsibility.
-*   **Potential for Overuse of Default Registry:** The convenience of `ServiceManager` might lead developers to place too many services in the default global scope, potentially reducing modularity if not used judiciously. Clear guidelines on when to create separate `ServiceRegistry` instances are needed.
-*   **Asynchronous Initialization:** Service `initialize` methods can be asynchronous. The application must correctly handle `async/await` when initializing services via `ServiceManager.initializeDefaultServices()` or `ServiceRegistry.initializeAll()` to ensure services are ready before use. Error handling during initialization is also crucial.
-*   **Dependency Management Between Services:**
-    *   The current model assumes services are largely independent or that their initialization order is manually managed by the order of registration if there are implicit dependencies.
-    *   For complex inter-service dependencies during initialization, a more sophisticated dependency injection (DI) mechanism or explicit ordering logic might be needed, which is not currently part of the core proposal (to keep it lean). The current approach relies on the application architect to manage registration order.
-*   **Resource Management Granularity:** The `IResourceManagerService` is a high-level concept. Detailed strategies for resource loading (e.g., streaming, pooling), unloading, and dependency tracking within this service will need careful design.
-
-## 6. Future Considerations & Potential Enhancements
-
-*   **Hierarchical Service Registries:** For more complex applications, allowing registries to have a parent registry to fall back to for service resolution could be beneficial.
-*   **Event System Service:** A dedicated `IEventBusService` could facilitate communication between decoupled parts of the application (Actors, Systems, Services) without direct dependencies.
-*   **Actor/Component Querying:** Formalizing how Systems query for Actors with specific sets of Components (e.g., helper functions, a dedicated `EntityManager`).
-*   **Developer Tooling:** Tools for visualizing registered services, actor-component structures, or system dependencies could greatly aid development and debugging.
-
-This architecture provides a solid foundation for building modular and maintainable applications. The emphasis on explicit contracts (interfaces) and controlled service management aims to balance flexibility with structure, making it adaptable to various application needs while guiding developers towards good design practices.
-
+This architecture provides a powerful and flexible foundation for building games and interactive applications in TypeScript.
