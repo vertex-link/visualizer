@@ -1,5 +1,5 @@
 ﻿// examples/services/PokemonService.ts
-import { IService, ServiceKey } from '../../src/core/Service.ts'; // Path updated
+import { IService, ServiceKey } from '../../../src/core/Service.ts'; // Path updated
 
 export const IPokemonServiceKey: ServiceKey = Symbol.for('IPokemonService');
 

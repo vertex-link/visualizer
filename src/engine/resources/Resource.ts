@@ -1,7 +1,7 @@
 ﻿// src/engine/resources/Resource.ts - Phase 2 Implementation
 // Based on existing ServiceRegistry system
 
-import { ServiceRegistry } from "../core/Service.ts";
+import { ServiceRegistry } from "../../core/Service.ts";
 
 export enum ResourceStatus {
     UNLOADED,

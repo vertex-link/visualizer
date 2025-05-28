@@ -1,7 +1,7 @@
 ﻿// src/engine/resources/ShaderResource.ts
 
 import { Resource, ResourceStatus } from "./Resource.ts";
-import { ServiceRegistry } from "../core/Service.ts";
+import { ServiceRegistry } from "../../core/Service.ts";
 
 /**
  * Shader stage types supported by the engine.

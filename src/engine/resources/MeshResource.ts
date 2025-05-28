@@ -1,7 +1,7 @@
 ﻿// src/engine/resources/MeshResource.ts
 
 import { Resource, ResourceStatus } from "./Resource.ts";
-import { ServiceRegistry } from "../core/Service.ts";
+import { ServiceRegistry } from "../../core/Service.ts";
 import { IBuffer, BufferUsage } from "../rendering/interfaces/IBuffer.ts";
 import { IRenderer } from "../rendering/interfaces/IRenderer.ts";
 

@@ -1,6 +1,6 @@
 ﻿// src/engine/rendering/RenderData.ts
 
-import { Actor } from "../core/Actor.ts";
+import { Actor } from "../../core/Actor.ts";
 import { MeshRendererComponent } from "./components/MeshRendererComponent.ts";
 import { TransformComponent } from "./components/TransformComponent.ts";
 import type { Mat4 } from "./components/TransformComponent.ts";

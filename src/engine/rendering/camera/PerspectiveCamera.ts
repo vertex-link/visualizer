@@ -1,6 +1,6 @@
 ﻿// src/engine/rendering/camera/PerspectiveCamera.ts
 
-import Actor from "../../core/Actor.ts";
+import Actor from "../../../core/Actor.ts";
 import { TransformComponent } from "../components/TransformComponent.ts";
 import { CameraComponent, ProjectionType } from "./CameraComponent.ts";
 import { Transform } from "../math/Transform.ts";

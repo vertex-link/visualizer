@@ -1,7 +1,7 @@
 ﻿// src/engine/resources/MaterialResource.ts
 
 import { Resource, ResourceStatus } from "./Resource.ts";
-import { ServiceRegistry } from "../core/Service.ts";
+import { ServiceRegistry } from "./../../core/Service.ts";
 import { ShaderResource } from "./ShaderResource.ts";
 import { IPipeline, PipelineDescriptor, VertexLayout } from "../rendering/interfaces/IPipeline.ts";
 

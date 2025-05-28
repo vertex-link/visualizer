@@ -1,7 +1,7 @@
 ﻿// src/engine/rendering/components/TransformComponent.ts
 
-import Component from "../../core/component/Component.ts";
-import Actor from "../../core/Actor.ts";
+import Component from "../../../core/component/Component.ts";
+import Actor from "../../../core/Actor.ts";
 
 // Type aliases for 3D math (simple arrays for now)
 export type Vec3 = [number, number, number];

@@ -16,7 +16,7 @@ export class WebGPUBuffer implements IBuffer {
     private gpuBuffer: GPUBuffer;
     private label: string;
 
-    constructor(device: GPUDevice, descriptor: BufferDescriptor) {
+    constructor(device: GPUDevice, descriptor: BufferDescriptor, mappedAtCreation: boolean = false) { // Added mappedAtCreation
         this.id = generateUUID();
         this.size = descriptor.size;
         this.usage = descriptor.usage;
@@ -30,7 +30,7 @@ export class WebGPUBuffer implements IBuffer {
             size: descriptor.size,
             usage: gpuUsage,
             label: this.label,
-            mappedAtCreation: false
+            mappedAtCreation: mappedAtCreation // Use the parameter
         });
     }
 

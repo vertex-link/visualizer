@@ -1,6 +1,6 @@
 ﻿// examples/game/events.ts
-import { Event } from '../../src/core/events/Event.ts'; // Path updated
-import Actor from '../../src/core/Actor.ts'; // Path updated
+import { Event } from '../../../src/core/events/Event.ts'; // Path updated
+import Actor from '../../../src/core/Actor.ts'; // Path updated
 import { PokemonMove } from '../services/PokemonService.ts'; // Path updated
 
 export class BattleStartEvent extends Event<{ player: Actor; enemy: Actor }> { static readonly eventType = 'poke.battle.start'; }

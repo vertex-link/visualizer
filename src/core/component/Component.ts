@@ -33,7 +33,18 @@ export default abstract class Component {
         this._actor = actor;
         this.id = generateUUID();
 
-        // Set up dependency injection from decorators
+        // Load metadata stored by decorators on the prototype of this instance's class
+        const prototype = Object.getPrototypeOf(this);
+        this._dependencyMetadata = Reflect.getOwnMetadata(COMPONENT_DEPENDENCIES_KEY, prototype) || [];
+
+        // Log what was loaded
+        if (this._dependencyMetadata.length > 0) {
+            console.log(`[DEBUG] Component ${this.constructor.name} (ID: ${this.id}) loaded ${this._dependencyMetadata.length} dependency metadata items from prototype:`, this._dependencyMetadata.map(d => `${String(d.propertyKey)}: ${d.componentClass.name}${d.optional ? ' (opt)' : ''}`).join(', '));
+        } else {
+            console.log(`[DEBUG] Component ${this.constructor.name} (ID: ${this.id}) found no dependency metadata on prototype.`);
+        }
+
+
         this.setupDependencyInjection();
     }
 

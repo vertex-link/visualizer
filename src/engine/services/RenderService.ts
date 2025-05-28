@@ -1,6 +1,6 @@
 ﻿// src/engine/services/RenderService.ts - Corrected Implementation
 
-import { IService, ServiceKey, ServiceRegistry } from "../core/Service.ts";
+import { IService, ServiceKey, ServiceRegistry } from "../../core/Service.ts";
 import { IRenderer } from "../rendering/interfaces/IRenderer.ts";
 import { IBuffer, BufferDescriptor } from "../rendering/interfaces/IBuffer.ts";
 import { IPipeline, PipelineDescriptor } from "../rendering/interfaces/IPipeline.ts";

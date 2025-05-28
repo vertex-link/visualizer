@@ -1,6 +1,6 @@
 ﻿// src/engine/services/AssetService.ts - Corrected Implementation
 
-import { IService, ServiceKey, ServiceRegistry } from "../core/Service.ts";
+import { IService, ServiceKey, ServiceRegistry } from "../../core/Service.ts";
 import { MeshResource, MeshDescriptor } from "../resources/MeshResource.ts";
 import { ShaderResource, ShaderDescriptor } from "../resources/ShaderResource.ts";
 import { MaterialResource, MaterialDescriptor, UniformDescriptor } from "../resources/MaterialResource.ts";

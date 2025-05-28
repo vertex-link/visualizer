@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { serveDir } from "https://deno.land/std@0.208.0/http/file_server.ts";
 import { exists } from "https://deno.land/std@0.208.0/fs/exists.ts";
 import { extname, join, resolve } from "https://deno.land/std@0.208.0/path/mod.ts";
+import { transpile, type LoadResponse } from "jsr:@deno/emit"; // Adjust version as needed
 
 const PORT = 8000;
 const HOST = "localhost";
@@ -95,8 +96,8 @@ class VertexLinkDevServer {
 
     private async handleStaticFile(req: Request, pathname: string): Promise<Response> {
         // Default to examples/index.html for root
-        if (pathname === "/" || pathname === "/index.html") {
-            pathname = "/examples/index.html";
+        if (pathname === "/" || pathname === "/index.html" || pathname === "/examples/phase3") { // Added /examples/phase3
+            pathname = "/examples/phase3/index.html"; // Point to phase 3 demo
         }
 
         // Try to serve the file
@@ -122,8 +123,22 @@ class VertexLinkDevServer {
                 }
             }
 
+            if (!found && pathname.endsWith('/')) { // Check index.html for directories
+                const indexTry = `${filePath}index.html`;
+                if (await exists(indexTry)) {
+                    filePath = indexTry;
+                    found = true;
+                }
+            }
+
+
             if (!found) {
-                return this.createErrorResponse(404, "File Not Found", `Could not find: ${pathname}`);
+                // Check if it's likely a directory access and serve index.html
+                if (!extname(filePath) && await exists(`${filePath}/index.html`)) {
+                    filePath = `${filePath}/index.html`;
+                } else {
+                    return this.createErrorResponse(404, "File Not Found", `Could not find: ${pathname}`);
+                }
             }
         }
 
@@ -133,7 +148,7 @@ class VertexLinkDevServer {
         }
 
         // Serve regular files
-        const response = await serveDir(req, {
+        let response = await serveDir(req, {
             fsRoot: ".",
             urlRoot: "",
             quiet: !this.config.verbose,
@@ -141,44 +156,142 @@ class VertexLinkDevServer {
 
         // Add hot reload script to HTML files
         if (this.config.hotReload && response.headers.get("content-type")?.includes("text/html")) {
-            return await this.injectHotReload(response);
+            response = await this.injectHotReload(response);
         }
 
-        // Add CORS headers
+        // --- FIX: Create a new response with new headers for CORS ---
         if (this.config.cors) {
-            this.addCORSHeaders(response);
-        }
+            // Create a new Headers object, copying from the original response
+            const newHeaders = new Headers(response.headers);
+            const corsHeaders = this.getCORSHeaders();
 
+            // Add/overwrite CORS headers on the *new* Headers object
+            for (const [key, value] of Object.entries(corsHeaders)) {
+                newHeaders.set(key, value);
+            }
+
+            // Return a *new* Response using the original body/status but the *new* headers
+            return new Response(response.body, {
+                status: response.status,
+                statusText: response.statusText,
+                headers: newHeaders,
+            });
+        }
+        // --- End FIX ---
+
+        // If CORS is not enabled, return the (potentially hot-reloaded) response
         return response;
     }
 
     private async handleTypeScriptFile(filePath: string): Promise<Response> {
         try {
-            const source = await Deno.readTextFile(filePath);
+            const currentWorkingDir = Deno.cwd(); // Root of your project, e.g., /home/aaron/projects/vertex-link/visualizer
+            console.log(`Transpiling (@deno/emit) ${filePath} from CWD: ${currentWorkingDir}`);
 
-            // Simple TypeScript to JavaScript transpilation
-            // For more complex cases, you might want to use the TypeScript compiler API
-            let jsSource = source
-                // Remove TypeScript imports with .ts extensions
-                .replace(/from\s+["'](.+?)\.ts["']/g, 'from "$1.js"')
-                // Remove type annotations (basic)
-                .replace(/:\s*\w+(\[\])?(\s*[=,)])/g, '$2')
-                // Remove interface declarations (basic)
-                .replace(/^interface\s+\w+\s*{[^}]*}/gm, '')
-                // Remove type exports
-                .replace(/^export\s+type\s+.+$/gm, '');
+            // Ensure filePath is correctly resolved to an absolute file URL for the entry point
+            const entryPointUrl = new URL(filePath, `file://${currentWorkingDir}/`).toString();
+            console.log(`Entry point URL for @deno/emit: ${entryPointUrl}`);
 
-            return new Response(jsSource, {
+            const result = await transpile(entryPointUrl, {
+                // Custom load function to intercept and potentially correct paths
+                async load(specifier: string): Promise<LoadResponse | undefined> {
+                    console.log(`@deno/emit load request: ${specifier}`);
+                    const url = new URL(specifier);
+
+                    if (url.protocol === "file:") {
+                        const fsPath = decodeURIComponent(url.pathname);
+                        try {
+                            // Check if the file exists at the path @deno/emit resolved
+                            if (await exists(fsPath)) {
+                                const content = await Deno.readTextFile(fsPath);
+                                console.log(`Loaded via custom load: ${fsPath}`);
+                                return {
+                                    kind: "module",
+                                    specifier: specifier, // Use the original absolute file URL specifier
+                                    content: content,
+                                };
+                            } else {
+                                console.warn(`Custom load: File does not exist at path: ${fsPath}`);
+                            }
+                        } catch (e) {
+                            console.error(`Custom load: Error reading file ${fsPath}:`, e);
+                        }
+                    } else {
+                        console.log(`Custom load: Skipping non-file specifier: ${specifier}`);
+                    }
+                    // If not found or not a file URL, let @deno/emit handle or error
+                    return undefined;
+                },
+                compilerOptions: {
+                    // experimentalDecorators: true,
+                    // emitDecoratorMetadata: true,
+                    "lib": ["deno.ns", "dom", "dom.iterable", "dom.asynciterable", "deno.unstable"],
+                    "target": "esnext",
+                    inlineSourceMap: true,
+                    // Consider adding if you have a deno.json with an import map
+                    // importMap: "./deno.json" // or path to your import map
+                },
+            });
+
+            // Find the emitted code for the entry point
+            let jsCode = "";
+            for (const [outPathSpecifier, emittedSource] of result) {
+                // The output specifier from transpile is the same as the input specifier
+                if (outPathSpecifier === entryPointUrl) {
+                    jsCode = emittedSource;
+                    break;
+                }
+            }
+
+            if (!jsCode) {
+                // If the entryPointUrl itself wasn't in the output map keys,
+                // it implies an issue with the transpile process for that specific file.
+                console.error("Output map from @deno/emit:", result);
+                throw new Error(`@deno/emit did not produce JavaScript output for the entry point ${entryPointUrl}. Check logs for load errors.`);
+            }
+
+            // IMPORTANT: Rewrite .ts imports to .ts for the browser.
+            // This regex aims to catch imports like:
+            // from './foo.ts' -> from './foo.ts' (no change)
+            // from './foo.js' -> from './foo.ts' (if @deno/emit changed it)
+            // from './foo'    -> from './foo.ts' (if @deno/emit removed extension)
+            jsCode = jsCode.replace(
+                /(from\s+["'])(.+?)(["'])/g,
+                (match, prefix, modulePath, suffix) => {
+                    let cleanModulePath = modulePath.split('?')[0]; // Remove query parameters like ?t=123
+
+                    if (cleanModulePath.endsWith('.ts')) {
+                        // Already ends with .ts, path is correct
+                        return `${prefix}${cleanModulePath}${suffix}`;
+                    } else if (cleanModulePath.endsWith('.js')) {
+                        // Ends with .js, replace with .ts
+                        return `${prefix}${cleanModulePath.slice(0, -3)}.ts${suffix}`;
+                    } else if (cleanModulePath.endsWith('.mjs')) {
+                        // Ends with .mjs, replace with .ts
+                        return `${prefix}${cleanModulePath.slice(0, -4)}.ts${suffix}`;
+                    } else {
+                        // No recognized extension, or a different one (e.g. import from a directory)
+                        // Append .ts, assuming it's a module that needs transpilation.
+                        // This also handles cases where @deno/emit might strip extensions.
+                        return `${prefix}${cleanModulePath}.ts${suffix}`;
+                    }
+                }
+            );
+            console.log(`Transpilation successful for ${filePath}. Output size: ${jsCode.length}`);
+
+            return new Response(jsCode, {
                 headers: {
-                    "Content-Type": "application/javascript",
+                    "Content-Type": "application/javascript;charset=utf-8",
                     ...this.getCORSHeaders()
                 }
             });
+
         } catch (error) {
-            return this.createErrorResponse(500, "TypeScript Transpilation Error", error.message);
+            console.error(`❌ TypeScript Transpilation Error (@deno/emit) for ${filePath}:`, error);
+            return this.createErrorResponse(500, "TypeScript Transpilation Error", error.message + (error.stack ? `\nStack: ${error.stack}` : ''));
         }
     }
-
+    
     private async handleAPIRequest(req: Request, pathname: string): Response {
         const apiPath = pathname.replace("/api/", "");
 

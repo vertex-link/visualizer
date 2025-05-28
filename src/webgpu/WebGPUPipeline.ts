@@ -1,4 +1,4 @@
-﻿// src/webgpu/WebGPUPipeline.ts
+﻿// src/webgpu/WebGPUPipeline.ts (Updated)
 
 import { IPipeline, PipelineDescriptor, VertexLayout } from "../engine/rendering/interfaces/IPipeline.ts";
 import { generateUUID } from "../utils/uuid.ts";
@@ -15,27 +15,23 @@ export class WebGPUPipeline implements IPipeline {
     private pipeline: GPURenderPipeline | null = null;
     private label: string;
     private isCompiled: boolean = false;
+    private preferredFormat: GPUTextureFormat; // Added
 
-    constructor(device: GPUDevice, descriptor: PipelineDescriptor) {
+    constructor(device: GPUDevice, descriptor: PipelineDescriptor, preferredFormat: GPUTextureFormat) { // Added format
         this.id = generateUUID();
         this.vertexLayout = descriptor.vertexLayout;
         this.device = device;
         this.label = descriptor.label || `Pipeline_${this.id}`;
+        this.preferredFormat = preferredFormat; // Store format
 
         // Compile the pipeline
         this.compile(descriptor);
     }
 
-    /**
-     * Check if the pipeline is ready for use.
-     */
     isReady(): boolean {
         return this.isCompiled && this.pipeline !== null;
     }
 
-    /**
-     * Get the underlying GPU render pipeline.
-     */
     getGPURenderPipeline(): GPURenderPipeline {
         if (!this.pipeline) {
             throw new Error('Pipeline not compiled or compilation failed');
@@ -43,22 +39,13 @@ export class WebGPUPipeline implements IPipeline {
         return this.pipeline;
     }
 
-    /**
-     * Destroy the pipeline and free its resources.
-     */
     destroy(): void {
-        // WebGPU pipelines don't have explicit destruction
-        // Just clear references
         this.pipeline = null;
         this.isCompiled = false;
     }
 
-    /**
-     * Compile the render pipeline from the descriptor.
-     */
     private compile(descriptor: PipelineDescriptor): void {
         try {
-            // Create shader modules
             const vertexShaderModule = this.device.createShaderModule({
                 code: descriptor.vertexShader,
                 label: `${this.label}_vertex`
@@ -69,23 +56,30 @@ export class WebGPUPipeline implements IPipeline {
                 label: `${this.label}_fragment`
             });
 
-            // Convert our vertex layout to WebGPU format
             const vertexBufferLayout = this.createWebGPUVertexLayout(descriptor.vertexLayout);
 
-            // Create render pipeline
+            // --- Depth Stencil State Added ---
+            const depthStencilState: GPUDepthStencilState = {
+                depthWriteEnabled: true,
+                depthCompare: 'less', // Standard depth test: Draw if closer
+                format: 'depth24plus', // Must match the depth texture format in Renderer
+            };
+            // --- End Depth Stencil State ---
+
+
             this.pipeline = this.device.createRenderPipeline({
                 label: this.label,
-                layout: 'auto', // Let WebGPU infer the layout
+                layout: 'auto',
                 vertex: {
                     module: vertexShaderModule,
-                    entryPoint: 'vs_main',
+                    entryPoint: descriptor.entryPoints?.vertex || 'vs_main', // Use entry points
                     buffers: [vertexBufferLayout]
                 },
                 fragment: {
                     module: fragmentShaderModule,
-                    entryPoint: 'fs_main',
+                    entryPoint: descriptor.entryPoints?.fragment || 'fs_main', // Use entry points
                     targets: [{
-                        format: navigator.gpu.getPreferredCanvasFormat()
+                        format: this.preferredFormat // Use stored format
                     }]
                 },
                 primitive: {
@@ -93,7 +87,7 @@ export class WebGPUPipeline implements IPipeline {
                     cullMode: 'back',
                     frontFace: 'ccw'
                 },
-                depthStencil: undefined // No depth buffer for Phase 1
+                depthStencil: depthStencilState // Use the defined depth state
             });
 
             this.isCompiled = true;
@@ -106,9 +100,7 @@ export class WebGPUPipeline implements IPipeline {
         }
     }
 
-    /**
-     * Convert our vertex layout to WebGPU vertex buffer layout.
-     */
+
     private createWebGPUVertexLayout(layout: VertexLayout): GPUVertexBufferLayout {
         const attributes: GPUVertexAttribute[] = layout.attributes.map(attr => ({
             shaderLocation: attr.location,
@@ -123,83 +115,28 @@ export class WebGPUPipeline implements IPipeline {
         };
     }
 
-    /**
-     * Convert our vertex format strings to WebGPU vertex formats.
-     */
+
     private convertVertexFormat(format: string): GPUVertexFormat {
-        switch (format) {
-            case 'float32': return 'float32';
-            case 'float32x2': return 'float32x2';
-            case 'float32x3': return 'float32x3';
-            case 'float32x4': return 'float32x4';
-            case 'uint32': return 'uint32';
-            case 'uint32x2': return 'uint32x2';
-            case 'uint32x3': return 'uint32x3';
-            case 'uint32x4': return 'uint32x4';
-            case 'sint32': return 'sint32';
-            case 'sint32x2': return 'sint32x2';
-            case 'sint32x3': return 'sint32x3';
-            case 'sint32x4': return 'sint32x4';
-            default:
-                throw new Error(`Unsupported vertex format: ${format}`);
-        }
-    }
-
-    /**
-     * Static factory method to create a pipeline.
-     */
-    static create(device: GPUDevice, descriptor: PipelineDescriptor): WebGPUPipeline {
-        return new WebGPUPipeline(device, descriptor);
-    }
-
-    /**
-     * Static helper to create a simple colored pipeline.
-     */
-    static createBasicColored(device: GPUDevice, label?: string): WebGPUPipeline {
-        const vertexShader = `
-struct VertexInput {
-    @location(0) position: vec3f,
-}
-
-struct VertexOutput {
-    @builtin(position) position: vec4f,
-}
-
-struct Uniforms {
-    mvpMatrix: mat4x4f,
-}
-
-@group(0) @binding(0) var<uniform> uniforms: Uniforms;
-
-@vertex
-fn vs_main(input: VertexInput) -> VertexOutput {
-    var output: VertexOutput;
-    output.position = uniforms.mvpMatrix * vec4f(input.position, 1.0);
-    return output;
-}
-`;
-
-        const fragmentShader = `
-@fragment
-fn fs_main() -> @location(0) vec4f {
-    return vec4f(1.0, 0.5, 0.2, 1.0); // Orange color
-}
-`;
-
-        const descriptor: PipelineDescriptor = {
-            vertexShader,
-            fragmentShader,
-            vertexLayout: {
-                stride: 12, // 3 floats * 4 bytes
-                attributes: [{
-                    location: 0,
-                    format: 'float32x3',
-                    offset: 0
-                }]
-            },
-            label: label || 'Basic Colored Pipeline'
+        // Ensure all possible formats are covered or throw an error
+        const validFormats: Record<string, GPUVertexFormat> = {
+            'float32': 'float32', 'float32x2': 'float32x2', 'float32x3': 'float32x3', 'float32x4': 'float32x4',
+            'uint32': 'uint32', 'uint32x2': 'uint32x2', 'uint32x3': 'uint32x3', 'uint32x4': 'uint32x4',
+            'sint32': 'sint32', 'sint32x2': 'sint32x2', 'sint32x3': 'sint32x3', 'sint32x4': 'sint32x4',
+            'uint8x2': 'uint8x2', 'uint8x4': 'uint8x4', 'sint8x2': 'sint8x2', 'sint8x4': 'sint8x4',
+            'unorm8x2': 'unorm8x2', 'unorm8x4': 'unorm8x4', 'snorm8x2': 'snorm8x2', 'snorm8x4': 'snorm8x4',
+            'uint16x2': 'uint16x2', 'uint16x4': 'uint16x4', 'sint16x2': 'sint16x2', 'sint16x4': 'sint16x4',
+            'unorm16x2': 'unorm16x2', 'unorm16x4': 'unorm16x4', 'snorm16x2': 'snorm16x2', 'snorm16x4': 'snorm16x4',
+            'float16x2': 'float16x2', 'float16x4': 'float16x4',
         };
+        const gpuFormat = validFormats[format];
+        if (gpuFormat) {
+            return gpuFormat;
+        }
+        throw new Error(`Unsupported vertex format: ${format}`);
+    }
 
-        return new WebGPUPipeline(device, descriptor);
+
+    static create(device: GPUDevice, descriptor: PipelineDescriptor, format: GPUTextureFormat): WebGPUPipeline {
+        return new WebGPUPipeline(device, descriptor, format);
     }
 }

@@ -1,8 +1,8 @@
 ﻿// src/engine/rendering/components/MeshRendererComponent.ts
 
-import Component from "../../core/component/Component.ts";
-import Actor from "../../core/Actor.ts";
-import { RequireComponent } from "../../core/component/Decorators.ts";
+import Component from "../../../core/component/Component.ts";
+import Actor from "../../../core/Actor.ts";
+import { RequireComponent } from "../../../core/component/Decorators.ts";
 import { TransformComponent } from "./TransformComponent.ts";
 
 // Forward declarations for resources (will be implemented in Phase 2)
@@ -22,7 +22,6 @@ export interface MaterialResource {
  * Component that makes an Actor renderable by associating it with mesh and material resources.
  * Automatically requires a TransformComponent for positioning.
  */
-@RequireComponent(TransformComponent)
 export class MeshRendererComponent extends Component {
     /** The mesh resource containing geometry data */
     public mesh: MeshResource | null = null;
@@ -35,6 +34,9 @@ export class MeshRendererComponent extends Component {
 
     /** Render layer/priority (for sorting) */
     public layer: number = 0;
+
+    @RequireComponent(TransformComponent)
+    private transform: TransformComponent;
 
     constructor(
         actor: Actor,

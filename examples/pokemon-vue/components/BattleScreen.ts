@@ -1,7 +1,7 @@
 ﻿import PokemonCard from './PokemonCard.ts';
 import ActionBar from './ActionBar.ts';
 import MessageLog from './MessageLog.ts';
-import Actor from '../../src/core/Actor.ts';
+import Actor from '../../../src/core/Actor.ts';
 import { Scene } from '../../src/core/scene/Scene.ts';
 import { getEventBus, emit } from '../../src/core/events/Event.ts';
 import { IPokemonServiceKey } from '../services/PokemonService.ts';

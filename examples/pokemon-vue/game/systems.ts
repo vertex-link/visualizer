@@ -6,7 +6,7 @@ import {
     FaintEvent, RequestPlayerActionEvent, UIMessageEvent, UIUpdateEvent,
     UIAnimationEvent, BattleEndEvent
 } from './events.ts';
-import Actor from '../../src/core/Actor.ts';
+import Actor from '../../../src/core/Actor.ts';
 import { PokemonStatsComponent, ActiveTurnComponent } from './components.ts';
 import { PokemonMove } from '../services/PokemonService.ts';
 
