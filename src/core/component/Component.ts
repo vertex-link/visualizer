@@ -1,52 +1,30 @@
-﻿
-import Actor from "./../Actor.ts";
-import { generateUUID } from "./../../utils/uuid.ts";
-import { emit } from "../events/EventBus.ts";
-import {registerEventListeners, unregisterEventListeners} from "../events/Decorators.ts";
-import {ComponentAddedEvent, ComponentRemovedEvent} from "../events/CoreEvents.ts";
+﻿// src/core/component/Component.ts
+import Actor from "../Actor.ts";
+import { generateUUID } from "../../utils/uuid.ts";
+import { emit } from "../events/Event.ts";
+import {
+    registerEventListeners,
+    unregisterEventListeners,
+} from "../events/Decorators.ts";
+import { ComponentAddedEvent, ComponentRemovedEvent, ComponentInitializedEvent } from "../events/CoreEvents.ts";
+import {COMPONENT_DEPENDENCIES_KEY, ComponentDependencyMetadata} from "./Decorators.ts";
 
-// Existing ComponentClass type
 export type ComponentClass<T extends Component = Component> = new (actor: Actor, ...args: any[]) => T;
 
-/**
- * Utility type to extract the constructor parameters of a ComponentClass,
- * excluding the first 'actor' argument.
- */
 export type ComponentConstructorParameters<
     T extends new (actor: Actor, ...args: any[]) => any
 > = T extends new (actor: Actor, ...args: infer P) => any ? P : never;
 
-// ==================== Dependency Injection System ====================
-
-// Metadata key for dependency injection
-const COMPONENT_DEPENDENCIES_KEY = Symbol('componentDependencies');
-
-interface ComponentDependencyMetadata {
-    componentClass: ComponentClass;
-    propertyKey: string | symbol;
-}
-
-/**
- * Decorator for component dependencies - throws if not present
- * Usage: @AddComponent(HealthComponent) private health!: HealthComponent;
- */
-export function AddComponent<T extends Component>(componentClass: ComponentClass<T>) {
-    return function (target: any, propertyKey: string | symbol) {
-        const dependencies: ComponentDependencyMetadata[] = Reflect.getOwnMetadata(COMPONENT_DEPENDENCIES_KEY, target) || [];
-        dependencies.push({
-            componentClass,
-            propertyKey
-        });
-        Reflect.defineMetadata(COMPONENT_DEPENDENCIES_KEY, dependencies, target);
-    };
-}
+// ==================== Component Base Class ====================
 
 export default abstract class Component {
     public readonly id: string;
     readonly #actor: Actor;
 
-    #dependencies = new Map<ComponentClass<any>, Component | undefined>();
+    #dependencies = new Map<ComponentClass, Component | undefined>();
+    #dependencyMetadata: ComponentDependencyMetadata[] = [];
     #initialized = false;
+    #initializing = false; // For circular dependency detection
 
     constructor(actor: Actor) {
         if (!actor || !(actor instanceof Actor)) {
@@ -57,8 +35,6 @@ export default abstract class Component {
 
         // Set up dependency injection from decorators
         this.setupDependencyInjection();
-
-        // console.debug(`Component '${this.constructor.name}' (ID: ${this.id}) created for Actor '${actor.label}'.`);
     }
 
     public get actor(): Actor {
@@ -66,22 +42,54 @@ export default abstract class Component {
     }
 
     /**
-     * Set up dependency injection from @AddComponent decorators
+     * Set up dependency injection from decorators
      */
     private setupDependencyInjection(): void {
-        const dependencies: ComponentDependencyMetadata[] = Reflect.getOwnMetadata(COMPONENT_DEPENDENCIES_KEY, Object.getPrototypeOf(this)) || [];
+        // Get metadata through the standard reflection approach
+        this.#dependencyMetadata =
+            Reflect.getOwnMetadata(COMPONENT_DEPENDENCIES_KEY, Object.getPrototypeOf(this)) || [];
 
-        for (const dep of dependencies) {
-            // Register dependency in the existing system
+        // Also check for directly stored metadata on the constructor
+        const constructor = this.constructor as any;
+        if (constructor._componentDependencies) {
+            this.#dependencyMetadata = [
+                ...this.#dependencyMetadata,
+                ...constructor._componentDependencies
+            ];
+
+            console.log(`[DEBUG] Found ${constructor._componentDependencies.length} direct dependencies on ${constructor.name}`);
+        }
+
+        // If we still have no dependencies, try to scan up the prototype chain
+        if (this.#dependencyMetadata.length === 0) {
+            let proto = Object.getPrototypeOf(this);
+            while (proto && proto !== Object.prototype) {
+                const metadataOnProto = Reflect.getOwnMetadata(COMPONENT_DEPENDENCIES_KEY, proto);
+                if (metadataOnProto) {
+                    this.#dependencyMetadata = [...this.#dependencyMetadata, ...metadataOnProto];
+                    console.log(`[DEBUG] Found ${metadataOnProto.length} dependencies on prototype chain for ${this.constructor.name}`);
+                    break;
+                }
+                proto = Object.getPrototypeOf(proto);
+            }
+        }
+
+        for (const dep of this.#dependencyMetadata) {
+            // Register dependency
             this.#dependencies.set(dep.componentClass, undefined);
 
             // Set up getter on the property for direct access
             Object.defineProperty(this, dep.propertyKey, {
                 get: () => {
                     const instance = this.#dependencies.get(dep.componentClass);
-                    if (!instance) {
-                        throw new Error(`Required dependency ${dep.componentClass.name} not available in ${this.constructor.name}. Make sure the component is added to the actor first.`);
+
+                    if (!instance && !dep.optional) {
+                        throw new Error(
+                            `Required dependency ${dep.componentClass.name} not available in ${this.constructor.name}. ` +
+                            `Make sure the component is added to the actor first.`
+                        );
                     }
+
                     return instance;
                 },
                 enumerable: true,
@@ -89,48 +97,91 @@ export default abstract class Component {
             });
         }
     }
-    
+
+    /**
+     * Check and resolve dependencies with circular dependency detection
+     */
     public checkAndResolveDependencies(): boolean {
         if (this.#initialized) {
             return true;
         }
 
-        let allResolved = true;
-        if (this.#dependencies.size > 0) {
-            for (const [requiredClass, resolvedInstance] of this.#dependencies) {
-                if (resolvedInstance) continue;
+        if (this.#initializing) {
+            // Circular dependency detected
+            console.warn(
+                `Circular dependency detected in ${this.constructor.name}. ` +
+                `Component is trying to initialize while already initializing.`
+            );
+            return false;
+        }
 
-                if (this.actor.hasComponent(requiredClass)) {
-                    this.#dependencies.set(requiredClass, this.actor.getComponent(requiredClass));
-                } else {
+        this.#initializing = true;
+
+        try {
+            // Check all dependencies
+            let allResolved = true;
+
+            for (const dep of this.#dependencyMetadata) {
+                const existing = this.#dependencies.get(dep.componentClass);
+                if (existing) continue;
+
+                const component = this.actor.getComponent(dep.componentClass);
+
+                if (component) {
+                    // Ensure the dependency is initialized first
+                    if (!component.isInitialized) {
+                        const depResolved = component.checkAndResolveDependencies();
+                        if (!depResolved && !dep.optional) {
+                            allResolved = false;
+                            break;
+                        }
+                    }
+
+                    this.#dependencies.set(dep.componentClass, component);
+                } else if (!dep.optional) {
                     allResolved = false;
                     break;
                 }
             }
-        }
 
-        if (allResolved) {
-            this.#initialized = true;
+            if (allResolved) {
+                this.#initialized = true;
 
-            // Register event listeners from decorators
-            this.registerComponentEventListeners();
+                // Register event listeners
+                this.registerComponentEventListeners();
 
-            // Call the lifecycle hooks
-            this.onDependenciesResolved();
+                // Call lifecycle hooks
+                this.onDependenciesResolved();
 
-            // Emit component added event
-            emit(new ComponentAddedEvent(this.actor, this, this.constructor.name));
+                // Emit events
+                emit(new ComponentInitializedEvent({
+                    actor: this.actor,
+                    component: this
+                }));
 
-            // Then call initialize for backwards compatibility
-            if (typeof (this as any).initialize === 'function') {
-                try {
-                    (this as any).initialize();
-                } catch (e) {
-                    console.error(`Error during initialize() of component ${this.constructor.name} (ID: ${this.id}):`, e);
+                emit(new ComponentAddedEvent({
+                    actor: this.actor,
+                    component: this,
+                    componentType: this.constructor.name
+                }));
+
+                // Legacy initialize support
+                if (typeof (this as any).initialize === 'function') {
+                    try {
+                        (this as any).initialize();
+                    } catch (e) {
+                        console.error(
+                            `Error during initialize() of component ${this.constructor.name} (ID: ${this.id}):`,
+                            e
+                        );
+                    }
                 }
             }
+
+            return allResolved;
+        } finally {
+            this.#initializing = false;
         }
-        return this.#initialized;
     }
 
     /**
@@ -138,20 +189,19 @@ export default abstract class Component {
      */
     private registerComponentEventListeners(): void {
         try {
-            // Try to get the scene's event bus from the actor
             const scene = (this.actor as any).scene;
             const eventBus = scene?.eventBus;
 
             if (eventBus) {
-                // Use the scene's event bus if available
                 registerEventListeners(this, eventBus);
             } else {
-                // Fall back to default event bus
                 registerEventListeners(this);
             }
         } catch (error) {
-            // If no default event bus is set up, just log a warning
-            console.warn(`Could not register event listeners for ${this.constructor.name}: No event bus available`);
+            console.warn(
+                `Could not register event listeners for ${this.constructor.name}: ` +
+                `No event bus available`
+            );
         }
     }
 
@@ -164,18 +214,47 @@ export default abstract class Component {
     }
 
     /**
-     * Check if component has been initialized (all dependencies resolved)
+     * Check if component has been initialized
      */
     public get isInitialized(): boolean {
         return this.#initialized;
     }
 
     /**
-     * Dispose component and clean up event listeners
+     * Get dependency resolution details for debugging
+     */
+    public getDependencyInfo(): {
+        dependencies: Array<{
+            name: string;
+            required: boolean;
+            resolved: boolean;
+        }>;
+        initialized: boolean;
+        hasCircularDependency: boolean;
+    } {
+        const dependencies = this.#dependencyMetadata.map(dep => ({
+            name: dep.componentClass.name,
+            required: !dep.optional,
+            resolved: this.#dependencies.get(dep.componentClass) !== undefined
+        }));
+
+        return {
+            dependencies,
+            initialized: this.#initialized,
+            hasCircularDependency: this.#initializing
+        };
+    }
+
+    /**
+     * Dispose component and clean up
      */
     public dispose(): void {
-        // Emit component removed event
-        emit(new ComponentRemovedEvent(this.actor, this, this.constructor.name));
+        // Emit removal event
+        emit(new ComponentRemovedEvent({
+            actor: this.actor,
+            component: this,
+            componentType: this.constructor.name
+        }));
 
         // Unregister event listeners
         try {
@@ -188,7 +267,11 @@ export default abstract class Component {
                 unregisterEventListeners(this);
             }
         } catch (error) {
-            // If no event bus available, just continue
+            // Silent fail
         }
+
+        // Clear dependencies
+        this.#dependencies.clear();
+        this.#initialized = false;
     }
 }

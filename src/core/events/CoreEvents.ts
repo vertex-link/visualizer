@@ -1,57 +1,154 @@
-﻿
+﻿// src/core/events/CoreEvents.ts
+import { Event } from './Event.ts';
+import Actor from '../Actor.ts';
+import Component from '../component/Component.ts';
+import { Scene } from '../scene/Scene.ts';
+
+// ==================== Core Framework Events ====================
+
 /**
- * Base class for core framework events
+ * Entity lifecycle events
  */
-export abstract class CoreEvent extends Event {
-    // Core framework events have a core prefix
+export class EntityCreatedEvent extends Event<{
+    entity: Actor;
+    scene?: Scene;
+}> {
+    static readonly eventType = 'core.entity.created';
+}
+
+export class EntityDestroyedEvent extends Event<{
+    entity: Actor;
+    scene?: Scene;
+}> {
+    static readonly eventType = 'core.entity.destroyed';
 }
 
 /**
- * Entity created event
+ * Component lifecycle events
  */
-export class EntityCreatedEvent extends CoreEvent {
-    constructor(
-        public readonly entity: any,
-        public readonly container?: any
-    ) {
-        super(entity);
-    }
+export class ComponentAddedEvent extends Event<{
+    actor: Actor;
+    component: Component;
+    componentType: string;
+}> {
+    static readonly eventType = 'core.component.added';
+}
+
+export class ComponentRemovedEvent extends Event<{
+    actor: Actor;
+    component: Component;
+    componentType: string;
+}> {
+    static readonly eventType = 'core.component.removed';
+}
+
+export class ComponentInitializedEvent extends Event<{
+    actor: Actor;
+    component: Component;
+}> {
+    static readonly eventType = 'core.component.initialized';
 }
 
 /**
- * Entity destroyed event
+ * Scene events
  */
-export class EntityDestroyedEvent extends CoreEvent {
-    constructor(
-        public readonly entity: any,
-        public readonly container?: any
-    ) {
-        super(entity);
-    }
+export class SceneActivatedEvent extends Event<{
+    scene: Scene;
+}> {
+    static readonly eventType = 'core.scene.activated';
+}
+
+export class SceneDeactivatedEvent extends Event<{
+    scene: Scene;
+}> {
+    static readonly eventType = 'core.scene.deactivated';
+}
+
+// ==================== Engine Events (Examples) ====================
+
+/**
+ * Input events
+ */
+export class KeyDownEvent extends Event<{
+    key: string;
+    repeat: boolean;
+    ctrlKey: boolean;
+    shiftKey: boolean;
+    altKey: boolean;
+}> {
+    static readonly eventType = 'engine.input.keydown';
+}
+
+export class KeyUpEvent extends Event<{
+    key: string;
+}> {
+    static readonly eventType = 'engine.input.keyup';
+}
+
+export class MouseClickEvent extends Event<{
+    x: number;
+    y: number;
+    button: number;
+    screenX: number;
+    screenY: number;
+}> {
+    static readonly eventType = 'engine.input.mouseclick';
+}
+
+export class MouseMoveEvent extends Event<{
+    x: number;
+    y: number;
+    deltaX: number;
+    deltaY: number;
+}> {
+    static readonly eventType = 'engine.input.mousemove';
+}
+
+// ==================== Game Events (Examples) ====================
+
+/**
+ * Entity interaction events
+ */
+export class EntityDamagedEvent extends Event<{
+    target: Actor;
+    damage: number;
+    source?: Actor;
+    damageType: string;
+}> {
+    static readonly eventType = 'game.entity.damaged';
+}
+
+export class EntityHealedEvent extends Event<{
+    target: Actor;
+    amount: number;
+    source?: Actor;
+}> {
+    static readonly eventType = 'game.entity.healed';
+}
+
+export class EntityDiedEvent extends Event<{
+    target: Actor;
+    killer?: Actor;
+    damageType?: string;
+}> {
+    static readonly eventType = 'game.entity.died';
 }
 
 /**
- * Component added event
+ * Collision events
  */
-export class ComponentAddedEvent extends CoreEvent {
-    constructor(
-        public readonly entity: any,
-        public readonly component: any,
-        public readonly componentType: string
-    ) {
-        super(component);
-    }
+export class CollisionStartEvent extends Event<{
+    actorA: Actor;
+    actorB: Actor;
+    contactPoint: { x: number; y: number; z: number };
+    normal: { x: number; y: number; z: number };
+}> {
+    static readonly eventType = 'game.collision.start';
 }
 
-/**
- * Component removed event
- */
-export class ComponentRemovedEvent extends CoreEvent {
-    constructor(
-        public readonly entity: any,
-        public readonly component: any,
-        public readonly componentType: string
-    ) {
-        super(component);
-    }
+export class CollisionEndEvent extends Event<{
+    actorA: Actor;
+    actorB: Actor;
+}> {
+    static readonly eventType = 'game.collision.end';
 }

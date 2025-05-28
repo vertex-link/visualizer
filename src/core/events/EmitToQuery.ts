@@ -1,26 +1,28 @@
 ﻿
-/**
- * Query target interface for event emission
- */
-export interface QueryTarget {
-    execute(provider: any): any[];
-}
+import { QueryBuilder } from '../scene/QueryBuilder.ts';
+import { IQueryDataProvider } from '../scene/QueryCondition.ts';
 
 /**
- * Emit events to query results
+ * Emit event to all actors matching a query
+ * Each actor receives the event with itself as the target
  */
 export function emitToQuery<T extends Event>(
     eventBus: IEventBus,
-    query: QueryTarget,
-    dataProvider: any,
+    query: QueryBuilder,
+    dataProvider: IQueryDataProvider,
     event: T
 ): void {
     const targets = query.execute(dataProvider);
 
+    // Emit individual events for each target
     targets.forEach(target => {
-        // Create a targeted event for each target
-        event.target = target;
+        // Clone the event to avoid mutation issues
+        const targetedEvent = Object.create(
+            Object.getPrototypeOf(event),
+            Object.getOwnPropertyDescriptors(event)
+        );
+        targetedEvent.target = target;
 
-        eventBus.emit(event);
+        eventBus.emit(targetedEvent);
     });
 }
