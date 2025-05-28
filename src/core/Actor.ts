@@ -1,11 +1,9 @@
-﻿// src/core/Actor.ts - Fixed version without task tracking
-
-import Component, {ComponentClass, ComponentConstructorParameters} from "./component/Component.ts";
+﻿import Component, {ComponentClass, ComponentConstructorParameters} from "./component/Component.ts";
 import { HOOKED_METHODS_METADATA_KEY, HookedMethodMetadata } from './processor/Decorators.ts';
 import { ProcessorRegistry } from './processor/ProcessorRegistry.ts';
 import { IProcessable } from './processor/Processor.ts';
 import { generateUUID } from "../utils/uuid.ts";
-import {ComponentTypeRegistry} from "./component/ComponentRegistry.ts";
+import { ComponentTypeRegistry } from "./component/ComponentRegistry.ts";
 
 export default class Actor {
     public readonly label: string;
@@ -102,11 +100,31 @@ export default class Actor {
         return allSuccessful && parentSuccess;
     }
 
+    /**
+     * Enhanced dependency resolution that handles both old and new dependency systems
+     */
     private updateDependencies(): void {
-        for (const component of this.components) {
-            if (component && typeof (component as any).checkAndResolveDependencies === 'function') {
-                (component as any).checkAndResolveDependencies();
+        // Keep trying to resolve dependencies until all are resolved or no progress is made
+        let maxAttempts = 10; // Prevent infinite loops
+        let resolved = false;
+
+        while (!resolved && maxAttempts > 0) {
+            resolved = true;
+
+            for (const component of this.components) {
+                if (component && typeof (component as any).checkAndResolveDependencies === 'function') {
+                    const componentResolved = (component as any).checkAndResolveDependencies();
+                    if (!componentResolved) {
+                        resolved = false;
+                    }
+                }
             }
+
+            maxAttempts--;
+        }
+
+        if (maxAttempts === 0) {
+            console.warn(`Actor '${this.label}': Could not resolve all component dependencies after 10 attempts. Check for circular dependencies.`);
         }
     }
 
@@ -128,7 +146,6 @@ export default class Actor {
         this.componentMask |= (1n << BigInt(componentId));
 
         // Register component's decorated methods
-        console.debug(`Registering decorated methods for component '${componentClass.name}' (ID: ${component.id})`);
         this.registerDecoratedMethodsForInstance(
             component,
             component.id,
@@ -137,9 +154,6 @@ export default class Actor {
         );
 
         if (this.isInitialized) {
-            if (typeof (component as any).checkAndResolveDependencies === 'function') {
-                (component as any).checkAndResolveDependencies();
-            }
             this.updateDependencies();
         }
 
@@ -211,6 +225,26 @@ export default class Actor {
 
     public getAllComponents(): Component[] {
         return this.components.filter(c => c !== undefined) as Component[];
+    }
+
+    public getInitializedComponents(): Component[] {
+        return this.getAllComponents().filter(c => c.isInitialized);
+    }
+    
+    public get allComponentsInitialized(): boolean {
+        return this.getAllComponents().every(c => c.isInitialized);
+    }
+
+    public resolveDependencies(): void {
+        this.updateDependencies();
+    }
+
+    public getDependencyStatus(): { [componentName: string]: boolean } {
+        const status: { [componentName: string]: boolean } = {};
+        for (const component of this.getAllComponents()) {
+            status[component.constructor.name] = component.isInitialized;
+        }
+        return status;
     }
 
     public destroy(): void {

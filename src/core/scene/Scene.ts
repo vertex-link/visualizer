@@ -1,16 +1,23 @@
-﻿// src/core/scene/Scene.ts
-
+﻿
 import Actor from '../Actor.ts';
 import { ComponentClass } from '../component/Component.ts';
 import { ComponentTypeRegistry } from '../component/ComponentRegistry.ts';
 import { QueryBuilder } from './QueryBuilder.ts';
 import { IQueryDataProvider } from './QueryCondition.ts';
+import {
+    IEventBus,
+    EventBus, getEventBus,
+} from '../events/EventBus.ts';
+import {EntityCreatedEvent, EntityDestroyedEvent} from "../events/CoreEvents.ts";
+import {emitToQuery} from "../events/EmitToQuery.ts";
 
 /**
  * Core Scene class - manages actors and provides efficient queries
+ * Can optionally share an event bus with other scenes
  */
 export class Scene implements IQueryDataProvider {
     public readonly name: string;
+    public readonly eventBus: IEventBus;
 
     // Core storage
     private actors: Set<Actor> = new Set();
@@ -19,8 +26,14 @@ export class Scene implements IQueryDataProvider {
     private tagIndex = new Map<string, Set<Actor>>();
     private componentIndex = new Map<number, Set<Actor>>();
 
-    constructor(name: string = 'Scene') {
+    /**
+     * Create a scene with optional shared event bus
+     * @param name Scene name
+     * @param eventBus Optional shared event bus. If not provided, creates its own.
+     */
+    constructor(name: string = 'Scene', eventBus: IEventBus = getEventBus()) {
         this.name = name;
+        this.eventBus = eventBus;
     }
 
     // ==================== Actor Management ====================
@@ -33,6 +46,9 @@ export class Scene implements IQueryDataProvider {
 
         this.actors.add(actor);
         this.indexActor(actor);
+
+        // Emit core framework event
+        this.eventBus.emit(new EntityCreatedEvent(actor, this));
     }
 
     /**
@@ -43,6 +59,10 @@ export class Scene implements IQueryDataProvider {
 
         this.actors.delete(actor);
         this.deindexActor(actor);
+
+        // Emit core framework event
+        this.eventBus.emit(new EntityDestroyedEvent(actor, this));
+
         return true;
     }
 
@@ -73,10 +93,28 @@ export class Scene implements IQueryDataProvider {
     // ==================== Query System ====================
 
     /**
-     * Create a new query builder
+     * Create a new query builder connected to this scene's event bus
      */
-    query<T extends Actor = Actor>(): QueryBuilder<T> {
-        return new QueryBuilder<T>();
+    query<T extends Actor = Actor>(): SceneQueryBuilder<T> {
+        return new SceneQueryBuilder<T>(this, this.eventBus);
+    }
+
+    // ==================== Event Integration ====================
+
+    /**
+     * Emit event to actors matching the query
+     */
+    emitToQuery<E extends Event>(queryBuilder: QueryBuilder, event: E): void {
+        emitToQuery(this.eventBus, queryBuilder, this, event);
+    }
+
+    /**
+     * Emit an event using this scene's event bus
+     */
+    emit<E extends Event>(event: E): void {
+        // Add scene context to the event
+        (event as any).sourceScene = this;
+        this.eventBus.emit(event);
     }
 
     // ==================== IQueryDataProvider Implementation ====================
@@ -204,6 +242,11 @@ export class Scene implements IQueryDataProvider {
      * Clear all actors
      */
     clear(): void {
+        // Emit destroyed events for all actors
+        this.actors.forEach(actor => {
+            this.eventBus.emit(new EntityDestroyedEvent(actor, this));
+        });
+
         this.actors.clear();
         this.tagIndex.clear();
         this.componentIndex.clear();
@@ -214,5 +257,34 @@ export class Scene implements IQueryDataProvider {
      */
     dispose(): void {
         this.clear();
+        // Note: Don't clear the event bus as it might be shared
+    }
+}
+
+// ==================== Enhanced Query Builder ====================
+
+/**
+ * Query builder that's connected to a scene's event bus for emit functionality
+ */
+export class SceneQueryBuilder<T extends Actor = Actor> extends QueryBuilder<T> {
+    constructor(
+        private scene: Scene,
+        private eventBus: IEventBus
+    ) {
+        super();
+    }
+
+    /**
+     * Emit event to all actors matching this query
+     */
+    emit<E extends Event>(event: E): void {
+        emitToQuery(this.eventBus, this, this.scene, event);
+    }
+
+    /**
+     * Execute the query (override to use our scene)
+     */
+    execute(): T[] {
+        return super.execute(this.scene);
     }
 }
