@@ -1,10 +1,10 @@
 ﻿// examples/phase3/RotatingComponent.ts
 
 import Component from '../../src/core/component/Component.ts';
-import { RenderUpdate } from '../../src/engine/processors/RenderProcessor.ts';
+import { Update } from '../../src/core/processor/Decorators.ts'; // Use generic Update
 import { RequireComponent } from '../../src/core/component/Decorators.ts';
 import { TransformComponent, Vec3 } from '../../src/engine/rendering/components/TransformComponent.ts';
-import { Transform } from '../../src/engine/rendering/math/Transform.ts'; // Import Transform
+import { Transform } from '../../src/engine/rendering/math/Transform.ts';
 
 @RequireComponent(TransformComponent)
 export class RotatingComponent extends Component {
@@ -15,7 +15,7 @@ export class RotatingComponent extends Component {
         this.transform = this.actor.getComponent(TransformComponent)!;
     }
 
-    @RenderUpdate()
+    @Update('webgpu') // Use 'webgpu' processor name, not 'render'
     update(deltaTime: number): void {
         if (!this.transform) return;
 
@@ -28,10 +28,6 @@ export class RotatingComponent extends Component {
         const deltaRotation = Transform.fromAxisAngle(rotationAxis, deltaAngle);
 
         // Apply the rotation: newRotation = deltaRotation * currentRotation
-        // Quaternion multiplication order matters. Typically for object space rotations that accumulate,
-        // it's deltaRotation * current. For world space, it might be current * deltaRotation.
-        // Let's assume we want to rotate in object's local space around its Y axis, or a fixed world Y.
-        // If always rotating around world Y:
         this.transform.rotation = Transform.multiplyQuat(deltaRotation, this.transform.rotation);
 
         // It's good practice to re-normalize the quaternion after repeated multiplications

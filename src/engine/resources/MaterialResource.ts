@@ -77,7 +77,22 @@ export class MaterialResource extends Resource {
      * Get the compiled render pipeline.
      */
     getPipeline(): GPURenderPipeline | null {
-        return this.pipeline?.getGPURenderPipeline() || null;
+        if (!this.isCompiled || !this.pipeline) {
+            console.warn(`MaterialResource "${this.name}": Pipeline requested but not ready (compiled: ${this.isCompiled}, pipeline exists: ${!!this.pipeline})`);
+            return null;
+        }
+        
+        try {
+            const gpuPipeline = this.pipeline.getGPURenderPipeline();
+            if (!gpuPipeline) {
+                console.error(`MaterialResource "${this.name}": WebGPUPipeline.getGPURenderPipeline() returned null`);
+                return null;
+            }
+            return gpuPipeline;
+        } catch (error) {
+            console.error(`MaterialResource "${this.name}": Error getting GPU pipeline:`, error);
+            return null;
+        }
     }
 
     /**
@@ -203,6 +218,7 @@ export class MaterialResource extends Resource {
      */
     async compile(): Promise<void> {
         if (this.isCompiled || !this.isLoaded()) {
+            console.log(`MaterialResource "${this.name}": Already compiled or not loaded (compiled: ${this.isCompiled}, loaded: ${this.isLoaded()})`);
             return;
         }
 
@@ -214,22 +230,28 @@ export class MaterialResource extends Resource {
             throw new Error(`MaterialResource "${this.name}": Cannot compile without material data`);
         }
 
+        console.log(`🔄 MaterialResource "${this.name}": Starting compilation...`);
+
         try {
             // Ensure shader is compiled and has device
             const shader = this.materialDescriptor.shader;
+            console.log(`MaterialResource "${this.name}": Checking shader compilation...`);
+            
             if (!shader.isCompiled) {
+                console.log(`MaterialResource "${this.name}": Compiling shader...`);
                 shader.setDevice(this.device);
                 await shader.compile();
             }
 
+            console.log(`MaterialResource "${this.name}": Creating pipeline...`);
             // Create render pipeline
             this.pipeline = await this.createPipeline();
 
             this.isCompiled = true;
-            console.debug(`MaterialResource "${this.name}" compiled successfully`);
+            console.log(`✅ MaterialResource "${this.name}" compiled successfully`);
 
         } catch (error) {
-            console.error(`Failed to compile MaterialResource "${this.name}":`, error);
+            console.error(`❌ Failed to compile MaterialResource "${this.name}":`, error);
             throw error;
         }
     }

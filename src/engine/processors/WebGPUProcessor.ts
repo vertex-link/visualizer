@@ -1,4 +1,4 @@
-﻿// src/engine/processors/WebGPUProcessor.ts
+﻿// src/engine/processors/WebGPUProcessor.ts - Fixed version
 
 import { Processor } from "../../core/processor/Processor.ts";
 import { createProcessorUpdateDecorator } from "../../core/processor/Decorators.ts";
@@ -18,6 +18,19 @@ export function WebGPUUpdate() {
 }
 
 /**
+ * Material resource interface
+ */
+interface MaterialResource {
+    readonly id: string;
+    readonly name: string;
+    isLoaded(): boolean;
+    isCompiled: boolean;
+    compile(): Promise<void>;
+    getPipeline(): GPURenderPipeline | null;
+    getUniformBuffer?(): ArrayBuffer | null;
+}
+
+/**
  * Render batch for efficient drawing
  */
 interface RenderBatch {
@@ -29,7 +42,6 @@ interface RenderBatch {
 
 /**
  * WebGPU Processor - Coordinates rendering through existing component system
- * Hybrid approach: Uses processor pattern but keeps proven resource logic
  */
 export class WebGPUProcessor extends Processor {
     private canvas: HTMLCanvasElement;
@@ -42,10 +54,12 @@ export class WebGPUProcessor extends Processor {
 
     // Cached render data (updated when dirty)
     private cachedBatches: RenderBatch[] = [];
+    private activeCamera: CameraComponent | null = null;
     private isDirty = true;
 
     // Frame timing
     private lastFrameTime = 0;
+    private animationFrameId?: number;
 
     constructor(canvas: HTMLCanvasElement, name: string = "webgpu") {
         super(name);
@@ -61,6 +75,13 @@ export class WebGPUProcessor extends Processor {
     async initialize(): Promise<void> {
         await this.renderer.initialize(this.canvas);
         this.resourcePool.initialize(this.renderer.getDevice()!);
+
+        // Initialize render graph with device - THIS WAS MISSING!
+        this.renderGraph.initialize(this.renderer.getDevice()!);
+
+        // Update camera aspect ratio based on canvas
+        this.updateCameraAspectRatios();
+
         console.log("✅ WebGPUProcessor initialized");
     }
 
@@ -90,11 +111,12 @@ export class WebGPUProcessor extends Processor {
         // 1. Update render batches if dirty
         if (this.isDirty) {
             this.updateRenderBatches();
+            this.updateActiveCamera();
             this.isDirty = false;
         }
 
-        // 2. Execute render graph
-        this.renderGraph.execute(this.renderer, this.cachedBatches, deltaTime);
+        // 2. Execute render graph with camera
+        this.renderGraph.execute(this.renderer, this.cachedBatches, this.activeCamera, deltaTime);
 
         // 3. Call @WebGPUUpdate decorated methods (for custom render logic)
         super.executeTasks(deltaTime);
@@ -138,17 +160,62 @@ export class WebGPUProcessor extends Processor {
     }
 
     /**
-     * Get active camera from scene
+     * Update the active camera from scene
      */
-    getActiveCamera(): CameraComponent | null {
-        if (!this.scene) return null;
+    private updateActiveCamera(): void {
+        if (!this.scene) {
+            this.activeCamera = null;
+            return;
+        }
 
         const cameras = this.scene.query().withComponent(CameraComponent).execute();
+
+        // Find active camera
         for (const actor of cameras) {
             const camera = actor.getComponent(CameraComponent);
-            if (camera?.isActive) return camera;
+            if (camera?.isActive) {
+                this.activeCamera = camera;
+                return;
+            }
         }
-        return null;
+
+        // No active camera found
+        if (cameras.length > 0) {
+            // Make first camera active if none are
+            const firstCamera = cameras[0].getComponent(CameraComponent);
+            if (firstCamera) {
+                firstCamera.isActive = true;
+                this.activeCamera = firstCamera;
+                console.warn("⚠️ No active camera found, activating first camera");
+            }
+        } else {
+            this.activeCamera = null;
+            console.warn("⚠️ No cameras found in scene");
+        }
+    }
+
+    /**
+     * Update camera aspect ratios based on canvas size
+     */
+    private updateCameraAspectRatios(): void {
+        if (!this.scene || !this.canvas) return;
+
+        const aspect = this.canvas.width / this.canvas.height;
+        const cameras = this.scene.query().withComponent(CameraComponent).execute();
+
+        for (const actor of cameras) {
+            const camera = actor.getComponent(CameraComponent);
+            if (camera) {
+                camera.setAspectRatio(aspect);
+            }
+        }
+    }
+
+    /**
+     * Get active camera
+     */
+    getActiveCamera(): CameraComponent | null {
+        return this.activeCamera;
     }
 
     /**
@@ -180,7 +247,7 @@ export class WebGPUProcessor extends Processor {
         }
 
         this._isRunning = true;
-        this.lastFrameTime = performance.now(); // Initialize frame timing
+        this.lastFrameTime = performance.now();
         console.log("🚀 WebGPUProcessor started");
 
         // Start the render loop
@@ -196,6 +263,12 @@ export class WebGPUProcessor extends Processor {
         }
 
         this._isRunning = false;
+
+        // Cancel animation frame
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = undefined;
+        }
 
         // Cleanup resources
         this.resourcePool.dispose();
@@ -214,13 +287,26 @@ export class WebGPUProcessor extends Processor {
 
         // Calculate delta time
         const now = performance.now();
-        const deltaTime = this.lastFrameTime === 0 ? 0.016 : (now - this.lastFrameTime) / 1000; // Convert to seconds, default to 60fps on first frame
+        const deltaTime = this.lastFrameTime === 0 ? 0.016 : (now - this.lastFrameTime) / 1000;
         this.lastFrameTime = now;
 
         // Execute tasks (this calls our overridden executeTasks method)
         this.executeTasks(deltaTime);
 
         // Schedule next frame
-        requestAnimationFrame(() => this.renderLoop());
+        this.animationFrameId = requestAnimationFrame(() => this.renderLoop());
+    }
+
+    /**
+     * Handle canvas resize
+     */
+    public handleResize(): void {
+        if (!this.canvas) return;
+
+        // Update camera aspect ratios
+        this.updateCameraAspectRatios();
+
+        // Mark dirty to update render state
+        this.markDirty();
     }
 }

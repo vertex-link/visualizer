@@ -1,9 +1,9 @@
-﻿// src/engine/rendering/camera/CameraComponent.ts
+﻿// src/engine/rendering/camera/CameraComponent.ts - Improved version
 
 import Component from "../../../core/component/Component.ts";
 import Actor from "../../../core/Actor.ts";
 import { RequireComponent } from "../../../core/component/Decorators.ts";
-import { TransformComponent, Mat4, Vec3, Quat } from "../components/TransformComponent.ts"; // Added Quat
+import { TransformComponent, Mat4, Vec3, Quat } from "../components/TransformComponent.ts";
 import { Transform } from "../math/Transform.ts";
 
 export enum ProjectionType {
@@ -43,20 +43,15 @@ export class CameraComponent extends Component {
     public layerMask: number = 0xFFFFFFFF;
 
     @RequireComponent(TransformComponent)
-    private _transform!: TransformComponent; // Should be initialized by onDependenciesResolved
+    private transform!: TransformComponent;
 
     private _viewMatrix: Mat4 = Transform.identity();
     private _projectionMatrix: Mat4 = Transform.identity();
     private _viewProjectionMatrix: Mat4 = Transform.identity();
 
-    private _isViewDirty: boolean = true; // Start as true to force initial computation
-    private _isProjectionDirty: boolean = true; // Start as true
+    private _isViewDirty: boolean = true;
+    private _isProjectionDirty: boolean = true;
     private _lastTransformVersion: number = -1;
-
-    // Logging helpers (optional, can be removed after debugging)
-    private _logCountView: number = 0;
-    private _logCountProj: number = 0;
-
 
     constructor(actor: Actor, config: CameraConfig) {
         super(actor);
@@ -75,15 +70,29 @@ export class CameraComponent extends Component {
 
         if (config.isActive !== undefined) this.isActive = config.isActive;
         if (config.layerMask !== undefined) this.layerMask = config.layerMask;
-
-        // Initial dirty flags are set by onDependenciesResolved now.
     }
 
     protected onDependenciesResolved(): void {
-        this._transform = this.actor.getComponent(TransformComponent)!;
-        this.markViewDirty(); // Ensure matrices are computed on first use
+        // Transform is now guaranteed to be available
+        this.transform = this.actor.getComponent(TransformComponent)!;
+
+        // Force initial matrix computation
+        this.markViewDirty();
         this.markProjectionDirty();
-        this._lastTransformVersion = this._transform ? this._transform.version -1 : -1; // Ensure first checkDirty updates
+        this._lastTransformVersion = -1; // Force update on first frame
+
+        console.log(`📷 Camera ${this.actor.label} initialized with transform`);
+    }
+
+    /**
+     * Get transform component (safe access)
+     */
+    private getTransform(): TransformComponent | null {
+        // During initialization, use the injected transform
+        if (this.transform) return this.transform;
+
+        // Fallback to manual lookup (shouldn't happen with proper deps)
+        return this.actor.getComponent(TransformComponent);
     }
 
     public markViewDirty(): void {
@@ -106,12 +115,15 @@ export class CameraComponent extends Component {
         this.markProjectionDirty();
     }
 
-
     private updateViewMatrix(): void {
-        if (!this._transform) return; // Guard against missing transform
+        const transform = this.getTransform();
+        if (!transform) {
+            console.warn(`Camera ${this.actor.label} has no transform`);
+            return;
+        }
 
-        const position = this._transform.position;
-        const rotation = this._transform.rotation;
+        const position = transform.position;
+        const rotation = transform.rotation;
 
         const forward = Transform.transformQuat([0, 0, -1], rotation);
         const target = Transform.add(position, forward);
@@ -119,12 +131,7 @@ export class CameraComponent extends Component {
 
         this._viewMatrix = Transform.lookAt(position, target, up);
         this._isViewDirty = false;
-        this._lastTransformVersion = this._transform.version;
-
-        this._logCountView++;
-        if (this._logCountView % 60 === 1 && this.actor) {
-            console.log(`[Camera:${this.actor.label}] View Matrix Updated:`, this._viewMatrix);
-        }
+        this._lastTransformVersion = transform.version;
     }
 
     private updateProjectionMatrix(): void {
@@ -136,27 +143,23 @@ export class CameraComponent extends Component {
             this._projectionMatrix = Transform.orthographic(left, right, bottom, top, near, far);
         }
         this._isProjectionDirty = false;
-        this._logCountProj++;
-        if (this._logCountProj % 60 === 1 && this.actor) {
-            console.log(`[Camera:${this.actor.label}] Projection Matrix Updated:`, this._projectionMatrix);
-        }
     }
 
-    /**
-     * **REVISED checkDirty LOGIC**
-     */
     private checkDirty(): void {
-        if (!this._transform) { // Ensure transform component is available
-            console.warn(`[CameraComponent] Transform not available for ${this.actor?.label}. Skipping matrix updates.`);
+        const transform = this.getTransform();
+        if (!transform) {
+            console.warn(`Camera ${this.actor.label} has no transform for matrix computation`);
             return;
         }
 
         let needsVPRecompute = false;
 
-        if (this._transform.version !== this._lastTransformVersion) {
+        // Check if transform changed
+        if (transform.version !== this._lastTransformVersion) {
             this.markViewDirty();
         }
 
+        // Update matrices if needed
         if (this._isViewDirty) {
             this.updateViewMatrix();
             needsVPRecompute = true;
@@ -166,6 +169,7 @@ export class CameraComponent extends Component {
             needsVPRecompute = true;
         }
 
+        // Recompute view-projection if needed
         if (needsVPRecompute) {
             this._viewProjectionMatrix = Transform.multiply(this._projectionMatrix, this._viewMatrix);
         }
@@ -187,22 +191,48 @@ export class CameraComponent extends Component {
     }
 
     public getForwardDirection(): Vec3 {
-        if (!this._transform) return [0,0,-1];
-        return Transform.transformQuat([0, 0, -1], this._transform.rotation);
+        const transform = this.getTransform();
+        if (!transform) return [0, 0, -1];
+        return Transform.transformQuat([0, 0, -1], transform.rotation);
     }
 
     public getRightDirection(): Vec3 {
-        if (!this._transform) return [1,0,0];
-        return Transform.transformQuat([1, 0, 0], this._transform.rotation);
+        const transform = this.getTransform();
+        if (!transform) return [1, 0, 0];
+        return Transform.transformQuat([1, 0, 0], transform.rotation);
     }
 
     public getUpDirection(): Vec3 {
-        if (!this._transform) return [0,1,0];
-        return Transform.transformQuat([0, 1, 0], this._transform.rotation);
+        const transform = this.getTransform();
+        if (!transform) return [0, 1, 0];
+        return Transform.transformQuat([0, 1, 0], transform.rotation);
     }
 
     public screenToWorldRay(mouseX: number, mouseY: number, screenWidth: number, screenHeight: number): { origin: Vec3; direction: Vec3 } {
-        console.warn("screenToWorldRay not implemented yet");
-        return { origin: [0,0,0], direction: [0,0,-1]};
+        const transform = this.getTransform();
+        if (!transform) {
+            return { origin: [0, 0, 0], direction: [0, 0, -1] };
+        }
+
+        // Convert screen coordinates to NDC
+        const ndcX = (mouseX / screenWidth) * 2 - 1;
+        const ndcY = 1 - (mouseY / screenHeight) * 2; // Flip Y
+
+        // For perspective camera
+        if (this.projectionType === ProjectionType.PERSPECTIVE) {
+            const invProj = Transform.invert(this._projectionMatrix);
+            const invView = Transform.invert(this._viewMatrix);
+
+            // Unproject near and far points
+            const nearPoint = Transform.unproject([ndcX, ndcY, -1], invProj, invView);
+            const farPoint = Transform.unproject([ndcX, ndcY, 1], invProj, invView);
+
+            const direction = Transform.normalize(Transform.subtract(farPoint, nearPoint));
+            return { origin: transform.position, direction };
+        }
+
+        // For orthographic camera
+        // TODO: Implement orthographic ray casting
+        return { origin: transform.position, direction: [0, 0, -1] };
     }
 }

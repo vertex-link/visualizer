@@ -1,4 +1,4 @@
-﻿// examples/phase3/main.ts - No AssetService, Direct Resource Creation
+﻿// examples/phase3/main.ts - Streamlined WebGPU Demo
 
 import { ServiceRegistry } from '../../src/core/Service.ts';
 import { Scene } from '../../src/core/scene/Scene.ts';
@@ -7,63 +7,59 @@ import { ProcessorRegistry } from '../../src/core/processor/ProcessorRegistry.ts
 import { WebGPUProcessor } from '../../src/engine/processors/WebGPUProcessor.ts';
 import { TransformComponent } from '../../src/engine/rendering/components/TransformComponent.ts';
 import { MeshRendererComponent } from '../../src/engine/rendering/components/MeshRendererComponent.ts';
-import { PerspectiveCamera } from '../../src/engine/rendering/camera/PerspectiveCamera.ts';
+import { CameraComponent, ProjectionType } from '../../src/engine/rendering/camera/CameraComponent.ts';
 import { RotatingComponent } from './RotatingComponent.ts';
-
-// Direct resource imports
-import { ShaderResource, ShaderDescriptor } from '../../src/engine/resources/ShaderResource.ts';
-import { MaterialResource, UniformDescriptor } from '../../src/engine/resources/MaterialResource.ts';
-import { MeshResource } from '../../src/engine/resources/MeshResource.ts';
+import {
+    ResourceManager,
+    IResourceManagerKey,
+    createShaderHandle,
+    createMaterialHandle,
+    createMeshHandle
+} from '../../src/engine/resources/ResourceManager.ts';
 import { GeometryUtils } from '../../src/engine/resources/GeometryUtils.ts';
-import { VertexLayout } from '../../src/engine/rendering/interfaces/IPipeline.ts';
 
-// --- Shader Source (Embedded) ---
+// Shader source
 const basicShaderSource = `
 struct VertexInput {
-    @location(0) position: vec3f,
-    @location(1) normal: vec3f,
-    @location(2) uv: vec2f,
+    @location(0) position: vec3<f32>,
+    @location(1) normal: vec3<f32>,
+    @location(2) uv: vec2<f32>,
 }
 
 struct VertexOutput {
-    @builtin(position) position: vec4f,
-    @location(0) worldPos: vec3f,
-    @location(1) color: vec3f,
+    @builtin(position) clip_position: vec4<f32>,
+    @location(0) world_position: vec3<f32>,
+    @location(1) normal: vec3<f32>,
+    @location(2) uv: vec2<f32>,
 }
 
 struct Uniforms {
-    mvpMatrix: mat4x4f,
-    modelMatrix: mat4x4f,
-    color: vec4f,
+    mvp: mat4x4<f32>,
+    model: mat4x4<f32>,
+    color: vec4<f32>,
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
 
 @vertex
-fn vs_main(input: VertexInput) -> VertexOutput {
-    var output: VertexOutput;
-    
-    // Transform position
-    output.position = uniforms.mvpMatrix * vec4f(input.position, 1.0);
-    
-    // Pass world position
-    let worldPos4 = uniforms.modelMatrix * vec4f(input.position, 1.0);
-    output.worldPos = worldPos4.xyz;
-    
-    // Mix position-based color with uniform color
-    let posColor = input.position * 0.5 + 0.5; // Normalize to 0-1 range
-    output.color = mix(posColor, uniforms.color.rgb, 0.7);
-    
-    return output;
+fn vs_main(vertex: VertexInput) -> VertexOutput {
+    var out: VertexOutput;
+    out.clip_position = uniforms.mvp * vec4<f32>(vertex.position, 1.0);
+    out.world_position = (uniforms.model * vec4<f32>(vertex.position, 1.0)).xyz;
+    out.normal = vertex.normal;
+    out.uv = vertex.uv;
+    return out;
 }
 
 @fragment
-fn fs_main(input: VertexOutput) -> @location(0) vec4f {
-    return vec4f(input.color, 1.0);
+fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+    let light_dir = normalize(vec3<f32>(1.0, 1.0, 1.0));
+    let diffuse = max(dot(normalize(in.normal), light_dir), 0.2);
+    return vec4<f32>(uniforms.color.rgb * diffuse, uniforms.color.a);
 }
 `;
 
-// --- Global Setup ---
+// Global setup
 const statusDiv = document.getElementById('status')!;
 const canvas = document.getElementById('renderCanvas') as HTMLCanvasElement;
 
@@ -72,244 +68,228 @@ function logStatus(message: string) {
     statusDiv.textContent = message;
 }
 
-// --- Simplified Demo App ---
-class SimplifiedDemoApp {
+class ImprovedDemoApp {
     private serviceRegistry = new ServiceRegistry();
-    private scene = new Scene("HybridDemo");
+    private scene = new Scene("Demo");
     private webgpuProcessor!: WebGPUProcessor;
+    private resourceManager!: ResourceManager;
 
     async run() {
         try {
-            logStatus("🚀 Starting Hybrid WebGPU Demo...");
-
-            // 1. Setup WebGPU Processor (no more services!)
+            logStatus("🚀 Starting WebGPU Demo...");
+            await this.setupServices();
             await this.setupWebGPUProcessor();
-
-            // 2. Create demo scene with direct resource creation
             await this.setupScene();
-
-            // 3. Start rendering
             this.startRendering();
-
-            logStatus("✅ Demo Running! WebGPUProcessor active");
-
+            this.setupInteraction();
+            logStatus("✅ Demo Running!");
         } catch (error) {
             logStatus(`❌ Error: ${error.message}`);
             console.error(error);
         }
     }
 
-    private async setupWebGPUProcessor() {
-        logStatus("⚡ Initializing WebGPUProcessor...");
+    private async setupServices() {
+        logStatus("📦 Setting up services...");
+        this.resourceManager = new ResourceManager();
+        await this.resourceManager.initialize();
+        this.serviceRegistry.register(IResourceManagerKey, this.resourceManager);
+    }
 
+    private async setupWebGPUProcessor() {
+        logStatus("⚡ Initializing WebGPU...");
         this.webgpuProcessor = new WebGPUProcessor(canvas, "webgpu");
         await this.webgpuProcessor.initialize();
 
-        // Connect processor to scene
-        this.webgpuProcessor.setScene(this.scene);
+        const device = this.webgpuProcessor.getDevice();
+        if (device) this.resourceManager.setDevice(device);
 
-        // Register with ProcessorRegistry
+        this.webgpuProcessor.setScene(this.scene);
         ProcessorRegistry.register(this.webgpuProcessor);
 
-        console.log("✅ WebGPUProcessor ready");
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            this.webgpuProcessor.handleResize();
+        });
     }
 
     private async setupScene() {
-        logStatus("🎭 Creating demo scene with direct resources...");
+        logStatus("🎭 Creating demo scene...");
 
-        // Get device from processor for resource compilation
-        const device = this.webgpuProcessor.getDevice();
-        if (!device) {
-            throw new Error("WebGPU device not available from processor");
+        // Create and load resources
+        const shaderHandle = createShaderHandle(this.resourceManager, "BasicShader", basicShaderSource, basicShaderSource);
+        await shaderHandle.preload();
+
+        const vertexLayout = {
+            stride: 32, // 8 floats * 4 bytes
+            attributes: [
+                { location: 0, format: 'float32x3' as const, offset: 0 },
+                { location: 1, format: 'float32x3' as const, offset: 12 },
+                { location: 2, format: 'float32x2' as const, offset: 24 }
+            ]
+        };
+
+        const materialHandle = await createMaterialHandle(
+            this.resourceManager,
+            "BlueMaterial",
+            shaderHandle,
+            { color: { type: 'vec4', size: 16, value: [0.2, 0.6, 1.0, 1.0] } },
+            vertexLayout
+        );
+
+        const boxGeometry = GeometryUtils.createBox(1.0, 1.0, 1.0, true, true);
+        const boxMeshHandle = createMeshHandle(this.resourceManager, "BoxMesh", boxGeometry);
+
+        await Promise.all([materialHandle.preload(), boxMeshHandle.preload()]);
+
+        // Setup GPU resources
+        const device = this.webgpuProcessor.getDevice()!;
+        const materialResource = await materialHandle.get() as any;
+        const meshResource = await boxMeshHandle.get() as any;
+
+        if (materialResource?.setDevice) {
+            materialResource.setDevice(device, 'bgra8unorm');
+            await materialResource.compile();
+        }
+        if (meshResource?.setDevice) {
+            meshResource.setDevice(device);
+            await meshResource.compile();
         }
 
-        // Create shader directly
-        const shader = this.createBasicShader();
-        await shader.load();
-        shader.setDevice(device); // Set device for compilation
-        await shader.compile();
+        const material = await materialHandle.get();
+        const boxMesh = await boxMeshHandle.get();
 
-        // Create material directly  
-        const material = this.createBasicMaterial(shader);
-        await material.load();
-        material.setDevice(device, 'bgra8unorm'); // Set device for compilation
-        await material.compile();
+        // Create grid of boxes
+        const gridSize = 5;
+        const spacing = 2.5;
+        for (let x = 0; x < gridSize; x++) {
+            for (let z = 0; z < gridSize; z++) {
+                const box = new Actor(`Box_${x}_${z}`);
 
-        // Create mesh directly
-        const boxMesh = this.createBoxMesh();
-        await boxMesh.load();
-        boxMesh.setDevice(device); // Set device for compilation
-        await boxMesh.compile();
+                const transform = box.addComponent(TransformComponent);
+                transform.setPosition((x - gridSize / 2) * spacing, 0, (z - gridSize / 2) * spacing);
 
-        console.log("✅ Resources created and compiled");
+                box.addComponent(MeshRendererComponent, { mesh: boxMesh, material: material, enabled: true });
 
-        // Create multiple boxes that will be automatically batched
-        for (let i = 0; i < 25; i++) {
-            const box = new Actor(`Box_${i}`);
+                const rotator = box.addComponent(RotatingComponent);
+                rotator.speed = 0.5 + Math.random() * 1.0;
 
-            // Position in grid
-            const x = (i % 5) * 3 - 6;  // 5x5 grid
-            const z = Math.floor(i / 5) * 3 - 6;
-
-            const transform = box.addComponent(TransformComponent);
-            transform.setPosition(x, 0, z);
-
-            // Add mesh renderer (processor will automatically batch these)
-            box.addComponent(MeshRendererComponent, {
-                mesh: boxMesh,
-                material: material,
-                enabled: true
-            });
-
-            // Add rotation animation
-            const rotator = box.addComponent(RotatingComponent);
-            rotator.speed = 0.5 + Math.random() * 1.0; // Vary rotation speed
-
-            this.scene.addActor(box);
+                this.scene.addActor(box);
+            }
         }
 
         // Create camera
-        const camera = new PerspectiveCamera("MainCamera");
-        camera.setPosition(0, 5, 15);
-        camera.lookAt([0, 0, 0]);
+        const camera = new Actor("MainCamera");
+        const cameraTransform = camera.addComponent(TransformComponent);
+
+        // Position camera to see the grid properly
+        cameraTransform.setPosition(0, 8, 12);
+        cameraTransform.setRotationEuler(-0.3, 0, 0); // Look down slightly
+
+        camera.addComponent(CameraComponent, {
+            projectionType: ProjectionType.PERSPECTIVE,
+            perspectiveConfig: {
+                fov: Math.PI / 4,
+                aspect: canvas.width / canvas.height,
+                near: 0.1,
+                far: 100.0
+            },
+            isActive: true
+        });
+
         this.scene.addActor(camera);
 
-        // IMPORTANT: Ensure all actors have their components fully initialized
-        await this.waitForComponentInitialization();
-
+        // Wait for initialization
+        await this.waitForInitialization();
         console.log(`✅ Scene created with ${this.scene.getActorCount()} actors`);
     }
 
-    /**
-     * Wait for all actors in the scene to have their components fully initialized
-     */
-    private async waitForComponentInitialization(): Promise<void> {
-        logStatus("⏳ Waiting for component initialization...");
+    private async waitForInitialization(): Promise<void> {
+        const maxWait = 5000;
+        const startTime = Date.now();
 
-        const maxAttempts = 50; // 5 seconds at 100ms intervals
-        let attempts = 0;
+        while (Date.now() - startTime < maxWait) {
+            const actors = this.scene.getAllActors();
+            let allReady = true;
+            let totalActors = 0;
+            let readyActors = 0;
 
-        while (attempts < maxAttempts) {
-            let allInitialized = true;
-
-            // Check all actors
-            for (const actor of this.scene.getAllActors()) {
-                if (!actor.allComponentsInitialized) {
-                    console.log(`⏳ Waiting for ${actor.label} components to initialize...`);
-                    console.log('Dependencies:', actor.getDependencyStatus());
-                    allInitialized = false;
-                    break;
+            if (Array.isArray(actors)) {
+                totalActors = actors.length;
+                for (const actor of actors) {
+                    if (this.isActorReady(actor)) readyActors++;
+                    else allReady = false;
+                }
+            } else if (actors instanceof Map) {
+                totalActors = actors.size;
+                for (const actor of actors.values()) {
+                    if (this.isActorReady(actor)) readyActors++;
+                    else allReady = false;
                 }
             }
 
-            if (allInitialized) {
-                console.log("✅ All components initialized!");
-                return;
-            }
-
-            // Wait 100ms and try again
-            await new Promise(resolve => setTimeout(resolve, 100));
-            attempts++;
+            if (allReady && totalActors > 0) return;
+            await new Promise(resolve => setTimeout(resolve, 50));
         }
+    }
 
-        console.warn("⚠️ Component initialization timeout - some components may not be ready");
+    private isActorReady(actor: any): boolean {
+        if (typeof actor.allComponentsInitialized === 'boolean') {
+            return actor.allComponentsInitialized;
+        }
+        return true; // Assume ready if we can't check
     }
 
     private startRendering() {
         logStatus("🎬 Starting render loop...");
-
-        // Start the WebGPU processor - this handles everything now!
+        const renderGraph = this.webgpuProcessor['renderGraph'];
+        if (renderGraph?.configureForMode) {
+            renderGraph.configureForMode('forward');
+        }
         this.webgpuProcessor.start();
-
-        // Optional: Log render stats periodically
-        setInterval(() => {
-            const stats = this.webgpuProcessor.getResourcePool().getStats();
-            console.log(`📊 GPU Resources: ${stats.buffers} buffers, ${stats.pipelines} pipelines, ${Math.round(stats.totalMemory/1024)}KB`);
-        }, 5000);
     }
 
-    // === Direct Resource Creation Methods ===
+    private setupInteraction() {
+        let mouseDown = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
 
-    private createBasicShader(): ShaderResource {
-        const shader = new ShaderResource("BasicShader", this.serviceRegistry);
-
-        const shaderDescriptor: ShaderDescriptor = {
-            vertexSource: basicShaderSource,
-            fragmentSource: basicShaderSource,
-            entryPoints: {
-                vertex: 'vs_main',
-                fragment: 'fs_main'
-            }
-        };
-
-        shader.setShaderData(shaderDescriptor);
-        return shader;
-    }
-
-    private createBasicMaterial(shader: ShaderResource): MaterialResource {
-        const material = new MaterialResource("BasicMaterial", this.serviceRegistry);
-
-        // Identity matrices for initialization
-        const identity = new Float32Array([
-            1, 0, 0, 0,
-            0, 1, 0, 0,
-            0, 0, 1, 0,
-            0, 0, 0, 1
-        ]);
-
-        const uniforms: Record<string, UniformDescriptor> = {
-            mvpMatrix: {
-                type: 'mat4',
-                size: 64,
-                value: new Float32Array(identity)
-            },
-            modelMatrix: {
-                type: 'mat4',
-                size: 64,
-                value: new Float32Array(identity)
-            },
-            color: {
-                type: 'vec4',
-                size: 16,
-                value: new Float32Array([0.2, 0.8, 1.0, 1.0]) // Nice blue color
-            }
-        };
-
-        const vertexLayout: VertexLayout = {
-            stride: 32, // position(12) + normal(12) + uv(8)
-            attributes: [
-                { location: 0, format: 'float32x3', offset: 0 },  // position
-                { location: 1, format: 'float32x3', offset: 12 }, // normal  
-                { location: 2, format: 'float32x2', offset: 24 }  // uv
-            ]
-        };
-
-        material.setMaterialData({
-            shader,
-            uniforms,
-            vertexLayout,
-            renderState: {
-                cullMode: 'back',
-                depthWrite: true,
-                depthTest: true,
-                blendMode: 'none'
-            }
+        canvas.addEventListener('mousedown', (e) => {
+            mouseDown = true;
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
         });
 
-        return material;
-    }
+        canvas.addEventListener('mouseup', () => mouseDown = false);
 
-    private createBoxMesh(): MeshResource {
-        const mesh = new MeshResource("DemoBox", this.serviceRegistry);
+        canvas.addEventListener('mousemove', (e) => {
+            if (!mouseDown) return;
 
-        // Create box geometry using GeometryUtils
-        const boxDescriptor = GeometryUtils.createBox(1.0, 1.0, 1.0, true, true);
-        mesh.setMeshData(boxDescriptor);
+            const deltaX = e.clientX - lastMouseX;
+            const deltaY = e.clientY - lastMouseY;
 
-        return mesh;
+            // Simple camera orbit
+            const camera = this.webgpuProcessor.getActiveCamera();
+            if (camera) {
+                const transform = camera.actor.getComponent(TransformComponent);
+                if (transform) {
+                    const speed = 0.01;
+                    const euler = transform.getEulerAngles();
+                    transform.setRotationEuler(
+                        euler[0] - deltaY * speed,
+                        euler[1] - deltaX * speed,
+                        euler[2]
+                    );
+                }
+            }
+
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+        });
     }
 }
 
-// --- Run the App ---
-const app = new SimplifiedDemoApp();
+// Run the app
+const app = new ImprovedDemoApp();
 app.run();
