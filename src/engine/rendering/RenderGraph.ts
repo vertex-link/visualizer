@@ -205,14 +205,14 @@ export class ForwardPass extends RenderPass {
         }
 
         try {
-            console.log(`🎨 ForwardPass: Rendering ${batches.length} batches`);
+           //  console.log(`🎨 ForwardPass: Rendering ${batches.length} batches`);
 
             // Render each batch
             for (const batch of batches) {
                 this.renderBatch(renderer, batch, camera);
             }
 
-            console.log(`✅ ForwardPass: Completed rendering ${batches.length} batches`);
+           // console.log(`✅ ForwardPass: Completed rendering ${batches.length} batches`);
 
         } catch (error) {
             console.error("❌ ForwardPass: Rendering error:", error);
@@ -278,12 +278,12 @@ export class ForwardPass extends RenderPass {
             return;
         }
         renderer.setPipeline(pipeline);
-        console.log(`🔧 Set pipeline for material: ${batch.material.constructor.name}`);
+        // console.log(`🔧 Set pipeline for material: ${batch.material.constructor.name}`);
 
         const cameraViewProjectionMatrix = camera.getViewProjectionMatrix();
         const materialColor = batch.material.getUniform('color'); // Get color from material
 
-        console.log(`🎭 Rendering batch with ${batch.instances.length} instances`);
+        // console.log(`🎭 Rendering batch with ${batch.instances.length} instances`);
 
         // Iterate and render each instance
         for (let i = 0; i < batch.instances.length; i++) {
