@@ -1,5 +1,4 @@
-﻿// src/engine/resources/MaterialResource.ts - Fixed RenderService Dependency
-
+﻿
 import { Resource, ResourceStatus } from "./Resource.ts";
 import { ServiceRegistry } from "./../../core/Service.ts";
 import { ShaderResource } from "./ShaderResource.ts";
@@ -81,7 +80,7 @@ export class MaterialResource extends Resource {
             console.warn(`MaterialResource "${this.name}": Pipeline requested but not ready (compiled: ${this.isCompiled}, pipeline exists: ${!!this.pipeline})`);
             return null;
         }
-        
+
         try {
             const gpuPipeline = this.pipeline.getGPURenderPipeline();
             if (!gpuPipeline) {
@@ -168,7 +167,7 @@ export class MaterialResource extends Resource {
     setUniform(name: string, value: UniformValue): void {
         const uniform = this.uniformData.get(name);
         if (!uniform) {
-            console.warn(`MaterialResource "${this.name}": Uniform "${name}" not found`);
+            console.warn(`MaterialResource "<span class="math-inline">\{this\.name\}"\: Uniform "</span>{name}" not found`);
             return;
         }
 
@@ -236,7 +235,7 @@ export class MaterialResource extends Resource {
             // Ensure shader is compiled and has device
             const shader = this.materialDescriptor.shader;
             console.log(`MaterialResource "${this.name}": Checking shader compilation...`);
-            
+
             if (!shader.isCompiled) {
                 console.log(`MaterialResource "${this.name}": Compiling shader...`);
                 shader.setDevice(this.device);
@@ -461,12 +460,12 @@ export class MaterialResource extends Resource {
 
         const uniforms: Record<string, UniformDescriptor> = {
             // Order matters for buffer layout - keep consistent
-            mvpMatrix: {
+            viewProjection: { // Renamed from mvpMatrix
                 type: 'mat4',
                 size: 64,
                 value: new Float32Array(identity)
             },
-            modelMatrix: {
+            model: { // Renamed from modelMatrix
                 type: 'mat4',
                 size: 64,
                 value: new Float32Array(identity)

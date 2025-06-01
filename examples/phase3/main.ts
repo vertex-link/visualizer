@@ -1,4 +1,4 @@
-﻿// examples/phase3/main.ts - Streamlined WebGPU Demo
+﻿// examples/phase3/final-fix-main.ts - Ultimate fix for visible rotating cubes
 
 import { ServiceRegistry } from '../../src/core/Service.ts';
 import { Scene } from '../../src/core/scene/Scene.ts';
@@ -13,13 +13,11 @@ import {
     ResourceManager,
     IResourceManagerKey,
     createShaderHandle,
-    createMaterialHandle,
-    createMeshHandle
+    createMaterialHandle
 } from '../../src/engine/resources/ResourceManager.ts';
-import { GeometryUtils } from '../../src/engine/resources/GeometryUtils.ts';
 
-// Shader source
-const basicShaderSource = `
+// CORRECTED SHADER - The key issue was likely in matrix multiplication order
+const fixedCubeShader = `
 struct VertexInput {
     @location(0) position: vec3<f32>,
     @location(1) normal: vec3<f32>,
@@ -28,7 +26,7 @@ struct VertexInput {
 
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
-    @location(0) world_position: vec3<f32>,
+    @location(0) world_pos: vec3<f32>,
     @location(1) normal: vec3<f32>,
     @location(2) uv: vec2<f32>,
 }
@@ -44,85 +42,167 @@ struct Uniforms {
 @vertex
 fn vs_main(vertex: VertexInput) -> VertexOutput {
     var out: VertexOutput;
+    
+    // Transform vertex to world space
+    let world_pos = uniforms.model * vec4<f32>(vertex.position, 1.0);
+    
+    // Transform to clip space using MVP matrix
     out.clip_position = uniforms.mvp * vec4<f32>(vertex.position, 1.0);
-    out.world_position = (uniforms.model * vec4<f32>(vertex.position, 1.0)).xyz;
-    out.normal = vertex.normal;
+    
+    // Pass through other attributes
+    out.world_pos = world_pos.xyz;
+    out.normal = normalize((uniforms.model * vec4<f32>(vertex.normal, 0.0)).xyz);
     out.uv = vertex.uv;
+    
     return out;
 }
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+    // Simple but effective lighting
     let light_dir = normalize(vec3<f32>(1.0, 1.0, 1.0));
-    let diffuse = max(dot(normalize(in.normal), light_dir), 0.2);
-    return vec4<f32>(uniforms.color.rgb * diffuse, uniforms.color.a);
+    let ambient = 0.4;
+    let diffuse = max(dot(normalize(in.normal), light_dir), 0.0);
+    let lighting = ambient + diffuse * 0.6;
+    
+    // Return the final color with lighting
+    return vec4<f32>(uniforms.color.rgb * lighting, uniforms.color.a);
 }
 `;
 
-// Global setup
-const statusDiv = document.getElementById('status')!;
-const canvas = document.getElementById('renderCanvas') as HTMLCanvasElement;
+function createMeshHandleFixed(
+    manager: ResourceManager,
+    name: string,
+    geometry: { vertices: Float32Array; indices: Uint16Array }
+) {
+    const meshData = {
+        vertices: geometry.vertices,
+        indices: geometry.indices,
+        vertexAttributes: [
+            { name: 'position', size: 3, type: 'float32' as const, offset: 0 },
+            { name: 'normal', size: 3, type: 'float32' as const, offset: 12 },
+            { name: 'uv', size: 2, type: 'float32' as const, offset: 24 }
+        ],
+        vertexStride: 32,
+        primitiveTopology: 'triangle-list' as const
+    };
 
-function logStatus(message: string) {
-    console.log(message);
-    statusDiv.textContent = message;
+    console.log(`🔧 Creating FIXED mesh "${name}" with ${geometry.vertices.length / 8} vertices`);
+
+    return manager.createResource('mesh', name, meshData);
 }
 
-class ImprovedDemoApp {
-    private serviceRegistry = new ServiceRegistry();
-    private scene = new Scene("Demo");
-    private webgpuProcessor!: WebGPUProcessor;
-    private resourceManager!: ResourceManager;
+function createBiggerCube(size: number = 2.0) { // Make it bigger!
+    const half = size * 0.5;
 
-    async run() {
-        try {
-            logStatus("🚀 Starting WebGPU Demo...");
-            await this.setupServices();
-            await this.setupWebGPUProcessor();
-            await this.setupScene();
-            this.startRendering();
-            this.setupInteraction();
-            logStatus("✅ Demo Running!");
-        } catch (error) {
-            logStatus(`❌ Error: ${error.message}`);
-            console.error(error);
+    // 24 vertices for a cube with correct winding order
+    const vertices = new Float32Array([
+        // Front face (Z+) - Counter-clockwise from front view
+        -half, -half,  half,  0,  0,  1,  0, 0,  // 0: bottom-left
+        half, -half,  half,  0,  0,  1,  1, 0,  // 1: bottom-right
+        half,  half,  half,  0,  0,  1,  1, 1,  // 2: top-right
+        -half,  half,  half,  0,  0,  1,  0, 1,  // 3: top-left
+
+        // Back face (Z-) - Counter-clockwise from back view
+        half, -half, -half,  0,  0, -1,  0, 0,  // 4: bottom-left (from back)
+        -half, -half, -half,  0,  0, -1,  1, 0,  // 5: bottom-right (from back)
+        -half,  half, -half,  0,  0, -1,  1, 1,  // 6: top-right (from back)
+        half,  half, -half,  0,  0, -1,  0, 1,  // 7: top-left (from back)
+
+        // Right face (X+)
+        half, -half,  half,  1,  0,  0,  0, 0,  // 8
+        half, -half, -half,  1,  0,  0,  1, 0,  // 9
+        half,  half, -half,  1,  0,  0,  1, 1,  // 10
+        half,  half,  half,  1,  0,  0,  0, 1,  // 11
+
+        // Left face (X-)
+        -half, -half, -half, -1,  0,  0,  0, 0,  // 12
+        -half, -half,  half, -1,  0,  0,  1, 0,  // 13
+        -half,  half,  half, -1,  0,  0,  1, 1,  // 14
+        -half,  half, -half, -1,  0,  0,  0, 1,  // 15
+
+        // Top face (Y+)
+        -half,  half,  half,  0,  1,  0,  0, 0,  // 16
+        half,  half,  half,  0,  1,  0,  1, 0,  // 17
+        half,  half, -half,  0,  1,  0,  1, 1,  // 18
+        -half,  half, -half,  0,  1,  0,  0, 1,  // 19
+
+        // Bottom face (Y-)
+        -half, -half, -half,  0, -1,  0,  0, 0,  // 20
+        half, -half, -half,  0, -1,  0,  1, 0,  // 21
+        half, -half,  half,  0, -1,  0,  1, 1,  // 22
+        -half, -half,  half,  0, -1,  0,  0, 1,  // 23
+    ]);
+
+    // Indices with correct winding order (counter-clockwise)
+    const indices = new Uint16Array([
+        // Front face
+        0, 1, 2,    0, 2, 3,
+        // Back face  
+        4, 5, 6,    4, 6, 7,
+        // Right face
+        8, 9, 10,   8, 10, 11,
+        // Left face
+        12, 13, 14, 12, 14, 15,
+        // Top face
+        16, 17, 18, 16, 18, 19,
+        // Bottom face
+        20, 21, 22, 20, 22, 23
+    ]);
+
+    return { vertices, indices };
+}
+
+async function finalFixDemo() {
+    const canvas = document.getElementById('renderCanvas') as HTMLCanvasElement;
+    const statusDiv = document.getElementById('status')!;
+
+    function log(msg: string) {
+        console.log(msg);
+        statusDiv.textContent = msg;
+    }
+
+    try {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        log(`Canvas: ${canvas.width}x${canvas.height}`);
+
+        // Setup services
+        const resourceManager = new ResourceManager();
+        await resourceManager.initialize();
+        const serviceRegistry = new ServiceRegistry();
+        serviceRegistry.register(IResourceManagerKey, resourceManager);
+
+        // Setup WebGPU
+        const processor = new WebGPUProcessor(canvas, "webgpu");
+        await processor.initialize();
+        const device = processor.getDevice()!;
+        resourceManager.setDevice(device);
+
+        // Setup scene
+        const scene = new Scene("FinalFixCubes");
+        processor.setScene(scene);
+        ProcessorRegistry.register(processor);
+
+        log("🚀 FINAL FIX: Creating bigger, brighter cubes...");
+
+        // Create BIGGER cube geometry
+        const cubeGeometry = createBiggerCube(3.0); // Much bigger!
+        console.log(`🎯 BIG Cube Statistics:`);
+        console.log(`   Vertex buffer: ${cubeGeometry.vertices.byteLength} bytes`);
+        console.log(`   Index buffer: ${cubeGeometry.indices.byteLength} bytes`);
+        console.log(`   Vertices: ${cubeGeometry.vertices.length / 8}`);
+        console.log(`   Indices: ${cubeGeometry.indices.length}`);
+
+        // Create shader with FIXED matrices
+        const shaderHandle = createShaderHandle(resourceManager, "FinalFixShader", fixedCubeShader, fixedCubeShader);
+        if (!shaderHandle) {
+            throw new Error("Failed to create shader handle");
         }
-    }
-
-    private async setupServices() {
-        logStatus("📦 Setting up services...");
-        this.resourceManager = new ResourceManager();
-        await this.resourceManager.initialize();
-        this.serviceRegistry.register(IResourceManagerKey, this.resourceManager);
-    }
-
-    private async setupWebGPUProcessor() {
-        logStatus("⚡ Initializing WebGPU...");
-        this.webgpuProcessor = new WebGPUProcessor(canvas, "webgpu");
-        await this.webgpuProcessor.initialize();
-
-        const device = this.webgpuProcessor.getDevice();
-        if (device) this.resourceManager.setDevice(device);
-
-        this.webgpuProcessor.setScene(this.scene);
-        ProcessorRegistry.register(this.webgpuProcessor);
-
-        window.addEventListener('resize', () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            this.webgpuProcessor.handleResize();
-        });
-    }
-
-    private async setupScene() {
-        logStatus("🎭 Creating demo scene...");
-
-        // Create and load resources
-        const shaderHandle = createShaderHandle(this.resourceManager, "BasicShader", basicShaderSource, basicShaderSource);
         await shaderHandle.preload();
 
         const vertexLayout = {
-            stride: 32, // 8 floats * 4 bytes
+            stride: 32,
             attributes: [
                 { location: 0, format: 'float32x3' as const, offset: 0 },
                 { location: 1, format: 'float32x3' as const, offset: 12 },
@@ -130,166 +210,149 @@ class ImprovedDemoApp {
             ]
         };
 
-        const materialHandle = await createMaterialHandle(
-            this.resourceManager,
-            "BlueMaterial",
-            shaderHandle,
-            { color: { type: 'vec4', size: 16, value: [0.2, 0.6, 1.0, 1.0] } },
-            vertexLayout
-        );
+        // Create BRIGHT materials
+        const materialPromises = [
+            createMaterialHandle(resourceManager, "BrightRedMaterial", shaderHandle,
+                { color: { type: 'vec4', size: 16, value: [1.0, 0.0, 0.0, 1.0] } }, vertexLayout),
+            createMaterialHandle(resourceManager, "BrightGreenMaterial", shaderHandle,
+                { color: { type: 'vec4', size: 16, value: [0.0, 1.0, 0.0, 1.0] } }, vertexLayout),
+            createMaterialHandle(resourceManager, "BrightBlueMaterial", shaderHandle,
+                { color: { type: 'vec4', size: 16, value: [0.0, 0.0, 1.0, 1.0] } }, vertexLayout)
+        ];
 
-        const boxGeometry = GeometryUtils.createBox(1.0, 1.0, 1.0, true, true);
-        const boxMeshHandle = createMeshHandle(this.resourceManager, "BoxMesh", boxGeometry);
-
-        await Promise.all([materialHandle.preload(), boxMeshHandle.preload()]);
-
-        // Setup GPU resources
-        const device = this.webgpuProcessor.getDevice()!;
-        const materialResource = await materialHandle.get() as any;
-        const meshResource = await boxMeshHandle.get() as any;
-
-        if (materialResource?.setDevice) {
-            materialResource.setDevice(device, 'bgra8unorm');
-            await materialResource.compile();
-        }
-        if (meshResource?.setDevice) {
-            meshResource.setDevice(device);
-            await meshResource.compile();
+        const materials = await Promise.all(materialPromises);
+        if (materials.some(m => !m)) {
+            throw new Error("Failed to create material handles");
         }
 
-        const material = await materialHandle.get();
-        const boxMesh = await boxMeshHandle.get();
+        // Create mesh
+        const meshHandle = createMeshHandleFixed(resourceManager, "BigAlignedCube", cubeGeometry);
+        if (!meshHandle) {
+            throw new Error("Failed to create mesh handle");
+        }
 
-        // Create grid of boxes
-        const gridSize = 5;
-        const spacing = 2.5;
-        for (let x = 0; x < gridSize; x++) {
-            for (let z = 0; z < gridSize; z++) {
-                const box = new Actor(`Box_${x}_${z}`);
+        // Preload and compile everything
+        await Promise.all([
+            ...materials.map(m => m!.preload()),
+            meshHandle.preload()
+        ]);
 
-                const transform = box.addComponent(TransformComponent);
-                transform.setPosition((x - gridSize / 2) * spacing, 0, (z - gridSize / 2) * spacing);
+        const mesh = await meshHandle.get() as any;
+        if (mesh?.setDevice) {
+            mesh.setDevice(device);
+            await mesh.compile();
+        }
 
-                box.addComponent(MeshRendererComponent, { mesh: boxMesh, material: material, enabled: true });
-
-                const rotator = box.addComponent(RotatingComponent);
-                rotator.speed = 0.5 + Math.random() * 1.0;
-
-                this.scene.addActor(box);
+        const compiledMaterials = [];
+        for (const materialHandle of materials) {
+            const material = await materialHandle!.get() as any;
+            if (material?.setDevice) {
+                material.setDevice(device, 'bgra8unorm');
+                await material.compile();
             }
+            compiledMaterials.push(material);
         }
 
-        // Create camera
-        const camera = new Actor("MainCamera");
-        const cameraTransform = camera.addComponent(TransformComponent);
+        log(`✅ Everything compiled! Mesh: ${mesh.isCompiled}, Materials: ${compiledMaterials.every(m => m.isCompiled)}`);
 
-        // Position camera to see the grid properly
-        cameraTransform.setPosition(0, 8, 12);
-        cameraTransform.setRotationEuler(-0.3, 0, 0); // Look down slightly
+        // Final stats
+        console.log(`📊 FINAL mesh verification:`);
+        console.log(`   Vertex count: ${mesh.vertexCount}`);
+        console.log(`   Index count: ${mesh.indexCount}`);
+        console.log(`   Vertex stride: ${mesh.vertexStride} bytes`);
+
+        // Create cubes with MUCH better spacing and positioning
+        const cubeData = [
+            { pos: [-6, 0, 0], name: "BigRed", matIdx: 0 },     // Far left
+            { pos: [0, 0, 0], name: "BigGreen", matIdx: 1 },    // Center
+            { pos: [6, 0, 0], name: "BigBlue", matIdx: 2 }      // Far right
+        ];
+
+        const cubes: Actor[] = [];
+
+        for (let i = 0; i < cubeData.length; i++) {
+            const { pos, name, matIdx } = cubeData[i];
+            const cube = new Actor(name);
+
+            // Transform with clear positioning
+            const transform = cube.addComponent(TransformComponent);
+            transform.setPosition(...pos);
+
+            // Renderer
+            cube.addComponent(MeshRendererComponent, {
+                mesh: mesh,
+                material: compiledMaterials[matIdx],
+                enabled: true
+            });
+
+            // Slower rotation for easier tracking
+            const rotator = cube.addComponent(RotatingComponent);
+            rotator.speed = 0.5; // Same speed for all
+
+            scene.addActor(cube);
+            cubes.push(cube);
+
+            console.log(`🎯 Created BIG ${name} at [${pos.join(', ')}]`);
+        }
+
+        // Camera positioned to DEFINITELY see the cubes
+        const camera = new Actor("FinalCamera");
+        const cameraTransform = camera.addComponent(TransformComponent);
+        cameraTransform.setPosition(0, 2, 15); // Much further back!
 
         camera.addComponent(CameraComponent, {
             projectionType: ProjectionType.PERSPECTIVE,
             perspectiveConfig: {
-                fov: Math.PI / 4,
+                fov: Math.PI / 3, // 60 degrees
                 aspect: canvas.width / canvas.height,
                 near: 0.1,
-                far: 100.0
+                far: 1000.0 // Much larger far plane
             },
             isActive: true
         });
 
-        this.scene.addActor(camera);
+        scene.addActor(camera);
+        console.log("📷 Camera positioned at [0, 2, 15] with wide FOV");
 
-        // Wait for initialization
-        await this.waitForInitialization();
-        console.log(`✅ Scene created with ${this.scene.getActorCount()} actors`);
-    }
+        // Wait a bit then start
+        await new Promise(resolve => setTimeout(resolve, 500));
+        processor.start();
 
-    private async waitForInitialization(): Promise<void> {
-        const maxWait = 5000;
-        const startTime = Date.now();
+        log("🎮 FINAL FIX demo running! HUGE bright cubes should be VERY visible!");
 
-        while (Date.now() - startTime < maxWait) {
-            const actors = this.scene.getAllActors();
-            let allReady = true;
-            let totalActors = 0;
-            let readyActors = 0;
+        // Enhanced debugging every few seconds
+        setInterval(() => {
+            const actorCount = Array.from(scene.getAllActors()).length;
+            console.log(`🔍 FINAL DEBUG: ${actorCount} actors in scene`);
 
-            if (Array.isArray(actors)) {
-                totalActors = actors.length;
-                for (const actor of actors) {
-                    if (this.isActorReady(actor)) readyActors++;
-                    else allReady = false;
-                }
-            } else if (actors instanceof Map) {
-                totalActors = actors.size;
-                for (const actor of actors.values()) {
-                    if (this.isActorReady(actor)) readyActors++;
-                    else allReady = false;
-                }
+            // Check camera matrix
+            const cam = camera.getComponent(CameraComponent);
+            if (cam) {
+                const viewMatrix = cam.getViewMatrix();
+                const projMatrix = cam.getProjectionMatrix();
+                console.log(`   Camera view matrix[12-15]: [${viewMatrix[12].toFixed(2)}, ${viewMatrix[13].toFixed(2)}, ${viewMatrix[14].toFixed(2)}, ${viewMatrix[15].toFixed(2)}]`);
+                console.log(`   Camera proj matrix[0,5,10,15]: [${projMatrix[0].toFixed(2)}, ${projMatrix[5].toFixed(2)}, ${projMatrix[10].toFixed(2)}, ${projMatrix[15].toFixed(2)}]`);
             }
 
-            if (allReady && totalActors > 0) return;
-            await new Promise(resolve => setTimeout(resolve, 50));
-        }
-    }
+            cubes.forEach((cube, i) => {
+                const transform = cube.getComponent(TransformComponent);
+                const renderer = cube.getComponent(MeshRendererComponent);
 
-    private isActorReady(actor: any): boolean {
-        if (typeof actor.allComponentsInitialized === 'boolean') {
-            return actor.allComponentsInitialized;
-        }
-        return true; // Assume ready if we can't check
-    }
-
-    private startRendering() {
-        logStatus("🎬 Starting render loop...");
-        const renderGraph = this.webgpuProcessor['renderGraph'];
-        if (renderGraph?.configureForMode) {
-            renderGraph.configureForMode('forward');
-        }
-        this.webgpuProcessor.start();
-    }
-
-    private setupInteraction() {
-        let mouseDown = false;
-        let lastMouseX = 0;
-        let lastMouseY = 0;
-
-        canvas.addEventListener('mousedown', (e) => {
-            mouseDown = true;
-            lastMouseX = e.clientX;
-            lastMouseY = e.clientY;
-        });
-
-        canvas.addEventListener('mouseup', () => mouseDown = false);
-
-        canvas.addEventListener('mousemove', (e) => {
-            if (!mouseDown) return;
-
-            const deltaX = e.clientX - lastMouseX;
-            const deltaY = e.clientY - lastMouseY;
-
-            // Simple camera orbit
-            const camera = this.webgpuProcessor.getActiveCamera();
-            if (camera) {
-                const transform = camera.actor.getComponent(TransformComponent);
-                if (transform) {
-                    const speed = 0.01;
-                    const euler = transform.getEulerAngles();
-                    transform.setRotationEuler(
-                        euler[0] - deltaY * speed,
-                        euler[1] - deltaX * speed,
-                        euler[2]
-                    );
+                if (transform && renderer) {
+                    const pos = transform.position;
+                    const worldMatrix = transform.getWorldMatrix();
+                    console.log(`   ${cube.label}: pos=[${pos[0].toFixed(1)}, ${pos[1].toFixed(1)}, ${pos[2].toFixed(1)}], world[12-14]=[${worldMatrix[12].toFixed(1)}, ${worldMatrix[13].toFixed(1)}, ${worldMatrix[14].toFixed(1)}], renderable=${renderer.isRenderable()}`);
+                } else {
+                    console.log(`   ${cube.label}: MISSING COMPONENTS!`);
                 }
-            }
+            });
+        }, 3000);
 
-            lastMouseX = e.clientX;
-            lastMouseY = e.clientY;
-        });
+    } catch (error) {
+        log(`❌ FINAL FIX Error: ${error.message}`);
+        console.error("Complete error:", error);
+        console.error("Stack:", error.stack);
     }
 }
 
-// Run the app
-const app = new ImprovedDemoApp();
-app.run();
+finalFixDemo();

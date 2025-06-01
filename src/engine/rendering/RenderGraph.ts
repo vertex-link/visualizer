@@ -26,8 +26,7 @@ export abstract class RenderPass {
     public outputTargets: string[] = [];
 
     constructor(name: string, priority: number = 0) {
-        this.name = name;
-        this.priority = priority;
+        // super("Forward", priority);
     }
 
     /**
@@ -68,10 +67,10 @@ export class RenderGraph {
      */
     addPass(pass: RenderPass): void {
         this.passes.push(pass);
-        
+
         // Sort by priority (lower numbers first)
         this.passes.sort((a, b) => a.priority - b.priority);
-        
+
         // Initialize if device is available
         if (this.device) {
             pass.initialize(this.device);
@@ -100,7 +99,7 @@ export class RenderGraph {
      */
     initialize(device: GPUDevice): void {
         this.device = device;
-        
+
         // Initialize all passes
         for (const pass of this.passes) {
             pass.initialize(device);
@@ -187,7 +186,7 @@ export class ForwardPass extends RenderPass {
      */
     execute(context: RenderPassContext): void {
         const { renderer, batches, camera } = context;
-        
+
         if (!renderer || !camera) {
             console.warn("⚠️ ForwardPass: Missing renderer or camera");
             return;
@@ -242,11 +241,11 @@ export class ForwardPass extends RenderPass {
 
         // Get pipeline
         const pipeline = material.getPipeline();
-        
+
         // Validate pipeline
         if (!pipeline) {
             console.error(`❌ ForwardPass: Material ${material.constructor.name} getPipeline() returned null/undefined`);
-            
+
             // Try to debug the material state
             if ('isCompiled' in material) {
                 console.log(`Material compiled state: ${material.isCompiled}`);
@@ -254,7 +253,7 @@ export class ForwardPass extends RenderPass {
             if ('pipeline' in material) {
                 console.log(`Material internal pipeline:`, material.pipeline);
             }
-            
+
             return null;
         }
 
@@ -267,167 +266,25 @@ export class ForwardPass extends RenderPass {
         return pipeline;
     }
 
-
-    /**
-     * Setup uniform buffers for the batch
-     */
-    private setupUniforms(renderer: any, batch: RenderBatch, camera: any): void {
-        const material = batch.material;
-
-        // Get uniform data from material
-        const materialUniformBuffer = material.getUniformBuffer?.();
-        if (!materialUniformBuffer) {
-            console.warn(`⚠️ ForwardPass: Material ${material.constructor.name} has no uniform buffer`);
-            return;
-        }
-
-        try {
-            // Get pipeline to determine required buffer size
-            const pipeline = material.getPipeline();
-            if (!pipeline) {
-                console.error("❌ ForwardPass: No pipeline for bind group creation");
-                return;
-            }
-
-            // Create a complete uniform buffer with camera data
-            const cameraUniforms = this.createCameraUniforms(camera);
-            const materialUniforms = new Uint8Array(materialUniformBuffer);
-
-            // Calculate total required size (camera + material data)
-            const cameraSize = cameraUniforms.byteLength;
-            const materialSize = materialUniforms.byteLength;
-            const totalSize = Math.max(cameraSize + materialSize, 144); // Ensure minimum 144 bytes
-            const alignedSize = Math.ceil(totalSize / 16) * 16; // Align to 16-byte boundary
-
-            // Create final buffer with camera and material data
-            const finalBuffer = new ArrayBuffer(alignedSize);
-            const finalView = new Uint8Array(finalBuffer);
-
-            // Copy camera uniforms first (most shaders expect view/projection matrices first)
-            finalView.set(new Uint8Array(cameraUniforms), 0);
-
-            // Copy material uniforms after camera data
-            finalView.set(materialUniforms, cameraSize);
-
-            console.log(`🎥 Created unified uniform buffer: camera=${cameraSize}B, material=${materialSize}B, total=${alignedSize}B`);
-
-            // Create GPU buffer for uniforms
-            const gpuBuffer = renderer.createUniformBuffer(finalBuffer, `${material.constructor.name}_unified_uniforms`);
-
-            // Create bind group for uniforms (assuming group 0)
-            const device = renderer.getDevice();
-            if (!device) {
-                console.error("❌ ForwardPass: No GPU device available");
-                return;
-            }
-
-            // Create bind group using the pipeline's layout
-            const bindGroup = device.createBindGroup({
-                label: `${material.constructor.name}_bindGroup`,
-                layout: pipeline.getBindGroupLayout(0),
-                entries: [{
-                    binding: 0,
-                    resource: {
-                        buffer: gpuBuffer
-                    }
-                }]
-            });
-
-            // Set the bind group
-            renderer.setBindGroup(0, bindGroup);
-
-        } catch (error) {
-            console.error("❌ ForwardPass: Error setting up uniforms:", error);
-        }
-    }
-
-
-    /**
-     * Create camera uniform data (view and projection matrices)
-     */
-    private createCameraUniforms(camera: any): ArrayBuffer {
-        if (!camera) {
-            console.warn("⚠️ ForwardPass: No camera provided, using identity matrices");
-            // Return identity matrices as fallback
-            const identityMatrix = new Float32Array([
-                1, 0, 0, 0,
-                0, 1, 0, 0,
-                0, 0, 1, 0,
-                0, 0, 0, 1
-            ]);
-
-            const buffer = new ArrayBuffer(128); // 2 x 4x4 matrices (64 bytes each)
-            const view = new Float32Array(buffer);
-            view.set(identityMatrix, 0);  // View matrix
-            view.set(identityMatrix, 16); // Projection matrix
-            return buffer;
-        }
-
-        try {
-
-            if (camera.transform) {
-                console.log(`📷 Camera transform:`, {
-                    position: camera.transform.position,
-                    rotation: camera.transform.rotation,
-                    scale: camera.transform.scale
-                });
-            }
-
-            // Get matrices from camera
-            const viewMatrix = camera.getViewMatrix?.() || camera.viewMatrix;
-            const projectionMatrix = camera.getProjectionMatrix?.() || camera.projectionMatrix;
-
-            if (!viewMatrix || !projectionMatrix) {
-                console.error("❌ Camera missing view or projection matrix:", {
-                    hasView: !!viewMatrix,
-                    hasProjection: !!projectionMatrix,
-                    cameraType: camera.constructor.name
-                });
-            }
-
-            // Create buffer for camera uniforms (view + projection matrices)
-            const buffer = new ArrayBuffer(128); // 2 x 4x4 matrices
-            const view = new Float32Array(buffer);
-
-            // Copy view matrix (first 16 floats)
-            if (viewMatrix) {
-                view.set(viewMatrix, 0);
-            }
-
-            // Copy projection matrix (next 16 floats) 
-            if (projectionMatrix) {
-                view.set(projectionMatrix, 16);
-            }
-
-            console.log(`📊 Camera uniforms created:`, {
-                viewMatrix: viewMatrix ? Array.from(viewMatrix.slice(0, 4)) + '...' : 'missing',
-                projectionMatrix: projectionMatrix ? Array.from(projectionMatrix.slice(0, 4)) + '...' : 'missing',
-                cameraPosition: camera.transform?.position || 'unknown'
-            });
-
-
-            return buffer;
-
-        } catch (error) {
-            console.error("❌ Error creating camera uniforms:", error);
-            // Fallback to identity matrices
-            return this.createCameraUniforms(null);
-        }
-    }
-
-
-
     /**
      * Render a single batch
      */
     private renderBatch(renderer: any, batch: RenderBatch, camera: any): void {
-        // Set up pipeline and uniforms first
-        this.setupPipeline(renderer, batch);
-        this.setupUniforms(renderer, batch, camera);
+        // Set the render pipeline once per batch (if it exists)
+        const pipeline = this.validateAndGetPipeline(batch);
+        if (!pipeline) {
+            console.error("❌ ForwardPass: Cannot render batch, pipeline is invalid.");
+            return;
+        }
+        renderer.setPipeline(pipeline);
+        console.log(`🔧 Set pipeline for material: ${batch.material.constructor.name}`);
+
+        const cameraViewProjectionMatrix = camera.getViewProjectionMatrix();
+        const materialColor = batch.material.getUniform('color'); // Get color from material
 
         console.log(`🎭 Rendering batch with ${batch.instances.length} instances`);
 
-        // Render each instance in the batch
+        // Iterate and render each instance
         for (let i = 0; i < batch.instances.length; i++) {
             const instance = batch.instances[i];
             if (!instance.isRenderable()) {
@@ -436,77 +293,78 @@ export class ForwardPass extends RenderPass {
             }
 
             const mesh = instance.mesh;
-            if (!mesh || typeof mesh.getVertexBuffer !== 'function') {
-                console.warn("⚠️ ForwardPass: Instance has invalid mesh");
+            const transform = instance.getTransform(); // Get the transform component
+
+            if (!mesh || !transform) {
+                console.warn(`⚠️ ForwardPass: Instance ${i} has invalid mesh or transform`);
                 continue;
             }
 
-            // Debug instance transform
-            if (instance.transform) {
-                const transform = instance.transform;
-                console.log(`🎯 Instance ${i} transform:`, {
-                    position: transform.position || 'no position',
-                    rotation: transform.rotation || 'no rotation',
-                    scale: transform.scale || 'no scale',
-                    worldMatrix: transform.getWorldMatrix ? 'has worldMatrix()' : 'no worldMatrix()'
-                });
+            // 1. Prepare instance-specific uniform buffer (viewProjection, model, color)
+            const modelMatrix = transform.getWorldMatrix(); // Get the instance's world matrix
+            const viewProjectionMatrix = cameraViewProjectionMatrix; // Camera's VP matrix
+
+            const uniformBufferData = new Float32Array(144 / 4); // 144 bytes / 4 bytes per float = 36 floats
+            // Layout: viewProjection (16 floats), model (16 floats), color (4 floats)
+            uniformBufferData.set(viewProjectionMatrix, 0);       // Offset 0 (0 bytes)
+            uniformBufferData.set(modelMatrix, 16);    // Offset 16*4 = 64 bytes
+            uniformBufferData.set(materialColor, 32);  // Offset 32*4 = 128 bytes
+
+            // Create and upload temporary uniform buffer for this instance
+            // The buffer will now be managed by WebGPURenderer for deferred destruction
+            const instanceUniformGPUBuffer = renderer.createUniformBuffer(
+                uniformBufferData.buffer,
+                `Instance_${instance.actor.id}_Uniforms`
+            );
+
+            // Create and set bind group for this instance
+            const device = renderer.getDevice();
+            if (!device) {
+                console.error("❌ ForwardPass: No GPU device available for bind group creation.");
+                // instanceUniformGPUBuffer.destroy(); // Removed: Handled by renderer
+                continue;
+            }
+
+            const bindGroup = device.createBindGroup({
+                label: `Instance_${instance.actor.id}_BindGroup`,
+                layout: pipeline.getBindGroupLayout(0), // Use the pipeline's layout for group 0
+                entries: [{
+                    binding: 0,
+                    resource: {
+                        buffer: instanceUniformGPUBuffer
+                    }
+                }]
+            });
+            renderer.setBindGroup(0, bindGroup);
+
+
+            // 2. Set vertex and index buffers
+            const vertexBuffer = mesh.getVertexBuffer();
+            if (vertexBuffer) {
+                renderer.setBuffer(0, vertexBuffer);
             } else {
-                console.log(`❌ Instance ${i} has no transform component`);
+                console.warn(`⚠️ ForwardPass: Instance ${i} has no vertex buffer`);
+                // instanceUniformGPUBuffer.destroy(); // Removed: Handled by renderer
+                continue;
             }
 
-            try {
-                // Set vertex buffer
-                const vertexBuffer = mesh.getVertexBuffer();
-                if (vertexBuffer) {
-                    renderer.setBuffer(0, vertexBuffer);
-                    console.log(`📦 Set vertex buffer for instance ${i}`);
-                }
-
-                // Set index buffer if available
-                const indexBuffer = mesh.getIndexBuffer?.();
-                if (indexBuffer) {
-                    renderer.setBuffer(1, indexBuffer);
-                    console.log(`📑 Set index buffer for instance ${i}`);
-                }
-
-                // Debug mesh data
-                const indexCount = mesh.indexCount || 0;
-                const vertexCount = mesh.vertexCount || 0;
-                console.log(`🔢 Instance ${i} mesh: ${vertexCount} vertices, ${indexCount} indices`);
-
-                if (indexCount > 0) {
-                    // Indexed draw
-                    console.log(`🔺 Drawing indexed: ${indexCount} indices for instance ${i}`);
-                    renderer.drawIndexed(indexCount);
-                } else if (vertexCount > 0) {
-                    // Non-indexed draw
-                    console.log(`🔺 Drawing: ${vertexCount} vertices for instance ${i}`);
-                    renderer.draw(vertexCount);
-                } else {
-                    console.warn(`⚠️ ForwardPass: Instance ${i} mesh has no vertices to draw`);
-                }
-
-            } catch (error) {
-                console.error(`❌ ForwardPass: Error rendering instance ${i}:`, error);
+            const indexBuffer = mesh.getIndexBuffer();
+            if (indexBuffer) {
+                renderer.setBuffer(1, indexBuffer); // Set index buffer
             }
-        }
-    }
 
-    /**
-     * Setup render pipeline for the batch
-     */
-    private setupPipeline(renderer: any, batch: RenderBatch): void {
-        const material = batch.material;
-        const pipeline = material.getPipeline();
-        
-        if (!pipeline) {
-            console.error("❌ ForwardPass: No pipeline available for material");
-            return;
-        }
+            // 3. Draw
+            if (mesh.indexCount > 0) {
+                renderer.drawIndexed(mesh.indexCount);
+            } else if (mesh.vertexCount > 0) {
+                renderer.draw(mesh.vertexCount);
+            } else {
+                console.warn(`⚠️ ForwardPass: Instance ${i} mesh has no vertices/indices to draw`);
+            }
 
-        // Set the render pipeline
-        renderer.setPipeline(pipeline);
-        console.log(`🔧 Set pipeline for material: ${material.constructor.name}`);
+            // 4. Clean up the temporary uniform buffer - REMOVED, now handled by WebGPURenderer.endFrame()
+            // instanceUniformGPUBuffer.destroy(); 
+        }
     }
 }
 

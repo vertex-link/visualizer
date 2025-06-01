@@ -1,5 +1,4 @@
-﻿// src/webgpu/WebGPURenderer.ts - Simplified Utility Class
-
+﻿
 import { generateUUID } from "../utils/uuid.ts";
 import { WebGPUBuffer } from "./WebGPUBuffer.ts";
 import { BufferDescriptor, BufferUsage } from "../engine/rendering/interfaces/IBuffer.ts";
@@ -19,6 +18,7 @@ export class WebGPURenderer {
 
     private currentEncoder: GPUCommandEncoder | null = null;
     private currentRenderPass: GPURenderPassEncoder | null = null;
+    private _buffersToDestroy: GPUBuffer[] = []; // New: Collect buffers to destroy at frame end
 
     /**
      * Initialize WebGPU with the given canvas.
@@ -129,6 +129,10 @@ export class WebGPURenderer {
         const commandBuffer = this.currentEncoder.finish();
         this.device.queue.submit([commandBuffer]);
         this.currentEncoder = null;
+
+        // NEW: Destroy collected buffers after submission
+        this._buffersToDestroy.forEach(buffer => buffer.destroy());
+        this._buffersToDestroy = []; // Clear for next frame
     }
 
     // === Simplified Utility Methods ===
@@ -179,6 +183,7 @@ export class WebGPURenderer {
         });
 
         this.device.queue.writeBuffer(buffer, 0, data);
+        this._buffersToDestroy.push(buffer); // NEW: Add to list for deferred destruction
         return buffer;
     }
 
@@ -241,6 +246,10 @@ export class WebGPURenderer {
      */
     dispose(): void {
         if (this.depthTexture) this.depthTexture.destroy();
+
+        // Destroy any remaining buffers
+        this._buffersToDestroy.forEach(buffer => buffer.destroy());
+        this._buffersToDestroy = [];
 
         this.canvas = null;
         this.adapter = null;
