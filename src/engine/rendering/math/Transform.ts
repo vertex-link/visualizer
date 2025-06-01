@@ -37,17 +37,20 @@ export class Transform {
 
         out[8] = 0;
         out[9] = 0;
-        out[10] = far / (far - near);
-        out[11] = -1.0;
+
+        // Corrected for WebGPU Z NDC [0, 1]
+        // where view space Z is negative for objects in front of the camera,
+        // and w_clip = -z_view
+        out[10] = far / (near - far);  // Note the denominator: near - far
+        out[11] = -1.0;                // To make w_clip = -z_view
 
         out[12] = 0;
         out[13] = 0;
-        out[14] = -(far * near) / (far - near);
+        out[14] = (near * far) / (near - far); // Note the denominator: near - far
         out[15] = 0.0;
 
         return out;
     }
-
     /**
      * Create an orthographic projection matrix
      */

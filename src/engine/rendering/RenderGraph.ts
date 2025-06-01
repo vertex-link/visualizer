@@ -26,7 +26,8 @@ export abstract class RenderPass {
     public outputTargets: string[] = [];
 
     constructor(name: string, priority: number = 0) {
-        // super("Forward", priority);
+        this.name = name;
+        this.priority = priority;
     }
 
     /**

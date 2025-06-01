@@ -6,8 +6,9 @@ import { RequireComponent } from '../../src/core/component/Decorators.ts';
 import { TransformComponent, Vec3 } from '../../src/engine/rendering/components/TransformComponent.ts';
 import { Transform } from '../../src/engine/rendering/math/Transform.ts';
 
-@RequireComponent(TransformComponent)
 export class RotatingComponent extends Component {
+    
+    @RequireComponent(TransformComponent)
     private transform!: TransformComponent;
     public speed: number = 0.5; // Radians per second
 

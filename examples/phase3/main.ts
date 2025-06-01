@@ -47,7 +47,7 @@ fn vs_main(vertex: VertexInput) -> VertexOutput {
     let world_pos = uniforms.model * vec4<f32>(vertex.position, 1.0);
     
     // Transform to clip space using MVP matrix
-    out.clip_position = uniforms.mvp * vec4<f32>(vertex.position, 1.0);
+    out.clip_position = uniforms.mvp * uniforms.model * vec4<f32>(vertex.position, 1.0);
     
     // Pass through other attributes
     out.world_pos = world_pos.xyz;
