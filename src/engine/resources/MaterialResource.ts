@@ -1,9 +1,10 @@
-﻿// src/engine/resources/MaterialResource.ts
+﻿// src/engine/resources/MaterialResource.ts - Fixed RenderService Dependency
 
 import { Resource, ResourceStatus } from "./Resource.ts";
 import { ServiceRegistry } from "./../../core/Service.ts";
 import { ShaderResource } from "./ShaderResource.ts";
-import { IPipeline, PipelineDescriptor, VertexLayout } from "../rendering/interfaces/IPipeline.ts";
+import { VertexLayout } from "../rendering/interfaces/IPipeline.ts";
+import { WebGPUPipeline } from "../../webgpu/WebGPUPipeline.ts";
 
 /**
  * Uniform data types supported by materials.
@@ -41,18 +42,28 @@ export interface MaterialDescriptor {
  */
 export class MaterialResource extends Resource {
     private materialDescriptor: MaterialDescriptor | null = null;
-    private pipeline: IPipeline | null = null;
+    private pipeline: WebGPUPipeline | null = null;
     private uniformBuffer: ArrayBuffer | null = null;
     private uniformData: Map<string, UniformDescriptor> = new Map();
 
+    // Direct device reference instead of going through service
+    private device: GPUDevice | null = null;
+    private preferredFormat: GPUTextureFormat = 'bgra8unorm';
+
     // Compiled state
     public isCompiled: boolean = false;
-
-    // Future streaming support
     public version: number = 1;
 
     constructor(name: string, serviceRegistry: ServiceRegistry, uuid?: string) {
         super(name, serviceRegistry, uuid);
+    }
+
+    /**
+     * Set the GPU device and format for compilation (called by processor/manager)
+     */
+    setDevice(device: GPUDevice, preferredFormat: GPUTextureFormat = 'bgra8unorm'): void {
+        this.device = device;
+        this.preferredFormat = preferredFormat;
     }
 
     /**
@@ -65,8 +76,8 @@ export class MaterialResource extends Resource {
     /**
      * Get the compiled render pipeline.
      */
-    getPipeline(): IPipeline | null {
-        return this.pipeline;
+    getPipeline(): GPURenderPipeline | null {
+        return this.pipeline?.getGPURenderPipeline() || null;
     }
 
     /**
@@ -171,9 +182,6 @@ export class MaterialResource extends Resource {
      * Load material data.
      */
     protected async performLoad(): Promise<void> {
-        // For Phase 2, we assume material data is already set via setMaterialData
-        // Future: Load from material definition files
-
         if (!this.materialDescriptor) {
             throw new Error(`MaterialResource "${this.name}": No material data provided`);
         }
@@ -191,10 +199,15 @@ export class MaterialResource extends Resource {
 
     /**
      * Compile material into render pipeline.
+     * Requires device to be set first!
      */
     async compile(): Promise<void> {
         if (this.isCompiled || !this.isLoaded()) {
             return;
+        }
+
+        if (!this.device) {
+            throw new Error(`MaterialResource "${this.name}": No GPU device set for compilation. Call setDevice() first.`);
         }
 
         if (!this.materialDescriptor) {
@@ -202,19 +215,15 @@ export class MaterialResource extends Resource {
         }
 
         try {
-            // Ensure shader is compiled
-            if (!this.materialDescriptor.shader.isCompiled) {
-                await this.materialDescriptor.shader.compile();
-            }
-
-            // Get renderer from service registry
-            const renderer = this.getRenderer();
-            if (!renderer) {
-                throw new Error(`MaterialResource "${this.name}": No renderer available for compilation`);
+            // Ensure shader is compiled and has device
+            const shader = this.materialDescriptor.shader;
+            if (!shader.isCompiled) {
+                shader.setDevice(this.device);
+                await shader.compile();
             }
 
             // Create render pipeline
-            this.pipeline = await this.createPipeline(renderer);
+            this.pipeline = await this.createPipeline();
 
             this.isCompiled = true;
             console.debug(`MaterialResource "${this.name}" compiled successfully`);
@@ -239,6 +248,7 @@ export class MaterialResource extends Resource {
         this.materialDescriptor = null;
         this.uniformData.clear();
         this.uniformBuffer = null;
+        this.device = null;
 
         console.debug(`MaterialResource "${this.name}" unloaded`);
     }
@@ -246,9 +256,9 @@ export class MaterialResource extends Resource {
     /**
      * Create render pipeline from material descriptor.
      */
-    private async createPipeline(renderer: IRenderer): Promise<IPipeline> {
-        if (!this.materialDescriptor) {
-            throw new Error('No material data for pipeline creation');
+    private async createPipeline(): Promise<WebGPUPipeline> {
+        if (!this.materialDescriptor || !this.device) {
+            throw new Error('No material data or device for pipeline creation');
         }
 
         const shader = this.materialDescriptor.shader;
@@ -261,8 +271,8 @@ export class MaterialResource extends Resource {
             throw new Error(`MaterialResource "${this.name}": Missing required shader stages`);
         }
 
-        // Create pipeline descriptor
-        const pipelineDescriptor: PipelineDescriptor = {
+        // Create pipeline descriptor using the WebGPUPipeline constructor format
+        const pipelineDescriptor = {
             vertexShader: shader.vertexSource || '',
             fragmentShader: shader.fragmentSource || '',
             vertexLayout: this.materialDescriptor.vertexLayout || {
@@ -276,8 +286,8 @@ export class MaterialResource extends Resource {
             label: `${this.name}_pipeline`
         };
 
-        // Create pipeline through renderer
-        return await renderer.createPipeline(pipelineDescriptor);
+        // Create pipeline directly using WebGPUPipeline
+        return new WebGPUPipeline(this.device, pipelineDescriptor, this.preferredFormat);
     }
 
     /**
@@ -330,15 +340,6 @@ export class MaterialResource extends Resource {
     }
 
     /**
-     * Get renderer from service registry (helper method).
-     */
-    private getRenderer(): IRenderer {
-        // This will be properly typed when RenderService is implemented
-        const renderService = this.serviceRegistry.resolve(Symbol.for('IRenderService'));
-        return renderService?.getRenderer();
-    }
-
-    /**
      * Future streaming support - create delta for changed material properties.
      */
     createDelta?(sinceVersion: number): unknown {
@@ -356,7 +357,7 @@ export class MaterialResource extends Resource {
     }
 
     /**
-     * **FIXED**: Update uniform buffer with proper WebGPU alignment
+     * Update uniform buffer with proper WebGPU alignment
      */
     private updateUniformBuffer(): void {
         if (this.uniformData.size === 0) {

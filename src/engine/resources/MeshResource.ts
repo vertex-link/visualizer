@@ -1,9 +1,9 @@
-﻿// src/engine/resources/MeshResource.ts
+﻿// src/engine/resources/MeshResource.ts - Fixed RenderService Dependency
 
 import { Resource, ResourceStatus } from "./Resource.ts";
 import { ServiceRegistry } from "../../core/Service.ts";
-import { IBuffer, BufferUsage } from "../rendering/interfaces/IBuffer.ts";
-import { IRenderer } from "../rendering/interfaces/IRenderer.ts";
+import { BufferUsage } from "../rendering/interfaces/IBuffer.ts";
+import { WebGPUBuffer } from "../../webgpu/WebGPUBuffer.ts";
 
 /**
  * Vertex attribute definition for mesh data.
@@ -32,17 +32,25 @@ export interface MeshDescriptor {
  */
 export class MeshResource extends Resource {
     private meshDescriptor: MeshDescriptor | null = null;
-    private vertexBuffer: IBuffer | null = null;
-    private indexBuffer: IBuffer | null = null;
+    private vertexBuffer: WebGPUBuffer | null = null;
+    private indexBuffer: WebGPUBuffer | null = null;
+
+    // Direct device reference instead of going through service
+    private device: GPUDevice | null = null;
 
     // Compiled state
     public isCompiled: boolean = false;
-
-    // Future streaming support
     public version: number = 1;
 
     constructor(name: string, serviceRegistry: ServiceRegistry, uuid?: string) {
         super(name, serviceRegistry, uuid);
+    }
+
+    /**
+     * Set the GPU device for compilation (called by processor/manager)
+     */
+    setDevice(device: GPUDevice): void {
+        this.device = device;
     }
 
     /**
@@ -90,15 +98,15 @@ export class MeshResource extends Resource {
     /**
      * Get the vertex buffer (compiled).
      */
-    getVertexBuffer(): IBuffer | null {
-        return this.vertexBuffer;
+    getVertexBuffer(): GPUBuffer | null {
+        return this.vertexBuffer?.getGPUBuffer() || null;
     }
 
     /**
      * Get the index buffer (compiled).
      */
-    getIndexBuffer(): IBuffer | null {
-        return this.indexBuffer;
+    getIndexBuffer(): GPUBuffer | null {
+        return this.indexBuffer?.getGPUBuffer() || null;
     }
 
     /**
@@ -144,9 +152,6 @@ export class MeshResource extends Resource {
      * Load mesh data (placeholder for file loading).
      */
     protected async performLoad(): Promise<void> {
-        // For Phase 2, we assume mesh data is already set via setMeshData
-        // Future: Load from files (OBJ, GLTF, etc.)
-
         if (!this.meshDescriptor) {
             throw new Error(`MeshResource "${this.name}": No mesh data provided`);
         }
@@ -157,10 +162,15 @@ export class MeshResource extends Resource {
 
     /**
      * Compile mesh data into GPU buffers.
+     * Requires device to be set first!
      */
     async compile(): Promise<void> {
         if (this.isCompiled || !this.isLoaded()) {
             return;
+        }
+
+        if (!this.device) {
+            throw new Error(`MeshResource "${this.name}": No GPU device set for compilation. Call setDevice() first.`);
         }
 
         if (!this.meshDescriptor) {
@@ -168,18 +178,12 @@ export class MeshResource extends Resource {
         }
 
         try {
-            // Get renderer from service registry
-            const renderer = this.getRenderer();
-            if (!renderer) {
-                throw new Error(`MeshResource "${this.name}": No renderer available for compilation`);
-            }
-
             // Create vertex buffer
-            this.vertexBuffer = await this.createVertexBuffer(renderer);
+            this.vertexBuffer = await this.createVertexBuffer();
 
             // Create index buffer if indices exist
             if (this.meshDescriptor.indices) {
-                this.indexBuffer = await this.createIndexBuffer(renderer);
+                this.indexBuffer = await this.createIndexBuffer();
             }
 
             this.isCompiled = true;
@@ -208,57 +212,48 @@ export class MeshResource extends Resource {
 
         this.isCompiled = false;
         this.meshDescriptor = null;
+        this.device = null;
         console.debug(`MeshResource "${this.name}" unloaded`);
     }
 
     /**
      * Create vertex buffer from mesh data.
      */
-    private async createVertexBuffer(renderer: IRenderer): Promise<IBuffer> {
-        if (!this.meshDescriptor) {
-            throw new Error('No mesh data for vertex buffer creation');
+    private async createVertexBuffer(): Promise<WebGPUBuffer> {
+        if (!this.meshDescriptor || !this.device) {
+            throw new Error('No mesh data or device for vertex buffer creation');
         }
 
-        // Create buffer through renderer
-        const buffer = await renderer.createBuffer({
+        const buffer = new WebGPUBuffer(this.device, {
             size: this.meshDescriptor.vertices.byteLength,
             usage: BufferUsage.VERTEX,
             label: `${this.name}_vertices`
-        });
+        }, false); // Not mapped at creation
 
         // Upload vertex data
         buffer.setData(this.meshDescriptor.vertices);
+
         return buffer;
     }
 
     /**
      * Create index buffer from mesh data.
      */
-    private async createIndexBuffer(renderer: IRenderer): Promise<IBuffer> {
-        if (!this.meshDescriptor?.indices) {
-            throw new Error('No index data for index buffer creation');
+    private async createIndexBuffer(): Promise<WebGPUBuffer> {
+        if (!this.meshDescriptor?.indices || !this.device) {
+            throw new Error('No index data or device for index buffer creation');
         }
 
-        // Create buffer through renderer
-        const buffer = await renderer.createBuffer({
+        const buffer = new WebGPUBuffer(this.device, {
             size: this.meshDescriptor.indices.byteLength,
             usage: BufferUsage.INDEX,
             label: `${this.name}_indices`
-        });
+        }, false); // Not mapped at creation
 
         // Upload index data
         buffer.setData(this.meshDescriptor.indices);
-        return buffer;
-    }
 
-    /**
-     * Get renderer from service registry (helper method).
-     */
-    private getRenderer(): IRenderer {
-        // This will be properly typed when RenderService is implemented
-        // For now, return any available renderer-like service
-        const renderService = this.serviceRegistry.resolve(Symbol.for('IRenderService'));
-        return renderService?.getRenderer();
+        return buffer;
     }
 
     /**

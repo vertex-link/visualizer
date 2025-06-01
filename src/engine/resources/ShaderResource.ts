@@ -2,8 +2,7 @@
 
 import { Resource, ResourceStatus } from "./Resource.ts";
 import { ServiceRegistry } from "../../core/Service.ts";
-import { IRenderService, IRenderServiceKey } from "../services/RenderService.ts"; // Import IRenderService
-import { WebGPURenderer } from "../../webgpu/WebGPURenderer.ts"; // Import WebGPURenderer
+import { WebGPURenderer } from "../../webgpu/WebGPURenderer.ts";
 
 /**
  * Shader stage types supported by the engine.
@@ -33,7 +32,7 @@ export interface ShaderDescriptor {
  */
 export interface CompiledShader {
     stage: ShaderStage;
-    module: GPUShaderModule; // GPU-specific shader module (GPUShaderModule for WebGPU)
+    module: GPUShaderModule;
     entryPoint: string;
     source: string;
 }
@@ -48,8 +47,18 @@ export class ShaderResource extends Resource {
     public isCompiled: boolean = false;
     public version: number = 1;
 
+    // Direct device reference instead of going through service
+    private device: GPUDevice | null = null;
+
     constructor(name: string, serviceRegistry: ServiceRegistry, uuid?: string) {
         super(name, serviceRegistry, uuid);
+    }
+
+    /**
+     * Set the GPU device for compilation (called by processor/manager)
+     */
+    setDevice(device: GPUDevice): void {
+        this.device = device;
     }
 
     /**
@@ -183,9 +192,6 @@ export class ShaderResource extends Resource {
      * Load shader source code.
      */
     protected async performLoad(): Promise<void> {
-        // For Phase 2, we assume shader source is already set via setShaderData
-        // Future: Load from files (.wgsl, .vert, .frag, etc.)
-
         if (!this.shaderDescriptor) {
             throw new Error(`ShaderResource "${this.name}": No shader data provided`);
         }
@@ -201,10 +207,15 @@ export class ShaderResource extends Resource {
 
     /**
      * Compile shader source into GPU modules.
+     * Requires device to be set first!
      */
     async compile(): Promise<void> {
         if (this.isCompiled || !this.isLoaded()) {
             return;
+        }
+
+        if (!this.device) {
+            throw new Error(`ShaderResource "${this.name}": No GPU device set for compilation. Call setDevice() first.`);
         }
 
         if (!this.shaderDescriptor) {
@@ -212,18 +223,12 @@ export class ShaderResource extends Resource {
         }
 
         try {
-            // Get renderer from service registry
-            const renderer = this.getRenderer();
-            if (!renderer) {
-                throw new Error(`ShaderResource "${this.name}": No renderer available for compilation`);
-            }
-
             // Clear previous compilation
             this.compiledShaders.clear();
 
             // Compile each available stage
             for (const stage of this.availableStages) {
-                const compiled = await this.compileStage(stage, renderer);
+                const compiled = await this.compileStage(stage);
                 this.compiledShaders.set(stage, compiled);
             }
 
@@ -245,6 +250,7 @@ export class ShaderResource extends Resource {
         this.compiledShaders.clear();
         this.isCompiled = false;
         this.shaderDescriptor = null;
+        this.device = null;
 
         console.debug(`ShaderResource "${this.name}" unloaded`);
     }
@@ -252,9 +258,9 @@ export class ShaderResource extends Resource {
     /**
      * Compile a specific shader stage.
      */
-    private async compileStage(stage: ShaderStage, renderer: WebGPURenderer): Promise<CompiledShader> {
-        if (!this.shaderDescriptor) {
-            throw new Error('No shader data for compilation');
+    private async compileStage(stage: ShaderStage): Promise<CompiledShader> {
+        if (!this.shaderDescriptor || !this.device) {
+            throw new Error('No shader data or device for compilation');
         }
 
         let source: string;
@@ -265,8 +271,8 @@ export class ShaderResource extends Resource {
             default: throw new Error(`Unsupported shader stage: ${stage}`);
         }
 
-        // Compile through renderer (This call should now work and be type-safe)
-        const module = renderer.createShaderModule({ // No 'await' needed
+        // Compile through device directly
+        const module = this.device.createShaderModule({
             code: source,
             label: `${this.name}_${stage}`
         });
@@ -277,15 +283,6 @@ export class ShaderResource extends Resource {
             entryPoint: this.getEntryPoint(stage),
             source
         };
-    }
-    
-    /**
-     * Get renderer from service registry (helper method).
-     */
-    private getRenderer(): WebGPURenderer | null {
-        const renderService = this.serviceRegistry.resolve<IRenderService>(IRenderServiceKey);
-        // Cast to WebGPURenderer, as we specifically need its methods here.
-        return renderService?.getRenderer() as WebGPURenderer | null;
     }
 
     /**
