@@ -1,6 +1,4 @@
-﻿// src/engine/rendering/math/Transform.ts - Fixed version with additional utilities
-
-import type { Vec3, Quat, Mat4 } from "../components/TransformComponent";
+﻿import type { Vec3, Quat, Mat4 } from "../components/TransformComponent";
 
 /**
  * Math utilities for 3D transformations with complete implementation

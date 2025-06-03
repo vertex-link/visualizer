@@ -1,9 +1,8 @@
-﻿
-import { Resource, ResourceStatus } from "./Resource";
-import { ServiceRegistry } from "./../../core/Service";
+﻿import { Resource } from "./Resource";
 import { ShaderResource } from "./ShaderResource";
 import { VertexLayout } from "../rendering/interfaces/IPipeline";
-import { WebGPUPipeline } from "../../webgpu/WebGPUPipeline";
+import { WebGPUPipeline } from "./../webgpu/WebGPUPipeline";
+import {ServiceRegistry} from "@vertex-link/acs";
 
 /**
  * Uniform data types supported by materials.

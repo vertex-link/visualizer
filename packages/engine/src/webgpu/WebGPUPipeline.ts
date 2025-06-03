@@ -1,7 +1,7 @@
 ﻿// src/webgpu/WebGPUPipeline.ts (Updated)
 
-import { IPipeline, PipelineDescriptor, VertexLayout } from "../engine/rendering/interfaces/IPipeline";
-import { generateUUID } from "../utils/uuid";
+import { IPipeline, PipelineDescriptor, VertexLayout } from "../rendering/interfaces/IPipeline";
+import { generateUUID } from "@vertex-link/acs";
 
 /**
  * WebGPU implementation of the IPipeline interface.

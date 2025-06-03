@@ -1,6 +1,4 @@
-﻿// src/engine/rendering/interfaces/IPipeline.ts
-
-/**
+﻿/**
  * Vertex attribute description.
  */
 export interface VertexAttribute {

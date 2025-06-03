@@ -1,10 +1,8 @@
-﻿// src/engine/rendering/camera/PerspectiveCamera.ts
-
-import Actor from "../../../core/Actor";
-import { TransformComponent } from "../components/TransformComponent";
+﻿import { TransformComponent } from "../components/TransformComponent";
 import { CameraComponent, ProjectionType } from "./CameraComponent";
 import { Transform } from "../math/Transform";
 import type { Vec3 } from "../components/TransformComponent";
+import {Actor} from "@vertex-link/acs";
 
 /**
  * Helper class for creating and managing perspective cameras.

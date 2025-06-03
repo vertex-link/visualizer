@@ -1,8 +1,7 @@
-﻿
-import { Resource, ResourceStatus } from "./Resource";
+﻿import { Resource } from "./Resource";
 import { ServiceRegistry } from "@vertex-link/acs";
 import { BufferUsage } from "../rendering/interfaces/IBuffer";
-import { WebGPUBuffer } from "../../webgpu/WebGPUBuffer";
+import {WebGPUBuffer} from "./../webgpu/WebGPUBuffer";
 
 /**
  * Vertex attribute definition for mesh data.

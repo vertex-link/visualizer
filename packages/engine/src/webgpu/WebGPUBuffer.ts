@@ -1,7 +1,4 @@
-﻿// src/webgpu/WebGPUBuffer.ts
-
-import { IBuffer, BufferUsage, BufferDescriptor } from "../engine/rendering/interfaces/IBuffer";
-import { generateUUID } from "../utils/uuid";
+﻿import {BufferDescriptor, IBuffer} from "rendering/interfaces/IBuffer";
 
 /**
  * WebGPU implementation of the IBuffer interface.

@@ -1,13 +1,7 @@
-﻿// src/engine/rendering/components/MeshRendererComponent.ts - Updated for WebGPUProcessor
+﻿import {Actor, Component, ProcessorRegistry, RequireComponent} from "@vertex-link/acs";
+import {TransformComponent} from "../../rendering/components/TransformComponent";
+import {WebGPUProcessor, WebGPUUpdate} from "../../processors/WebGPUProcessor";
 
-import Component from "../../../core/component/Component";
-import Actor from "../../../core/Actor";
-import { RequireComponent } from "../../../core/component/Decorators";
-import { TransformComponent } from "./TransformComponent";
-import { WebGPUUpdate, WebGPUProcessor } from "../../processors/WebGPUProcessor";
-import { ProcessorRegistry } from "../../../core/processor/ProcessorRegistry";
-
-// Simplified interfaces for resources
 export interface MeshResource {
     readonly id: string;
     readonly vertexCount: number;

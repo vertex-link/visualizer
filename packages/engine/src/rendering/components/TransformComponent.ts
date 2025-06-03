@@ -1,7 +1,8 @@
-﻿import Component from "../../../core/component/Component";
-import Actor from "../../../core/Actor";
+﻿
 
 // Type aliases for 3D math (simple arrays for now)
+import {Actor, Component} from "@vertex-link/acs";
+
 export type Vec3 = [number, number, number];
 export type Quat = [number, number, number, number]; // [x, y, z, w]
 export type Mat4 = Float32Array; // 16 elements

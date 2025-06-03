@@ -1,8 +1,7 @@
 ﻿
 // --- FixedTickUpdate Decorator ---
-// import {createProcessorUpdateDecorator} from "@vertex-link/acs/processor/Decorators";
-import {Processor} from "../../core/processor/Processor";
-import {createProcessorUpdateDecorator} from "@vertex-link/acs/dist";
+import {Processor} from "@vertex-link/acs";
+import {createProcessorUpdateDecorator} from "@vertex-link/acs";
 
 /**
  * Decorator to hook a method into the "fixedTick" Processor's update loop.

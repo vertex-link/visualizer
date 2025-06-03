@@ -1,14 +1,10 @@
-﻿// src/engine/processors/WebGPUProcessor.ts - Fixed version
-
-import { Processor } from "../../core/processor/Processor";
-import { createProcessorUpdateDecorator } from "../../core/processor/Decorators";
-import { Scene } from "../../core/scene/Scene";
-import { TransformComponent } from "../rendering/components/TransformComponent";
-import { MeshRendererComponent } from "../rendering/components/MeshRendererComponent";
-import { CameraComponent } from "../rendering/camera/CameraComponent";
-import { WebGPURenderer } from "../../webgpu/WebGPURenderer";
-import { RenderGraph } from "../rendering/RenderGraph";
-import { GPUResourcePool } from "../rendering/GPUResourcePool.ts";
+﻿import {createProcessorUpdateDecorator, Processor, Scene} from "@vertex-link/acs";
+import {MeshRendererComponent} from "../rendering/components/MeshRendererComponent";
+import {WebGPURenderer} from "../webgpu/WebGPURenderer";
+import {GPUResourcePool} from "../rendering/GPUResourcePool";
+import {RenderGraph} from "../rendering/RenderGraph";
+import {CameraComponent} from "../rendering/camera/CameraComponent";
+import {TransformComponent} from "../rendering/components/TransformComponent";
 
 /**
  * Decorator to hook into WebGPU rendering loop

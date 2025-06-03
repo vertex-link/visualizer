@@ -1,8 +1,6 @@
 ﻿
-import { generateUUID } from "../utils/uuid";
 import { WebGPUBuffer } from "./WebGPUBuffer";
-import { BufferDescriptor, BufferUsage } from "../engine/rendering/interfaces/IBuffer";
-import { WebGPUPipeline } from "./WebGPUPipeline";
+import {generateUUID} from "@vertex-link/acs";
 
 /**
  * Simplified WebGPU Renderer - Just handles device setup and basic operations

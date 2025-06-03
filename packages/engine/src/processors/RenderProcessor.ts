@@ -1,5 +1,4 @@
-﻿import {Processor} from "../../core/processor/Processor";
-import {createProcessorUpdateDecorator} from "../../core/processor/Decorators";
+﻿import {createProcessorUpdateDecorator, Processor} from "@vertex-link/acs";
 
 /**
  * Decorator to hook a method into the "render" Processor's update loop.

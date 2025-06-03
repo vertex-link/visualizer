@@ -1,10 +1,6 @@
-﻿// src/engine/rendering/camera/CameraComponent.ts - Improved version
-
-import Component from "../../../core/component/Component";
-import Actor from "../../../core/Actor";
-import { RequireComponent } from "../../../core/component/Decorators";
-import { TransformComponent, Mat4, Vec3, Quat } from "../components/TransformComponent";
-import { Transform } from "../math/Transform";
+﻿import {Actor, Component, RequireComponent} from "@vertex-link/acs";
+import {Mat4, TransformComponent, Vec3} from "../../rendering/components/TransformComponent";
+import {Transform} from "../../rendering/math/Transform";
 
 export enum ProjectionType {
     PERSPECTIVE,
@@ -36,6 +32,7 @@ export interface CameraConfig {
 }
 
 export class CameraComponent extends Component {
+    
     public projectionType: ProjectionType;
     public perspectiveConfig: PerspectiveConfig;
     public orthographicConfig: OrthographicConfig;
@@ -136,10 +133,10 @@ export class CameraComponent extends Component {
 
     private updateProjectionMatrix(): void {
         if (this.projectionType === ProjectionType.PERSPECTIVE) {
-            const { fov, aspect, near, far } = this.perspectiveConfig;
+            const {fov, aspect, near, far} = this.perspectiveConfig;
             this._projectionMatrix = Transform.perspective(fov, aspect, near, far);
         } else {
-            const { left, right, bottom, top, near, far } = this.orthographicConfig;
+            const {left, right, bottom, top, near, far} = this.orthographicConfig;
             this._projectionMatrix = Transform.orthographic(left, right, bottom, top, near, far);
         }
         this._isProjectionDirty = false;
@@ -208,10 +205,13 @@ export class CameraComponent extends Component {
         return Transform.transformQuat([0, 1, 0], transform.rotation);
     }
 
-    public screenToWorldRay(mouseX: number, mouseY: number, screenWidth: number, screenHeight: number): { origin: Vec3; direction: Vec3 } {
+    public screenToWorldRay(mouseX: number, mouseY: number, screenWidth: number, screenHeight: number): {
+        origin: Vec3;
+        direction: Vec3
+    } {
         const transform = this.getTransform();
         if (!transform) {
-            return { origin: [0, 0, 0], direction: [0, 0, -1] };
+            return {origin: [0, 0, 0], direction: [0, 0, -1]};
         }
 
         // Convert screen coordinates to NDC
@@ -228,11 +228,11 @@ export class CameraComponent extends Component {
             const farPoint = Transform.unproject([ndcX, ndcY, 1], invProj, invView);
 
             const direction = Transform.normalize(Transform.subtract(farPoint, nearPoint));
-            return { origin: transform.position, direction };
+            return {origin: transform.position, direction};
         }
 
         // For orthographic camera
         // TODO: Implement orthographic ray casting
-        return { origin: transform.position, direction: [0, 0, -1] };
+        return {origin: transform.position, direction: [0, 0, -1]};
     }
 }

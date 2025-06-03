@@ -1,13 +1,8 @@
-﻿// src/engine/resources/ResourceManager.ts - Integrated with ECS
-
-import { IService, ServiceKey } from "../../core/Service";
-import { Resource, ResourceStatus } from "./Resource";
-import { ShaderResource } from "./ShaderResource";
+﻿import { ShaderResource } from "./ShaderResource";
 import { MaterialResource } from "./MaterialResource";
 import { MeshResource } from "./MeshResource";
-import { EventBus, emit } from "../../core/events/EventBus";
-import { Event } from "../../core/events/Event";
-import Component from "../../core/component/Component";
+import {Resource} from "resources/Resource";
+import {Component, EventBus, IService} from "@vertex-link/acs";
 
 // Resource events
 export class ResourceLoadedEvent extends Event<{ resource: Resource }> {

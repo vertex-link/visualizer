@@ -1,6 +1,4 @@
-﻿// src/engine/rendering/interfaces/IBuffer.ts
-
-/**
+﻿/**
  * Supported buffer usage types.
  */
 export enum BufferUsage {

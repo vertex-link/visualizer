@@ -9,6 +9,13 @@
     "skipLibCheck": true,
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "isolatedModules": true, // Often good for bundlers
-    "noEmit": true // Base config doesn't emit, individual ones will
-  }
+    "noEmit": true, // Base config doesn't emit, individual ones will,
+    "paths": {
+      "@vertex-link/acs": ["./packages/acs/src/index.ts"],
+      "@vertex-link/acs/*": ["./packages/acs/src/*"],
+      "@vertex-link/engine": ["./packages/engine/src/index.ts"],
+      "@vertex-link/engine/*": ["./packages/engine/src/*"]
+    }
+  },
+  
 }
