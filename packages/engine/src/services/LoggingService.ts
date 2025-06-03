@@ -1,5 +1,6 @@
 ﻿// Define a unique key for the LoggingService
-import {IService} from "../../core/Service";
+
+import {IService} from "@vertex-link/acs";
 
 export const ILoggingServiceKey = Symbol.for("ILoggingService");
 

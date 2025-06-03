@@ -1,8 +1,7 @@
 ﻿/// <reference types="@webgpu/types" />
 
-import { Resource, ResourceStatus } from "./Resource";
-import { ServiceRegistry } from "../../core/Service";
-import { WebGPURenderer } from "../../webgpu/WebGPURenderer";
+import { Resource } from "./Resource";
+import {ServiceRegistry} from "@vertex-link/acs";
 
 /**
  * Shader stage types supported by the engine.

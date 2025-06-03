@@ -1,7 +1,7 @@
 ﻿
 // src/engine/resources/GeometryUtils.ts - Complete Geometry Utility
 
-import { MeshDescriptor, VertexAttribute } from './MeshResource.ts';
+import { MeshDescriptor, VertexAttribute } from './MeshResource';
 
 export class GeometryUtils {
     /**

@@ -1,4 +1,4 @@
-﻿import {BufferDescriptor, IBuffer} from "rendering/interfaces/IBuffer";
+﻿import {BufferDescriptor, BufferUsage, IBuffer} from "../rendering/interfaces/IBuffer";
 
 /**
  * WebGPU implementation of the IBuffer interface.

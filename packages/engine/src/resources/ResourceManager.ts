@@ -1,8 +1,9 @@
 ﻿import { ShaderResource } from "./ShaderResource";
-import { MaterialResource } from "./MaterialResource";
-import { MeshResource } from "./MeshResource";
-import {Resource} from "resources/Resource";
-import {Component, EventBus, IService} from "@vertex-link/acs";
+import {MaterialResource, UniformDescriptor} from "./MaterialResource";
+import {MeshDescriptor, MeshResource} from "./MeshResource";
+import {Resource} from "../resources/Resource";
+import {Component, emit, Event, EventBus, IService} from "@vertex-link/acs";
+import {VertexLayout} from "@vertex-link/engine/rendering/interfaces/IPipeline";
 
 // Resource events
 export class ResourceLoadedEvent extends Event<{ resource: Resource }> {

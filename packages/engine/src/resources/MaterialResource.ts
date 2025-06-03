@@ -1,5 +1,5 @@
 ﻿import { Resource } from "./Resource";
-import { ShaderResource } from "./ShaderResource";
+import {ShaderResource, ShaderStage} from "./ShaderResource";
 import { VertexLayout } from "../rendering/interfaces/IPipeline";
 import { WebGPUPipeline } from "./../webgpu/WebGPUPipeline";
 import {ServiceRegistry} from "@vertex-link/acs";
@@ -284,8 +284,8 @@ export class MaterialResource extends Resource {
         const shader = this.materialDescriptor.shader;
 
         // Get compiled shader modules
-        const vertexShader = shader.getCompiledShader('vertex');
-        const fragmentShader = shader.getCompiledShader('fragment');
+        const vertexShader = shader.getCompiledShader(ShaderStage.VERTEX);
+        const fragmentShader = shader.getCompiledShader(ShaderStage.FRAGMENT);
 
         if (!vertexShader || !fragmentShader) {
             throw new Error(`MaterialResource "${this.name}": Missing required shader stages`);

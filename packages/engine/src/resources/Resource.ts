@@ -1,7 +1,7 @@
 ﻿// src/engine/resources/Resource.ts - Phase 2 Implementation
 // Based on existing ServiceRegistry system
 
-import { ServiceRegistry } from "../../core/Service";
+import { ServiceRegistry } from "@vertex-link/acs";
 
 export enum ResourceStatus {
     UNLOADED,

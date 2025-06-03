@@ -17,11 +17,12 @@ export default defineConfig({
     },
     // Add or modify the esbuild options
     esbuild: {
+        target: 'esnext', // Setting a modern target for esbuild can also be helpful.
         // This ensures esbuild uses the settings relevant for decorators
         tsconfigRaw: {
             compilerOptions: {
-                // experimentalDecorators: true,
-                // emitDecoratorMetadata: true,
+                experimentalDecorators: false,
+                emitDecoratorMetadata: false,
                 // Preserve JSX for Vue if not already handled by the Vue plugin
                 // jsx: "preserve", // Check if your Vue plugin handles this
             },

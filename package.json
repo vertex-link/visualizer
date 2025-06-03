@@ -19,7 +19,7 @@
     "dev:visualizer": "bun run --cwd ./packages/documentation dev",
     "build:visualizer": "bun run --cwd ./packages/documentation build",
     "build:all-libs": "bun run build:acs && bun run build:engine",
-    "typecheck": "tsc --noEmit -p ./tsconfig.base.json"
+    "typecheck": "tsc --noEmit -p ./tsconfig.json"
   },
   "dependencies": {
     "@webgpu/types": "^0.1.61"
