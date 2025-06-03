@@ -1,6 +1,4 @@
-﻿// src/core/events/EventSystem.ts - Clean Generic Event System
-
-import { IService } from '../Service.ts';
+﻿import { IService } from '../Service.ts';
 
 // ==================== Core Event Infrastructure ====================
 

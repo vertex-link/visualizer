@@ -1,3 +1,6 @@
+import {Actor, Component} from "@vertex-link/acs";
+import {Resource} from "@vertex-link/engine";
+
 class ResourceComponent extends Component {
     private resources: Set<Resource>;
 

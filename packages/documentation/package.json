@@ -13,6 +13,7 @@
   "dependencies": {
     "@vertex-link/acs": "workspace:*",
     "@vertex-link/engine": "workspace:*",
+    "reflect-metadata": "^0.2.2",
     "vue": "^3.3.0"
   },
   "devDependencies": {

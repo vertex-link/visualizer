@@ -1,4 +1,4 @@
-import { IService, ServiceKey } from '../../../src/core/Service.ts';
+import {IService} from "@vertex-link/acs";
 
 export const IPokemonServiceKey: ServiceKey = Symbol.for('IPokemonService');
 

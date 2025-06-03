@@ -205,9 +205,9 @@ export class WebGPURenderer {
 
     // === Getters ===
 
-    public get currentRenderPass(): GPURenderPassEncoder | null {
-        return this.currentRenderPass;
-    }
+    // public get currentRenderPass(): GPURenderPassEncoder | null {
+    //     return this.currentRenderPass;
+    // }
 
     // Also add a method to get the device
     public getDevice(): GPUDevice | null {

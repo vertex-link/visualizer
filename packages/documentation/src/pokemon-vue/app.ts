@@ -1,4 +1,7 @@
+import "reflect-metadata";
+
 import { getEventBus, initializeEventBus, EventBus } from '../src/core/events/Event.ts';
+
 import { ServiceRegistry } from '../../src/core/Service.ts';
 import { PokemonService, IPokemonServiceKey } from './services/PokemonService.ts';
 import { BattleSystem } from './game/systems.ts';

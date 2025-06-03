@@ -1,5 +1,8 @@
-console.log('🚀 Vertex Link Documentation - Simplified Version');
+import "reflect-metadata";
+import {Actor} from "@vertex-link/acs";
 
+console.log('🚀 Vertex Link Documentation - Simplified Version');
+console.log(Actor);
 class DocumentationApp {
     private initialized = false;
 

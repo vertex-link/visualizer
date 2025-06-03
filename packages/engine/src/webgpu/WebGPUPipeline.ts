@@ -13,9 +13,9 @@ export class WebGPUPipeline implements IPipeline {
 
     private device: GPUDevice;
     private pipeline: GPURenderPipeline | null = null;
-    private label: string;
+    readonly label: string;
     private isCompiled: boolean = false;
-    private preferredFormat: GPUTextureFormat; // Added
+    readonly preferredFormat: GPUTextureFormat; // Added
 
     constructor(device: GPUDevice, descriptor: PipelineDescriptor, preferredFormat: GPUTextureFormat) { // Added format
         this.id = generateUUID();
