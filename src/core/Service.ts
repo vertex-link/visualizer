@@ -1,11 +1,10 @@
-﻿export type ServiceKey = symbol;
+export type ServiceKey = symbol;
 
 export interface IService {
     initialize?(): Promise<void> | void;
     update?(deltaTime: number): void;
     dispose?(): Promise<void> | void;
 }
-
 
 /**
  * A minimal Service Registry implementation.
@@ -54,13 +53,13 @@ export class ServiceRegistry {
             return undefined;
         }
         const instance = this.services.get(key) as T | undefined;
-        
+
         if (instance) {
           // console.debug(`Service resolved for key: ${String(key)}`);
         } else {
           console.warn(`Service not found for key: ${String(key)}`);
         }
-        
+
         return instance;
     }
 

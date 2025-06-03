@@ -1,4 +1,3 @@
-﻿// examples/app.ts
 import { getEventBus, initializeEventBus, EventBus } from '../src/core/events/Event.ts';
 import { ServiceRegistry } from '../../src/core/Service.ts';
 import { PokemonService, IPokemonServiceKey } from './services/PokemonService.ts';

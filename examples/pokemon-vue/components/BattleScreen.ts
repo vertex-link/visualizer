@@ -1,4 +1,4 @@
-﻿import PokemonCard from './PokemonCard.ts';
+import PokemonCard from './PokemonCard.ts';
 import ActionBar from './ActionBar.ts';
 import MessageLog from './MessageLog.ts';
 import Actor from '../../../src/core/Actor.ts';

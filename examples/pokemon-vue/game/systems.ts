@@ -1,4 +1,3 @@
-﻿// examples/game/systems.ts
 import { emit, getEventBus } from '../../src/core/events/Event.ts';
 import { OnEvent, registerEventListeners } from '../../src/core/events/Decorators.ts';
 import {

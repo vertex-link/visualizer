@@ -1,6 +1,6 @@
-﻿import { PlayerChoseMoveEvent, RequestPlayerActionEvent } from '../game/events.ts'; // Path updated
-import { getEventBus, emit } from '../../src/core/events/Event.ts'; // Path updated
-import { PokemonStatsComponent } from '../game/components.ts'; // Path updated
+import { PlayerChoseMoveEvent, RequestPlayerActionEvent } from '../game/events.ts';
+import { getEventBus, emit } from '../../src/core/events/Event.ts';
+import { PokemonStatsComponent } from '../game/components.ts';
 const { defineComponent: defineActionBar, ref: refAction, computed: computedAction, onMounted: onMountedAction, onUnmounted: onUnmountedAction } = Vue;
 
 export default defineActionBar({

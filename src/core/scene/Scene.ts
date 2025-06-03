@@ -1,4 +1,3 @@
-﻿
 import Actor from '../Actor.ts';
 import { ComponentClass } from '../component/Component.ts';
 import { ComponentTypeRegistry } from '../component/ComponentRegistry.ts';

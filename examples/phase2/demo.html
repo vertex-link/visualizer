@@ -1,556 +1,618 @@
-﻿<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Phase 2 Demo - Vertex Link Engine</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', roboto, sans-serif;
-            background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
-            color: #ffffff;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        header {
-            background: rgba(0, 0, 0, 0.3);
-            padding: 20px;
-            text-align: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        h1 {
-            font-size: 2.5rem;
-            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 10px;
-        }
-
-        .subtitle {
-            color: #a0a0a0;
-            font-size: 1.1rem;
-        }
-
-        main {
-            flex: 1;
-            display: grid;
-            grid-template-columns: 1fr 300px;
-            gap: 20px;
-            padding: 20px;
-            max-width: 1400px;
-            margin: 0 auto;
-            width: 100%;
-        }
-
-        .canvas-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-        }
-
-        #canvas {
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            background: #000;
-            transition: transform 0.3s ease;
-        }
-
-        #canvas:hover {
-            transform: scale(1.02);
-        }
-
-        .controls {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        button {
-            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
-        }
-
-        button:disabled {
-            background: #444;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        button.danger {
-            background: linear-gradient(45deg, #ff6b6b 0%, #ee5a24 100%);
-        }
-
-        button.success {
-            background: linear-gradient(45deg, #00b894 0%, #00a085 100%);
-        }
-
-        .sidebar {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .panel {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
-            padding: 20px;
-        }
-
-        .panel h3 {
-            margin-bottom: 15px;
-            color: #4ecdc4;
-            font-size: 1.2rem;
-        }
-
-        .status {
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            font-weight: 500;
-        }
-
-        .status.info {
-            background: rgba(52, 152, 219, 0.2);
-            border-left: 4px solid #3498db;
-        }
-
-        .status.success {
-            background: rgba(46, 204, 113, 0.2);
-            border-left: 4px solid #2ecc71;
-        }
-
-        .status.error {
-            background: rgba(231, 76, 60, 0.2);
-            border-left: 4px solid #e74c3c;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .stat-item {
-            background: rgba(0, 0, 0, 0.3);
-            padding: 10px;
-            border-radius: 6px;
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #4ecdc4;
-        }
-
-        .stat-label {
-            font-size: 0.8rem;
-            color: #a0a0a0;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .resource-list {
-            max-height: 200px;
-            overflow-y: auto;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 8px;
-            padding: 10px;
-        }
-
-        .resource-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 12px;
-            margin: 4px 0;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 6px;
-            font-size: 0.9rem;
-        }
-
-        .resource-item.loaded {
-            background: rgba(46, 204, 113, 0.2);
-        }
-
-        .resource-item.compiled {
-            background: rgba(155, 89, 182, 0.2);
-        }
-
-        .badge {
-            font-size: 0.7rem;
-            padding: 2px 8px;
-            border-radius: 12px;
-            text-transform: uppercase;
-            font-weight: bold;
-        }
-
-        .badge.loaded {
-            background: #2ecc71;
-            color: white;
-        }
-
-        .badge.compiled {
-            background: #9b59b6;
-            color: white;
-        }
-
-        .badge.pending {
-            background: #f39c12;
-            color: white;
-        }
-
-        .progress-bar {
-            width: 100%;
-            height: 6px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 3px;
-            overflow: hidden;
-            margin: 10px 0;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #4ecdc4, #45b7d1);
-            transition: width 0.3s ease;
-        }
-
-        @media (max-width: 1024px) {
-            main {
-                grid-template-columns: 1fr;
-                grid-template-rows: auto auto;
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Phase 2 Demo - Vertex Link Engine</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
             }
 
-            .sidebar {
-                grid-row: 1;
+            body {
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", roboto,
+                    sans-serif;
+                background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
+                color: #ffffff;
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+            }
+
+            header {
+                background: rgba(0, 0, 0, 0.3);
+                padding: 20px;
+                text-align: center;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
+
+            h1 {
+                font-size: 2.5rem;
+                background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                margin-bottom: 10px;
+            }
+
+            .subtitle {
+                color: #a0a0a0;
+                font-size: 1.1rem;
+            }
+
+            main {
+                flex: 1;
+                display: grid;
+                grid-template-columns: 1fr 300px;
+                gap: 20px;
+                padding: 20px;
+                max-width: 1400px;
+                margin: 0 auto;
+                width: 100%;
             }
 
             .canvas-container {
-                grid-row: 2;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 20px;
             }
-        }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
+            #canvas {
+                border: 2px solid rgba(255, 255, 255, 0.2);
+                border-radius: 12px;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+                background: #000;
+                transition: transform 0.3s ease;
+            }
 
-        .loading {
-            animation: pulse 1.5s infinite;
-        }
+            #canvas:hover {
+                transform: scale(1.02);
+            }
 
-        .back-link {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            color: #4ecdc4;
-            text-decoration: none;
-            padding: 10px 15px;
-            border-radius: 8px;
-            font-size: 14px;
-            backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
-        }
+            .controls {
+                display: flex;
+                gap: 15px;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
 
-        .back-link:hover {
-            background: rgba(0, 0, 0, 0.9);
-            transform: translateX(5px);
-        }
-    </style>
-</head>
-<body>
-<a href="../index.html" class="back-link">← Back to Examples</a>
+            button {
+                background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 600;
+                transition: all 0.3s ease;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
 
-<header>
-    <h1>Vertex Link Engine</h1>
-    <p class="subtitle">Phase 2 Resource System Demo</p>
-</header>
+            button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+            }
 
-<main>
-    <div class="canvas-container">
-        <canvas id="canvas" width="900" height="700"></canvas>
+            button:disabled {
+                background: #444;
+                cursor: not-allowed;
+                transform: none;
+                box-shadow: none;
+            }
 
-        <div class="controls">
-            <button id="initBtn">Initialize System</button>
-            <button id="renderBtn" disabled>Start Rendering</button>
-            <button id="stopBtn" disabled class="danger">Stop Rendering</button>
-            <button id="resetBtn" disabled>Reset</button>
-            <button id="debugBtn" disabled>Debug Info</button>
-        </div>
-    </div>
+            button.danger {
+                background: linear-gradient(45deg, #ff6b6b 0%, #ee5a24 100%);
+            }
 
-    <div class="sidebar">
-        <div class="panel">
-            <h3>🚀 System Status</h3>
-            <div id="statusDisplay" class="status info">
-                Ready to initialize...
+            button.success {
+                background: linear-gradient(45deg, #00b894 0%, #00a085 100%);
+            }
+
+            .sidebar {
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .panel {
+                background: rgba(255, 255, 255, 0.1);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 12px;
+                padding: 20px;
+            }
+
+            .panel h3 {
+                margin-bottom: 15px;
+                color: #4ecdc4;
+                font-size: 1.2rem;
+            }
+
+            .status {
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 15px;
+                font-weight: 500;
+            }
+
+            .status.info {
+                background: rgba(52, 152, 219, 0.2);
+                border-left: 4px solid #3498db;
+            }
+
+            .status.success {
+                background: rgba(46, 204, 113, 0.2);
+                border-left: 4px solid #2ecc71;
+            }
+
+            .status.error {
+                background: rgba(231, 76, 60, 0.2);
+                border-left: 4px solid #e74c3c;
+            }
+
+            .stats-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+                margin-top: 10px;
+            }
+
+            .stat-item {
+                background: rgba(0, 0, 0, 0.3);
+                padding: 10px;
+                border-radius: 6px;
+                text-align: center;
+            }
+
+            .stat-value {
+                font-size: 1.5rem;
+                font-weight: bold;
+                color: #4ecdc4;
+            }
+
+            .stat-label {
+                font-size: 0.8rem;
+                color: #a0a0a0;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+
+            .resource-list {
+                max-height: 200px;
+                overflow-y: auto;
+                background: rgba(0, 0, 0, 0.3);
+                border-radius: 8px;
+                padding: 10px;
+            }
+
+            .resource-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 8px 12px;
+                margin: 4px 0;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 6px;
+                font-size: 0.9rem;
+            }
+
+            .resource-item.loaded {
+                background: rgba(46, 204, 113, 0.2);
+            }
+
+            .resource-item.compiled {
+                background: rgba(155, 89, 182, 0.2);
+            }
+
+            .badge {
+                font-size: 0.7rem;
+                padding: 2px 8px;
+                border-radius: 12px;
+                text-transform: uppercase;
+                font-weight: bold;
+            }
+
+            .badge.loaded {
+                background: #2ecc71;
+                color: white;
+            }
+
+            .badge.compiled {
+                background: #9b59b6;
+                color: white;
+            }
+
+            .badge.pending {
+                background: #f39c12;
+                color: white;
+            }
+
+            .progress-bar {
+                width: 100%;
+                height: 6px;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 3px;
+                overflow: hidden;
+                margin: 10px 0;
+            }
+
+            .progress-fill {
+                height: 100%;
+                background: linear-gradient(90deg, #4ecdc4, #45b7d1);
+                transition: width 0.3s ease;
+            }
+
+            @media (max-width: 1024px) {
+                main {
+                    grid-template-columns: 1fr;
+                    grid-template-rows: auto auto;
+                }
+
+                .sidebar {
+                    grid-row: 1;
+                }
+
+                .canvas-container {
+                    grid-row: 2;
+                }
+            }
+
+            @keyframes pulse {
+                0%,
+                100% {
+                    opacity: 1;
+                }
+                50% {
+                    opacity: 0.5;
+                }
+            }
+
+            .loading {
+                animation: pulse 1.5s infinite;
+            }
+
+            .back-link {
+                position: fixed;
+                top: 20px;
+                left: 20px;
+                background: rgba(0, 0, 0, 0.7);
+                color: #4ecdc4;
+                text-decoration: none;
+                padding: 10px 15px;
+                border-radius: 8px;
+                font-size: 14px;
+                backdrop-filter: blur(10px);
+                transition: all 0.3s ease;
+            }
+
+            .back-link:hover {
+                background: rgba(0, 0, 0, 0.9);
+                transform: translateX(5px);
+            }
+        </style>
+    </head>
+    <body>
+        <a href="../index.html" class="back-link">← Back to Examples</a>
+
+        <header>
+            <h1>Vertex Link Engine</h1>
+            <p class="subtitle">Phase 2 Resource System Demo</p>
+        </header>
+
+        <main>
+            <div class="canvas-container">
+                <canvas id="canvas" width="900" height="700"></canvas>
+
+                <div class="controls">
+                    <button id="initBtn">Initialize System</button>
+                    <button id="renderBtn" disabled>Start Rendering</button>
+                    <button id="stopBtn" disabled class="danger">
+                        Stop Rendering
+                    </button>
+                    <button id="resetBtn" disabled>Reset</button>
+                    <button id="debugBtn" disabled>Debug Info</button>
+                </div>
             </div>
-            <div id="progressContainer" style="display: none;">
-                <div class="progress-bar">
-                    <div id="progressBar" class="progress-fill" style="width: 0%"></div>
+
+            <div class="sidebar">
+                <div class="panel">
+                    <h3>🚀 System Status</h3>
+                    <div id="statusDisplay" class="status info">
+                        Ready to initialize...
+                    </div>
+                    <div id="progressContainer" style="display: none">
+                        <div class="progress-bar">
+                            <div
+                                id="progressBar"
+                                class="progress-fill"
+                                style="width: 0%"
+                            ></div>
+                        </div>
+                        <div id="progressText">Initializing...</div>
+                    </div>
                 </div>
-                <div id="progressText">Initializing...</div>
+
+                <div class="panel">
+                    <h3>📊 Performance Stats</h3>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div id="fpsValue" class="stat-value">0</div>
+                            <div class="stat-label">FPS</div>
+                        </div>
+                        <div class="stat-item">
+                            <div id="drawCallsValue" class="stat-value">0</div>
+                            <div class="stat-label">Draw Calls</div>
+                        </div>
+                        <div class="stat-item">
+                            <div id="trianglesValue" class="stat-value">0</div>
+                            <div class="stat-label">Triangles</div>
+                        </div>
+                        <div class="stat-item">
+                            <div id="frameTimeValue" class="stat-value">0</div>
+                            <div class="stat-label">Frame (ms)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h3>📦 Resources</h3>
+                    <div id="resourceList" class="resource-list">
+                        <div class="resource-item">
+                            <span>No resources loaded</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h3>🎮 Scene Objects</h3>
+                    <div id="sceneObjects" class="resource-list">
+                        <div class="resource-item">
+                            <span>Orange Box</span>
+                            <span class="badge pending">Pending</span>
+                        </div>
+                        <div class="resource-item">
+                            <span>Blue Sphere</span>
+                            <span class="badge pending">Pending</span>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
+        </main>
 
-        <div class="panel">
-            <h3>📊 Performance Stats</h3>
-            <div class="stats-grid">
-                <div class="stat-item">
-                    <div id="fpsValue" class="stat-value">0</div>
-                    <div class="stat-label">FPS</div>
-                </div>
-                <div class="stat-item">
-                    <div id="drawCallsValue" class="stat-value">0</div>
-                    <div class="stat-label">Draw Calls</div>
-                </div>
-                <div class="stat-item">
-                    <div id="trianglesValue" class="stat-value">0</div>
-                    <div class="stat-label">Triangles</div>
-                </div>
-                <div class="stat-item">
-                    <div id="frameTimeValue" class="stat-value">0</div>
-                    <div class="stat-label">Frame (ms)</div>
-                </div>
-            </div>
-        </div>
+        <script type="module">
+            class Phase2Demo {
+                constructor() {
+                    this.canvas = document.getElementById("canvas");
+                    this.statusDisplay =
+                        document.getElementById("statusDisplay");
+                    this.progressContainer =
+                        document.getElementById("progressContainer");
+                    this.progressBar = document.getElementById("progressBar");
+                    this.progressText = document.getElementById("progressText");
 
-        <div class="panel">
-            <h3>📦 Resources</h3>
-            <div id="resourceList" class="resource-list">
-                <div class="resource-item">
-                    <span>No resources loaded</span>
-                </div>
-            </div>
-        </div>
+                    // System components (simplified for demo)
+                    this.system = null;
+                    this.isRendering = false;
+                    this.initializationSteps = [
+                        "Checking WebGPU support",
+                        "Initializing services",
+                        "Creating box geometry",
+                        "Creating sphere geometry",
+                        "Loading shaders",
+                        "Creating materials",
+                        "Compiling resources",
+                        "System ready",
+                    ];
 
-        <div class="panel">
-            <h3>🎮 Scene Objects</h3>
-            <div id="sceneObjects" class="resource-list">
-                <div class="resource-item">
-                    <span>Orange Box</span>
-                    <span class="badge pending">Pending</span>
-                </div>
-                <div class="resource-item">
-                    <span>Blue Sphere</span>
-                    <span class="badge pending">Pending</span>
-                </div>
-            </div>
-        </div>
-    </div>
-</main>
+                    this.setupEventListeners();
+                    this.startStatsUpdate();
+                }
 
-<script type="module">
-    class Phase2Demo {
-        constructor() {
-            this.canvas = document.getElementById('canvas');
-            this.statusDisplay = document.getElementById('statusDisplay');
-            this.progressContainer = document.getElementById('progressContainer');
-            this.progressBar = document.getElementById('progressBar');
-            this.progressText = document.getElementById('progressText');
+                setupEventListeners() {
+                    document.getElementById("initBtn").onclick = () =>
+                        this.initializeSystem();
+                    document.getElementById("renderBtn").onclick = () =>
+                        this.startRendering();
+                    document.getElementById("stopBtn").onclick = () =>
+                        this.stopRendering();
+                    document.getElementById("resetBtn").onclick = () =>
+                        this.resetSystem();
+                    document.getElementById("debugBtn").onclick = () =>
+                        this.showDebugInfo();
+                }
 
-            // System components (simplified for demo)
-            this.system = null;
-            this.isRendering = false;
-            this.initializationSteps = [
-                'Checking WebGPU support',
-                'Initializing services',
-                'Creating box geometry',
-                'Creating sphere geometry',
-                'Loading shaders',
-                'Creating materials',
-                'Compiling resources',
-                'System ready'
-            ];
+                async initializeSystem() {
+                    try {
+                        this.showProgress(true);
+                        this.updateStatus("Initializing system...", "info");
 
-            this.setupEventListeners();
-            this.startStatsUpdate();
-        }
+                        // Simulate initialization steps
+                        for (
+                            let i = 0;
+                            i < this.initializationSteps.length;
+                            i++
+                        ) {
+                            const step = this.initializationSteps[i];
+                            const progress =
+                                ((i + 1) / this.initializationSteps.length) *
+                                100;
 
-        setupEventListeners() {
-            document.getElementById('initBtn').onclick = () => this.initializeSystem();
-            document.getElementById('renderBtn').onclick = () => this.startRendering();
-            document.getElementById('stopBtn').onclick = () => this.stopRendering();
-            document.getElementById('resetBtn').onclick = () => this.resetSystem();
-            document.getElementById('debugBtn').onclick = () => this.showDebugInfo();
-        }
+                            this.updateProgress(progress, step);
+                            await this.delay(300);
 
-        async initializeSystem() {
-            try {
-                this.showProgress(true);
-                this.updateStatus('Initializing system...', 'info');
-
-                // Simulate initialization steps
-                for (let i = 0; i < this.initializationSteps.length; i++) {
-                    const step = this.initializationSteps[i];
-                    const progress = ((i + 1) / this.initializationSteps.length) * 100;
-
-                    this.updateProgress(progress, step);
-                    await this.delay(300);
-
-                    // Simulate potential WebGPU check
-                    if (i === 0) {
-                        if (!navigator.gpu) {
-                            throw new Error('WebGPU not supported in this browser');
+                            // Simulate potential WebGPU check
+                            if (i === 0) {
+                                if (!navigator.gpu) {
+                                    throw new Error(
+                                        "WebGPU not supported in this browser",
+                                    );
+                                }
+                            }
                         }
+
+                        this.showProgress(false);
+                        this.updateStatus(
+                            "✅ System initialized successfully!",
+                            "success",
+                        );
+
+                        // Update UI
+                        document.getElementById("initBtn").disabled = true;
+                        document.getElementById("renderBtn").disabled = false;
+                        document.getElementById("resetBtn").disabled = false;
+                        document.getElementById("debugBtn").disabled = false;
+
+                        this.updateResourceList();
+                        this.updateSceneObjects("loaded");
+                    } catch (error) {
+                        this.showProgress(false);
+                        this.updateStatus(
+                            `❌ Initialization failed: ${error.message}`,
+                            "error",
+                        );
                     }
                 }
 
-                this.showProgress(false);
-                this.updateStatus('✅ System initialized successfully!', 'success');
+                startRendering() {
+                    if (this.isRendering) return;
 
-                // Update UI
-                document.getElementById('initBtn').disabled = true;
-                document.getElementById('renderBtn').disabled = false;
-                document.getElementById('resetBtn').disabled = false;
-                document.getElementById('debugBtn').disabled = false;
+                    this.isRendering = true;
+                    this.updateStatus("🎬 Rendering active", "success");
 
-                this.updateResourceList();
-                this.updateSceneObjects('loaded');
+                    document.getElementById("renderBtn").disabled = true;
+                    document.getElementById("stopBtn").disabled = false;
 
-            } catch (error) {
-                this.showProgress(false);
-                this.updateStatus(`❌ Initialization failed: ${error.message}`, 'error');
-            }
-        }
-
-        startRendering() {
-            if (this.isRendering) return;
-
-            this.isRendering = true;
-            this.updateStatus('🎬 Rendering active', 'success');
-
-            document.getElementById('renderBtn').disabled = true;
-            document.getElementById('stopBtn').disabled = false;
-
-            this.updateSceneObjects('compiled');
-            this.renderLoop();
-        }
-
-        stopRendering() {
-            this.isRendering = false;
-            this.updateStatus('⏹️ Rendering stopped', 'info');
-
-            document.getElementById('renderBtn').disabled = false;
-            document.getElementById('stopBtn').disabled = true;
-        }
-
-        resetSystem() {
-            this.stopRendering();
-            this.updateStatus('🔄 System reset', 'info');
-
-            document.getElementById('initBtn').disabled = false;
-            document.getElementById('renderBtn').disabled = true;
-            document.getElementById('resetBtn').disabled = true;
-            document.getElementById('debugBtn').disabled = true;
-
-            this.updateResourceList(true);
-            this.updateSceneObjects('pending');
-            this.resetStats();
-        }
-
-        renderLoop() {
-            if (!this.isRendering) return;
-
-            // Simulate rendering
-            this.updateMockStats();
-
-            requestAnimationFrame(() => this.renderLoop());
-        }
-
-        showDebugInfo() {
-            const debugInfo = {
-                system: 'Vertex Link Engine Phase 2',
-                renderer: 'WebGPU',
-                resources: {
-                    meshes: 2,
-                    shaders: 1,
-                    materials: 2,
-                    buffers: 6
-                },
-                performance: {
-                    fps: Math.round(60 + Math.random() * 10),
-                    frameTime: (16.7 + Math.random() * 2).toFixed(1),
-                    memory: '45.2 MB'
+                    this.updateSceneObjects("compiled");
+                    this.renderLoop();
                 }
-            };
 
-            alert('Debug Info:\n' + JSON.stringify(debugInfo, null, 2));
-        }
+                stopRendering() {
+                    this.isRendering = false;
+                    this.updateStatus("⏹️ Rendering stopped", "info");
 
-        updateProgress(percentage, text) {
-            this.progressBar.style.width = `${percentage}%`;
-            this.progressText.textContent = text;
-        }
+                    document.getElementById("renderBtn").disabled = false;
+                    document.getElementById("stopBtn").disabled = true;
+                }
 
-        showProgress(show) {
-            this.progressContainer.style.display = show ? 'block' : 'none';
-        }
+                resetSystem() {
+                    this.stopRendering();
+                    this.updateStatus("🔄 System reset", "info");
 
-        updateStatus(message, type) {
-            this.statusDisplay.textContent = message;
-            this.statusDisplay.className = `status ${type}`;
-        }
+                    document.getElementById("initBtn").disabled = false;
+                    document.getElementById("renderBtn").disabled = true;
+                    document.getElementById("resetBtn").disabled = true;
+                    document.getElementById("debugBtn").disabled = true;
 
-        updateResourceList(reset = false) {
-            const resourceList = document.getElementById('resourceList');
+                    this.updateResourceList(true);
+                    this.updateSceneObjects("pending");
+                    this.resetStats();
+                }
 
-            if (reset) {
-                resourceList.innerHTML = '<div class="resource-item"><span>No resources loaded</span></div>';
-                return;
-            }
+                renderLoop() {
+                    if (!this.isRendering) return;
 
-            const resources = [
-                { name: 'ExampleBox', type: 'Mesh', status: 'compiled' },
-                { name: 'ExampleSphere', type: 'Mesh', status: 'compiled' },
-                { name: 'ExampleShader', type: 'Shader', status: 'compiled' },
-                { name: 'OrangeMaterial', type: 'Material', status: 'compiled' },
-                { name: 'BlueMaterial', type: 'Material', status: 'compiled' }
-            ];
+                    // Simulate rendering
+                    this.updateMockStats();
 
-            resourceList.innerHTML = resources.map(res => `
+                    requestAnimationFrame(() => this.renderLoop());
+                }
+
+                showDebugInfo() {
+                    const debugInfo = {
+                        system: "Vertex Link Engine Phase 2",
+                        renderer: "WebGPU",
+                        resources: {
+                            meshes: 2,
+                            shaders: 1,
+                            materials: 2,
+                            buffers: 6,
+                        },
+                        performance: {
+                            fps: Math.round(60 + Math.random() * 10),
+                            frameTime: (16.7 + Math.random() * 2).toFixed(1),
+                            memory: "45.2 MB",
+                        },
+                    };
+
+                    alert("Debug Info:\n" + JSON.stringify(debugInfo, null, 2));
+                }
+
+                updateProgress(percentage, text) {
+                    this.progressBar.style.width = `${percentage}%`;
+                    this.progressText.textContent = text;
+                }
+
+                showProgress(show) {
+                    this.progressContainer.style.display = show
+                        ? "block"
+                        : "none";
+                }
+
+                updateStatus(message, type) {
+                    this.statusDisplay.textContent = message;
+                    this.statusDisplay.className = `status ${type}`;
+                }
+
+                updateResourceList(reset = false) {
+                    const resourceList =
+                        document.getElementById("resourceList");
+
+                    if (reset) {
+                        resourceList.innerHTML =
+                            '<div class="resource-item"><span>No resources loaded</span></div>';
+                        return;
+                    }
+
+                    const resources = [
+                        {
+                            name: "ExampleBox",
+                            type: "Mesh",
+                            status: "compiled",
+                        },
+                        {
+                            name: "ExampleSphere",
+                            type: "Mesh",
+                            status: "compiled",
+                        },
+                        {
+                            name: "ExampleShader",
+                            type: "Shader",
+                            status: "compiled",
+                        },
+                        {
+                            name: "OrangeMaterial",
+                            type: "Material",
+                            status: "compiled",
+                        },
+                        {
+                            name: "BlueMaterial",
+                            type: "Material",
+                            status: "compiled",
+                        },
+                    ];
+
+                    resourceList.innerHTML = resources
+                        .map(
+                            (res) => `
                     <div class="resource-item ${res.status}">
                         <span>${res.name} (${res.type})</span>
                         <span class="badge ${res.status}">${res.status}</span>
                     </div>
-                `).join('');
-        }
+                `,
+                        )
+                        .join("");
+                }
 
-        updateSceneObjects(status) {
-            const sceneObjects = document.getElementById('sceneObjects');
-            sceneObjects.innerHTML = `
+                updateSceneObjects(status) {
+                    const sceneObjects =
+                        document.getElementById("sceneObjects");
+                    sceneObjects.innerHTML = `
                     <div class="resource-item">
                         <span>Orange Box</span>
                         <span class="badge ${status}">${status}</span>
@@ -560,52 +622,57 @@
                         <span class="badge ${status}">${status}</span>
                     </div>
                 `;
-        }
-
-        updateMockStats() {
-            const baseFPS = 60;
-            const fps = Math.round(baseFPS + Math.sin(Date.now() * 0.001) * 5);
-            const frameTime = (1000 / fps).toFixed(1);
-            const drawCalls = 2;
-            const triangles = 2048;
-
-            document.getElementById('fpsValue').textContent = fps;
-            document.getElementById('frameTimeValue').textContent = frameTime;
-            document.getElementById('drawCallsValue').textContent = drawCalls;
-            document.getElementById('trianglesValue').textContent = triangles;
-        }
-
-        resetStats() {
-            document.getElementById('fpsValue').textContent = '0';
-            document.getElementById('frameTimeValue').textContent = '0';
-            document.getElementById('drawCallsValue').textContent = '0';
-            document.getElementById('trianglesValue').textContent = '0';
-        }
-
-        startStatsUpdate() {
-            setInterval(() => {
-                if (this.isRendering) {
-                    this.updateMockStats();
                 }
-            }, 100);
-        }
 
-        delay(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        }
-    }
+                updateMockStats() {
+                    const baseFPS = 60;
+                    const fps = Math.round(
+                        baseFPS + Math.sin(Date.now() * 0.001) * 5,
+                    );
+                    const frameTime = (1000 / fps).toFixed(1);
+                    const drawCalls = 2;
+                    const triangles = 2048;
 
-    // Initialize the demo
-    const demo = new Phase2Demo();
+                    document.getElementById("fpsValue").textContent = fps;
+                    document.getElementById("frameTimeValue").textContent =
+                        frameTime;
+                    document.getElementById("drawCallsValue").textContent =
+                        drawCalls;
+                    document.getElementById("trianglesValue").textContent =
+                        triangles;
+                }
 
-    console.log('🎮 Phase 2 Demo loaded!');
-    console.log('💡 This demo showcases the complete resource system:');
-    console.log('   • Service-based architecture');
-    console.log('   • Async resource loading');
-    console.log('   • GPU resource compilation');
-    console.log('   • Material system');
-    console.log('   • Procedural geometry');
-    console.log('📚 Click "Initialize System" to begin!');
-</script>
-</body>
+                resetStats() {
+                    document.getElementById("fpsValue").textContent = "0";
+                    document.getElementById("frameTimeValue").textContent = "0";
+                    document.getElementById("drawCallsValue").textContent = "0";
+                    document.getElementById("trianglesValue").textContent = "0";
+                }
+
+                startStatsUpdate() {
+                    setInterval(() => {
+                        if (this.isRendering) {
+                            this.updateMockStats();
+                        }
+                    }, 100);
+                }
+
+                delay(ms) {
+                    return new Promise((resolve) => setTimeout(resolve, ms));
+                }
+            }
+
+            // Initialize the demo
+            const demo = new Phase2Demo();
+
+            console.log("🎮 Phase 2 Demo loaded!");
+            console.log("💡 This demo showcases the complete resource system:");
+            console.log("   • Service-based architecture");
+            console.log("   • Async resource loading");
+            console.log("   • GPU resource compilation");
+            console.log("   • Material system");
+            console.log("   • Procedural geometry");
+            console.log('📚 Click "Initialize System" to begin!');
+        </script>
+    </body>
 </html>

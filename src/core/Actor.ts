@@ -1,4 +1,4 @@
-﻿import Component, {ComponentClass, ComponentConstructorParameters} from "./component/Component.ts";
+import Component, {ComponentClass, ComponentConstructorParameters} from "./component/Component.ts";
 import { HOOKED_METHODS_METADATA_KEY, HookedMethodMetadata } from './processor/Decorators.ts';
 import { ProcessorRegistry } from './processor/ProcessorRegistry.ts';
 import { IProcessable } from './processor/Processor.ts';
@@ -230,7 +230,7 @@ export default class Actor {
     public getInitializedComponents(): Component[] {
         return this.getAllComponents().filter(c => c.isInitialized);
     }
-    
+
     public get allComponentsInitialized(): boolean {
         return this.getAllComponents().every(c => c.isInitialized);
     }

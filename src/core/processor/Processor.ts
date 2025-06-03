@@ -1,5 +1,3 @@
-﻿// src/core/Processor.ts
-
 /**
  * Defines the signature for a callback function that a Processor executes.
  * @param deltaTime - The time elapsed since the last tick, typically in seconds.

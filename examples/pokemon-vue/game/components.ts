@@ -1,7 +1,6 @@
-﻿// examples/game/components.ts
-import Actor from '../../../src/core/Actor.ts'; // Path updated
-import Component from '../../../src/core/component/Component.ts'; // Path updated
-import { PokemonData } from '../services/PokemonService.ts'; // Path updated
+import Actor from '../../../src/core/Actor.ts';
+import Component from '../../../src/core/component/Component.ts';
+import { PokemonData } from '../services/PokemonService.ts';
 
 export class PokemonStatsComponent extends Component {
     public data: PokemonData;

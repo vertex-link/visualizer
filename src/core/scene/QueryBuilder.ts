@@ -1,5 +1,3 @@
-﻿// src/core/scene/QueryBuilder.ts
-
 import { ComponentClass } from '../component/Component.ts';
 import { QueryCondition, IQueryDataProvider } from './QueryCondition.ts';
 

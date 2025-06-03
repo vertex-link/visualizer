@@ -1,4 +1,4 @@
-﻿import {Processor} from "./Processor.ts";
+import {Processor} from "./Processor.ts";
 
 /**
  * A static registry for managing Processor instances.

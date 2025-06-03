@@ -1,5 +1,3 @@
-﻿// src/core/scene/QueryCondition.ts
-
 import { ComponentClass } from '../component/Component.ts';
 
 /**

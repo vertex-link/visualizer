@@ -1,4 +1,4 @@
-﻿import { PokemonStatsComponent } from '../game/components.ts'; // Path updated
+import { PokemonStatsComponent } from '../game/components.ts';
 const { defineComponent, computed, ref } = Vue;
 
 export default defineComponent({

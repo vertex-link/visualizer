@@ -1,5 +1,3 @@
-﻿// examples/phase3/RotatingComponent.ts
-
 import Component from '../../src/core/component/Component.ts';
 import { Update } from '../../src/core/processor/Decorators.ts'; // Use generic Update
 import { RequireComponent } from '../../src/core/component/Decorators.ts';
@@ -7,7 +5,7 @@ import { TransformComponent, Vec3 } from '../../src/engine/rendering/components/
 import { Transform } from '../../src/engine/rendering/math/Transform.ts';
 
 export class RotatingComponent extends Component {
-    
+
     @RequireComponent(TransformComponent)
     private transform!: TransformComponent;
     public speed: number = 0.5; // Radians per second

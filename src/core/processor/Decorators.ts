@@ -1,4 +1,4 @@
-﻿import "./../../../node_modules/reflect-metadata/Reflect.js"
+import "./../../../node_modules/reflect-metadata/Reflect.js"
 
 /**
  * Metadata key used to store information about methods hooked into processors.

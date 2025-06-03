@@ -1,5 +1,5 @@
-﻿import { UIMessageEvent } from '../game/events.ts'; // Path updated
-import { getEventBus } from '../../src/core/events/Event.ts'; // Path updated
+import { UIMessageEvent } from '../game/events.ts';
+import { getEventBus } from '../../src/core/events/Event.ts';
 const { defineComponent: defineMsgLog, ref: refMsg, onMounted: onMountedMsg, onUnmounted: onUnmountedMsg } = Vue;
 
 export default defineMsgLog({

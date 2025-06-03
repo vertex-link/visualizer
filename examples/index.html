@@ -1,517 +1,581 @@
-﻿<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vertex Link Engine - Examples</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Vertex Link Engine - Examples</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
-            color: #ffffff;
-            min-height: 100vh;
-            line-height: 1.6;
-        }
+            body {
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                    sans-serif;
+                background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
+                color: #ffffff;
+                min-height: 100vh;
+                line-height: 1.6;
+            }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 40px 20px;
-        }
+            .container {
+                max-width: 1400px;
+                margin: 0 auto;
+                padding: 40px 20px;
+            }
 
-        header {
-            text-align: center;
-            margin-bottom: 60px;
-        }
+            header {
+                text-align: center;
+                margin-bottom: 60px;
+            }
 
-        h1 {
-            font-size: clamp(2.5rem, 5vw, 4rem);
-            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 20px;
-            font-weight: 700;
-        }
+            h1 {
+                font-size: clamp(2.5rem, 5vw, 4rem);
+                background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                margin-bottom: 20px;
+                font-weight: 700;
+            }
 
-        .subtitle {
-            color: #a0a0a0;
-            font-size: 1.3rem;
-            margin-bottom: 30px;
-        }
+            .subtitle {
+                color: #a0a0a0;
+                font-size: 1.3rem;
+                margin-bottom: 30px;
+            }
 
-        .server-status {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(78, 205, 196, 0.1);
-            border: 1px solid rgba(78, 205, 196, 0.3);
-            padding: 10px 20px;
-            border-radius: 25px;
-            font-size: 0.9rem;
-        }
+            .server-status {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                background: rgba(78, 205, 196, 0.1);
+                border: 1px solid rgba(78, 205, 196, 0.3);
+                padding: 10px 20px;
+                border-radius: 25px;
+                font-size: 0.9rem;
+            }
 
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            background: #4ecdc4;
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
+            .status-dot {
+                width: 8px;
+                height: 8px;
+                background: #4ecdc4;
+                border-radius: 50%;
+                animation: pulse 2s infinite;
+            }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
+            @keyframes pulse {
+                0%,
+                100% {
+                    opacity: 1;
+                }
+                50% {
+                    opacity: 0.5;
+                }
+            }
 
-        .phase-section {
-            margin-bottom: 80px;
-        }
+            .phase-section {
+                margin-bottom: 80px;
+            }
 
-        .phase-title {
-            font-size: 2.2rem;
-            color: #ff6b6b;
-            margin-bottom: 15px;
-            text-align: center;
-        }
+            .phase-title {
+                font-size: 2.2rem;
+                color: #ff6b6b;
+                margin-bottom: 15px;
+                text-align: center;
+            }
 
-        .phase-description {
-            text-align: center;
-            color: #cccccc;
-            margin-bottom: 40px;
-            font-size: 1.1rem;
-        }
+            .phase-description {
+                text-align: center;
+                color: #cccccc;
+                margin-bottom: 40px;
+                font-size: 1.1rem;
+            }
 
-        .examples-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 30px;
-        }
-
-        .example-card {
-            background: rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 20px;
-            padding: 35px;
-            transition: all 0.4s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .example-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1);
-            transform: scaleX(0);
-            transition: transform 0.4s ease;
-        }
-
-        .example-card:hover::before {
-            transform: scaleX(1);
-        }
-
-        .example-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
-            border-color: rgba(78, 205, 196, 0.5);
-        }
-
-        .example-header {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .example-icon {
-            font-size: 2.5rem;
-            filter: drop-shadow(0 0 10px rgba(78, 205, 196, 0.3));
-        }
-
-        .example-title {
-            font-size: 1.6rem;
-            color: #4ecdc4;
-            margin: 0;
-        }
-
-        .example-description {
-            color: #cccccc;
-            margin-bottom: 25px;
-            font-size: 1.05rem;
-        }
-
-        .example-features {
-            list-style: none;
-            margin-bottom: 30px;
-        }
-
-        .example-features li {
-            color: #b0b0b0;
-            padding: 8px 0;
-            position: relative;
-            padding-left: 25px;
-            font-size: 0.95rem;
-        }
-
-        .example-features li::before {
-            content: '✨';
-            position: absolute;
-            left: 0;
-            top: 8px;
-        }
-
-        .example-links {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        .example-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            text-decoration: none;
-            padding: 12px 24px;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .example-link:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-        }
-
-        .example-link.secondary {
-            background: linear-gradient(45deg, #555 0%, #777 100%);
-        }
-
-        .info-section {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 16px;
-            padding: 40px;
-            margin: 60px 0;
-            text-align: center;
-        }
-
-        .requirements {
-            background: rgba(255, 86, 86, 0.1);
-            border: 1px solid rgba(255, 86, 86, 0.3);
-            border-radius: 12px;
-            padding: 25px;
-            margin-top: 40px;
-        }
-
-        .requirements-title {
-            color: #ff5656;
-            font-size: 1.2rem;
-            font-weight: bold;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .requirements-list {
-            text-align: left;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        .requirements-list li {
-            margin: 10px 0;
-            color: #cccccc;
-        }
-
-        .api-section {
-            background: rgba(69, 183, 209, 0.1);
-            border: 1px solid rgba(69, 183, 209, 0.3);
-            border-radius: 12px;
-            padding: 25px;
-            margin: 40px 0;
-        }
-
-        .api-title {
-            color: #45b7d1;
-            font-size: 1.2rem;
-            font-weight: bold;
-            margin-bottom: 15px;
-            text-align: center;
-        }
-
-        .api-endpoints {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 15px;
-            margin-top: 20px;
-        }
-
-        .api-endpoint {
-            background: rgba(0, 0, 0, 0.3);
-            padding: 15px;
-            border-radius: 8px;
-            font-family: 'Courier New', monospace;
-            border-left: 3px solid #45b7d1;
-        }
-
-        .api-endpoint a {
-            color: #45b7d1;
-            text-decoration: none;
-        }
-
-        .api-endpoint a:hover {
-            text-decoration: underline;
-        }
-
-        @media (max-width: 768px) {
             .examples-grid {
-                grid-template-columns: 1fr;
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+                gap: 30px;
+            }
+
+            .example-card {
+                background: rgba(255, 255, 255, 0.08);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                border-radius: 20px;
+                padding: 35px;
+                transition: all 0.4s ease;
+                position: relative;
+                overflow: hidden;
+            }
+
+            .example-card::before {
+                content: "";
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 4px;
+                background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1);
+                transform: scaleX(0);
+                transition: transform 0.4s ease;
+            }
+
+            .example-card:hover::before {
+                transform: scaleX(1);
+            }
+
+            .example-card:hover {
+                transform: translateY(-10px);
+                box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+                border-color: rgba(78, 205, 196, 0.5);
+            }
+
+            .example-header {
+                display: flex;
+                align-items: center;
+                gap: 15px;
+                margin-bottom: 20px;
+            }
+
+            .example-icon {
+                font-size: 2.5rem;
+                filter: drop-shadow(0 0 10px rgba(78, 205, 196, 0.3));
+            }
+
+            .example-title {
+                font-size: 1.6rem;
+                color: #4ecdc4;
+                margin: 0;
+            }
+
+            .example-description {
+                color: #cccccc;
+                margin-bottom: 25px;
+                font-size: 1.05rem;
+            }
+
+            .example-features {
+                list-style: none;
+                margin-bottom: 30px;
+            }
+
+            .example-features li {
+                color: #b0b0b0;
+                padding: 8px 0;
+                position: relative;
+                padding-left: 25px;
+                font-size: 0.95rem;
+            }
+
+            .example-features li::before {
+                content: "✨";
+                position: absolute;
+                left: 0;
+                top: 8px;
             }
 
             .example-links {
-                justify-content: center;
+                display: flex;
+                gap: 12px;
+                flex-wrap: wrap;
             }
-        }
-    </style>
-</head>
-<body>
-<div class="container">
-    <header>
-        <h1>Vertex Link Engine</h1>
-        <p class="subtitle">Modern TypeScript Game Engine with WebGPU</p>
-        <div class="server-status">
-            <div class="status-dot"></div>
-            <span>Development Server Running</span>
-        </div>
-    </header>
 
-    <div class="info-section">
-        <h2 style="color: #4ecdc4; margin-bottom: 20px;">🚀 Welcome to Vertex Link</h2>
-        <p style="font-size: 1.1rem; color: #cccccc;">
-            Explore our modular, service-based 3D engine architecture. Each example demonstrates different aspects
-            of the engine, from basic WebGPU integration to advanced resource management.
-        </p>
-    </div>
+            .example-link {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                text-decoration: none;
+                padding: 12px 24px;
+                border-radius: 10px;
+                font-weight: 600;
+                font-size: 0.9rem;
+                transition: all 0.3s ease;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
 
-    <div class="phase-section">
-        <h2 class="phase-title">Phase 1: Foundation</h2>
-        <p class="phase-description">Core WebGPU renderer and basic 3D pipeline</p>
+            .example-link:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+            }
 
-        <div class="examples-grid">
-            <div class="example-card">
-                <div class="example-header">
-                    <div class="example-icon">🔧</div>
-                    <h3 class="example-title">WebGPU Integration Test</h3>
-                </div>
-                <p class="example-description">
-                    Comprehensive test of the core WebGPU renderer implementation with step-by-step validation.
-                </p>
-                <ul class="example-features">
-                    <li>WebGPU device initialization & validation</li>
-                    <li>Buffer creation and data upload</li>
-                    <li>WGSL shader compilation</li>
-                    <li>Render pipeline setup</li>
-                    <li>Basic 3D box rendering</li>
-                    <li>Interactive testing workflow</li>
-                </ul>
-                <div class="example-links">
-                    <a href="phase1/test-phase1.html" class="example-link">
-                        🧪 Run Test
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
+            .example-link.secondary {
+                background: linear-gradient(45deg, #555 0%, #777 100%);
+            }
 
-    <div class="phase-section">
-        <h2 class="phase-title">Phase 2: Resource System</h2>
-        <p class="phase-description">Advanced resource management, asset loading, and material system</p>
+            .info-section {
+                background: rgba(255, 255, 255, 0.05);
+                border-radius: 16px;
+                padding: 40px;
+                margin: 60px 0;
+                text-align: center;
+            }
 
-        <div class="examples-grid">
-            <div class="example-card">
-                <div class="example-header">
-                    <div class="example-icon">📦</div>
-                    <h3 class="example-title">Resource System Test</h3>
-                </div>
-                <p class="example-description">
-                    Complete validation of the service-based resource loading and management architecture.
-                </p>
-                <ul class="example-features">
-                    <li>ServiceRegistry pattern demonstration</li>
-                    <li>Async resource loading pipeline</li>
-                    <li>GPU resource compilation</li>
-                    <li>Procedural geometry generation</li>
-                    <li>Material and shader management</li>
-                    <li>Resource caching and statistics</li>
-                </ul>
-                <div class="example-links">
-                    <a href="phase2/test-phase2.html" class="example-link">
-                        🔬 Run Test
-                    </a>
-                </div>
-            </div>
+            .requirements {
+                background: rgba(255, 86, 86, 0.1);
+                border: 1px solid rgba(255, 86, 86, 0.3);
+                border-radius: 12px;
+                padding: 25px;
+                margin-top: 40px;
+            }
 
-            <div class="example-card">
-                <div class="example-header">
-                    <div class="example-icon">🎮</div>
-                    <h3 class="example-title">Interactive Demo</h3>
-                </div>
-                <p class="example-description">
-                    Beautiful real-time demo showcasing animated 3D objects with dynamic materials and effects.
-                </p>
-                <ul class="example-features">
-                    <li>Animated rotating box and sphere</li>
-                    <li>Real-time material property updates</li>
-                    <li>Live performance monitoring</li>
-                    <li>Resource management interface</li>
-                    <li>Smooth 60fps animations</li>
-                    <li>Professional UI design</li>
-                </ul>
-                <div class="example-links">
-                    <a href="phase2/demo.html" class="example-link">
-                        🎬 Launch Demo
-                    </a>
-                </div>
-            </div>
+            .requirements-title {
+                color: #ff5656;
+                font-size: 1.2rem;
+                font-weight: bold;
+                margin-bottom: 15px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+            }
 
-            <div class="example-card">
-                <div class="example-header">
-                    <div class="example-icon">📝</div>
-                    <h3 class="example-title">Simple TypeScript Example</h3>
-                </div>
-                <p class="example-description">
-                    Clean, minimal TypeScript implementation showing the essential code needed for 3D rendering.
-                </p>
-                <ul class="example-features">
-                    <li>Minimal setup and boilerplate</li>
-                    <li>Service registration patterns</li>
-                    <li>Resource creation workflow</li>
-                    <li>Basic rendering loop</li>
-                    <li>Matrix transformations</li>
-                    <li>Well-documented code</li>
-                </ul>
-                <div class="example-links">
-                    <a href="phase2/simple/index.html" class="example-link">
-                        👨‍💻 View Code
-                    </a>
-                    <a href="https://github.com" class="example-link secondary">
-                        📚 Source
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
+            .requirements-list {
+                text-align: left;
+                max-width: 600px;
+                margin: 0 auto;
+            }
 
-    <div class="api-section">
-        <div class="api-title">🔌 Development API</div>
-        <p style="text-align: center; color: #cccccc; margin-bottom: 20px;">
-            Useful endpoints for development and debugging
-        </p>
-        <div class="api-endpoints">
-            <div class="api-endpoint">
-                <strong>Server Status:</strong><br>
-                <a href="/api/status" target="_blank">/api/status</a>
-            </div>
-            <div class="api-endpoint">
-                <strong>Available Examples:</strong><br>
-                <a href="/api/examples" target="_blank">/api/examples</a>
-            </div>
-            <div class="api-endpoint">
-                <strong>Trigger Reload:</strong><br>
-                <a href="/api/reload" target="_blank">/api/reload</a>
-            </div>
-        </div>
-    </div>
+            .requirements-list li {
+                margin: 10px 0;
+                color: #cccccc;
+            }
 
-    <div class="requirements">
-        <div class="requirements-title">
-            ⚠️ Browser Requirements
-        </div>
-        <div class="requirements-list">
-            <p><strong>WebGPU Support Required:</strong></p>
-            <ul style="margin: 15px 0; padding-left: 20px;">
-                <li><strong>Chrome/Edge:</strong> Enable "Unsafe WebGPU" in chrome://flags</li>
-                <li><strong>Firefox:</strong> Enable in about:config (experimental support)</li>
-                <li><strong>Safari:</strong> Limited WebGPU support available</li>
-            </ul>
-            <p style="margin-top: 20px;">
-                <strong>Check WebGPU Support:</strong>
-                <a href="https://webgpu.io" target="_blank" style="color: #4ecdc4;">webgpu.io</a>
-            </p>
-        </div>
-    </div>
-</div>
+            .api-section {
+                background: rgba(69, 183, 209, 0.1);
+                border: 1px solid rgba(69, 183, 209, 0.3);
+                border-radius: 12px;
+                padding: 25px;
+                margin: 40px 0;
+            }
 
-<script>
-    // Add some interactivity
-    document.addEventListener('DOMContentLoaded', function() {
-        // Animate cards on scroll
-        const cards = document.querySelectorAll('.example-card');
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.style.animationDelay = Math.random() * 0.3 + 's';
-                    entry.target.style.animation = 'slideInUp 0.6s ease forwards';
+            .api-title {
+                color: #45b7d1;
+                font-size: 1.2rem;
+                font-weight: bold;
+                margin-bottom: 15px;
+                text-align: center;
+            }
+
+            .api-endpoints {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 15px;
+                margin-top: 20px;
+            }
+
+            .api-endpoint {
+                background: rgba(0, 0, 0, 0.3);
+                padding: 15px;
+                border-radius: 8px;
+                font-family: "Courier New", monospace;
+                border-left: 3px solid #45b7d1;
+            }
+
+            .api-endpoint a {
+                color: #45b7d1;
+                text-decoration: none;
+            }
+
+            .api-endpoint a:hover {
+                text-decoration: underline;
+            }
+
+            @media (max-width: 768px) {
+                .examples-grid {
+                    grid-template-columns: 1fr;
                 }
-            });
-        }, { threshold: 0.1 });
 
-        cards.forEach(card => observer.observe(card));
+                .example-links {
+                    justify-content: center;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <header>
+                <h1>Vertex Link Engine</h1>
+                <p class="subtitle">
+                    Modern TypeScript Game Engine with WebGPU
+                </p>
+                <div class="server-status">
+                    <div class="status-dot"></div>
+                    <span>Development Server Running</span>
+                </div>
+            </header>
 
-        // Add click tracking
-        document.querySelectorAll('.example-link').forEach(link => {
-            link.addEventListener('click', function(e) {
-                const example = this.textContent.trim();
-                console.log(`🎯 Launching example: ${example}`);
+            <div class="info-section">
+                <h2 style="color: #4ecdc4; margin-bottom: 20px">
+                    🚀 Welcome to Vertex Link
+                </h2>
+                <p style="font-size: 1.1rem; color: #cccccc">
+                    Explore our modular, service-based 3D engine architecture.
+                    Each example demonstrates different aspects of the engine,
+                    from basic WebGPU integration to advanced resource
+                    management.
+                </p>
+            </div>
 
-                // Add loading state
-                this.style.opacity = '0.7';
-                this.innerHTML = '🚀 Loading...';
-            });
-        });
+            <div class="phase-section">
+                <h2 class="phase-title">Phase 1: Foundation</h2>
+                <p class="phase-description">
+                    Core WebGPU renderer and basic 3D pipeline
+                </p>
 
-        // Check WebGPU support
-        if (!navigator.gpu) {
-            const warning = document.createElement('div');
-            warning.style.cssText = `
-                    position: fixed; top: 20px; right: 20px; 
-                    background: rgba(255, 86, 86, 0.9); 
-                    color: white; padding: 15px 20px; 
+                <div class="examples-grid">
+                    <div class="example-card">
+                        <div class="example-header">
+                            <div class="example-icon">🔧</div>
+                            <h3 class="example-title">
+                                WebGPU Integration Test
+                            </h3>
+                        </div>
+                        <p class="example-description">
+                            Comprehensive test of the core WebGPU renderer
+                            implementation with step-by-step validation.
+                        </p>
+                        <ul class="example-features">
+                            <li>WebGPU device initialization & validation</li>
+                            <li>Buffer creation and data upload</li>
+                            <li>WGSL shader compilation</li>
+                            <li>Render pipeline setup</li>
+                            <li>Basic 3D box rendering</li>
+                            <li>Interactive testing workflow</li>
+                        </ul>
+                        <div class="example-links">
+                            <a
+                                href="phase1/test-phase1.html"
+                                class="example-link"
+                            >
+                                🧪 Run Test
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="phase-section">
+                <h2 class="phase-title">Phase 2: Resource System</h2>
+                <p class="phase-description">
+                    Advanced resource management, asset loading, and material
+                    system
+                </p>
+
+                <div class="examples-grid">
+                    <div class="example-card">
+                        <div class="example-header">
+                            <div class="example-icon">📦</div>
+                            <h3 class="example-title">Resource System Test</h3>
+                        </div>
+                        <p class="example-description">
+                            Complete validation of the service-based resource
+                            loading and management architecture.
+                        </p>
+                        <ul class="example-features">
+                            <li>ServiceRegistry pattern demonstration</li>
+                            <li>Async resource loading pipeline</li>
+                            <li>GPU resource compilation</li>
+                            <li>Procedural geometry generation</li>
+                            <li>Material and shader management</li>
+                            <li>Resource caching and statistics</li>
+                        </ul>
+                        <div class="example-links">
+                            <a
+                                href="phase2/test-phase2.html"
+                                class="example-link"
+                            >
+                                🔬 Run Test
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="example-card">
+                        <div class="example-header">
+                            <div class="example-icon">🎮</div>
+                            <h3 class="example-title">Interactive Demo</h3>
+                        </div>
+                        <p class="example-description">
+                            Beautiful real-time demo showcasing animated 3D
+                            objects with dynamic materials and effects.
+                        </p>
+                        <ul class="example-features">
+                            <li>Animated rotating box and sphere</li>
+                            <li>Real-time material property updates</li>
+                            <li>Live performance monitoring</li>
+                            <li>Resource management interface</li>
+                            <li>Smooth 60fps animations</li>
+                            <li>Professional UI design</li>
+                        </ul>
+                        <div class="example-links">
+                            <a href="phase2/demo.html" class="example-link">
+                                🎬 Launch Demo
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="example-card">
+                        <div class="example-header">
+                            <div class="example-icon">📝</div>
+                            <h3 class="example-title">
+                                Simple TypeScript Example
+                            </h3>
+                        </div>
+                        <p class="example-description">
+                            Clean, minimal TypeScript implementation showing the
+                            essential code needed for 3D rendering.
+                        </p>
+                        <ul class="example-features">
+                            <li>Minimal setup and boilerplate</li>
+                            <li>Service registration patterns</li>
+                            <li>Resource creation workflow</li>
+                            <li>Basic rendering loop</li>
+                            <li>Matrix transformations</li>
+                            <li>Well-documented code</li>
+                        </ul>
+                        <div class="example-links">
+                            <a
+                                href="phase2/simple/index.html"
+                                class="example-link"
+                            >
+                                👨‍💻 View Code
+                            </a>
+                            <a
+                                href="https://github.com"
+                                class="example-link secondary"
+                            >
+                                📚 Source
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="api-section">
+                <div class="api-title">🔌 Development API</div>
+                <p
+                    style="
+                        text-align: center;
+                        color: #cccccc;
+                        margin-bottom: 20px;
+                    "
+                >
+                    Useful endpoints for development and debugging
+                </p>
+                <div class="api-endpoints">
+                    <div class="api-endpoint">
+                        <strong>Server Status:</strong><br />
+                        <a href="/api/status" target="_blank">/api/status</a>
+                    </div>
+                    <div class="api-endpoint">
+                        <strong>Available Examples:</strong><br />
+                        <a href="/api/examples" target="_blank"
+                            >/api/examples</a
+                        >
+                    </div>
+                    <div class="api-endpoint">
+                        <strong>Trigger Reload:</strong><br />
+                        <a href="/api/reload" target="_blank">/api/reload</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="requirements">
+                <div class="requirements-title">⚠️ Browser Requirements</div>
+                <div class="requirements-list">
+                    <p><strong>WebGPU Support Required:</strong></p>
+                    <ul style="margin: 15px 0; padding-left: 20px">
+                        <li>
+                            <strong>Chrome/Edge:</strong> Enable "Unsafe WebGPU"
+                            in chrome://flags
+                        </li>
+                        <li>
+                            <strong>Firefox:</strong> Enable in about:config
+                            (experimental support)
+                        </li>
+                        <li>
+                            <strong>Safari:</strong> Limited WebGPU support
+                            available
+                        </li>
+                    </ul>
+                    <p style="margin-top: 20px">
+                        <strong>Check WebGPU Support:</strong>
+                        <a
+                            href="https://webgpu.io"
+                            target="_blank"
+                            style="color: #4ecdc4"
+                            >webgpu.io</a
+                        >
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // Add some interactivity
+            document.addEventListener("DOMContentLoaded", function () {
+                // Animate cards on scroll
+                const cards = document.querySelectorAll(".example-card");
+                const observer = new IntersectionObserver(
+                    (entries) => {
+                        entries.forEach((entry) => {
+                            if (entry.isIntersecting) {
+                                entry.target.style.animationDelay =
+                                    Math.random() * 0.3 + "s";
+                                entry.target.style.animation =
+                                    "slideInUp 0.6s ease forwards";
+                            }
+                        });
+                    },
+                    { threshold: 0.1 },
+                );
+
+                cards.forEach((card) => observer.observe(card));
+
+                // Add click tracking
+                document.querySelectorAll(".example-link").forEach((link) => {
+                    link.addEventListener("click", function (e) {
+                        const example = this.textContent.trim();
+                        console.log(`🎯 Launching example: ${example}`);
+
+                        // Add loading state
+                        this.style.opacity = "0.7";
+                        this.innerHTML = "🚀 Loading...";
+                    });
+                });
+
+                // Check WebGPU support
+                if (!navigator.gpu) {
+                    const warning = document.createElement("div");
+                    warning.style.cssText = `
+                    position: fixed; top: 20px; right: 20px;
+                    background: rgba(255, 86, 86, 0.9);
+                    color: white; padding: 15px 20px;
                     border-radius: 8px; font-size: 14px;
                     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
                     z-index: 1000; max-width: 300px;
                 `;
-            warning.innerHTML = '⚠️ WebGPU not detected. Examples may not work properly.';
-            document.body.appendChild(warning);
+                    warning.innerHTML =
+                        "⚠️ WebGPU not detected. Examples may not work properly.";
+                    document.body.appendChild(warning);
 
-            setTimeout(() => {
-                warning.style.transition = 'opacity 0.3s ease';
-                warning.style.opacity = '0';
-                setTimeout(() => warning.remove(), 300);
-            }, 5000);
-        }
-    });
+                    setTimeout(() => {
+                        warning.style.transition = "opacity 0.3s ease";
+                        warning.style.opacity = "0";
+                        setTimeout(() => warning.remove(), 300);
+                    }, 5000);
+                }
+            });
 
-    // Add CSS animations
-    const style = document.createElement('style');
-    style.textContent = `
+            // Add CSS animations
+            const style = document.createElement("style");
+            style.textContent = `
             @keyframes slideInUp {
                 from {
                     opacity: 0;
@@ -523,7 +587,7 @@
                 }
             }
         `;
-    document.head.appendChild(style);
-</script>
-</body>
+            document.head.appendChild(style);
+        </script>
+    </body>
 </html>
