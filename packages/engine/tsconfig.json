@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json", // Extend from the root
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "declaration": true, // Generate .d.ts files
+    "declarationMap": true, // Sourcemaps for .d.ts files
+    "noEmit": false, // This package should emit files
+    // "composite": true, // Useful for project references if you go that route
+    "declarationDir": "./dist/types" // Or similar
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

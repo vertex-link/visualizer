@@ -4,12 +4,21 @@
   "type": "module",
   "private": true,
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "vite": "^6.3.5"
   },
+  "workspaces": [
+    "packages/*"
+  ],
   "peerDependencies": {
     "typescript": "^5"
   },
-  "dependencies": {
-    "vite": "^6.3.5"
+  "scripts": {
+    "build:core": "bun run --cwd ./packages/core-acs build",
+    "build:engine": "bun run --cwd ./packages/engine build",
+    "dev:visualizer": "bun run --cwd ./packages/visualizer-app dev",
+    "build:visualizer": "bun run --cwd ./packages/visualizer-app build",
+    "build:all-libs": "bun run build:core && bun run build:engine",
+    "typecheck": "tsc --noEmit -p ./tsconfig.base.json"
   }
 }

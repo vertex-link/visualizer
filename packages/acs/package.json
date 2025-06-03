@@ -1,0 +1,26 @@
+{
+  "name": "@vertex-link/acs",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "bun build ./src/index.ts --outdir ./dist --target bun --splitting --format esm --sourcemap=external",
+    "typecheck": "tsc --noEmit -p ./tsconfig.json",
+    "dev": "bun build ./src/index.ts --outdir ./dist --watch"
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "reflect": "^0.1.3"
+  }
+}

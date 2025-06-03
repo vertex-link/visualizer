@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "preserve", // If using Vue SFCs, or "react-jsx" for React
+    "noEmit": true, // Vite handles emission for the app
+    "paths": { // If you need to help TS find workspace packages
+      "@vertex-link/core-acs": ["../acs/src/index.ts"],
+      "@vertex-link/engine": ["../engine/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue", "vite.config.ts"],
+  "references": [ // Optional: if using TS project references
+    // { "path": "../core-acs" },
+    // { "path": "../engine" }
+  ]
+}
