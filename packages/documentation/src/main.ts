@@ -21,17 +21,10 @@ import {
   WebGPUProcessor
 } from "@vertex-link/engine";
 import { Actor, ProcessorRegistry, Scene, ServiceRegistry } from "@vertex-link/acs";
-import { RotatingComponent } from "./RotatingComponent.ts";
+import { RotatingComponent } from "./RotatingComponent";
+import basicShaderSource from "../../engine/src/webgpu/shaders/basic.wgsl?raw";
 
-async function loadShaderSource(path: string): Promise<string> {
-  const response = await fetch(path);
-  if (!response.ok) {
-    throw new Error(
-      `Failed to load shader from ${path}: ${response.statusText}`,
-    );
-  }
-  return response.text();
-}
+
 
 // Generic helper to get a resource from its handle and ensure it's compiled
 async function initializeAndGetResource<
@@ -111,8 +104,7 @@ async function rotatingCubesDemo() {
     log("Loading common resources...");
 
     // Shader
-    const shaderFilePath = basicShader;
-    const loadedShaderSource = await loadShaderSource(shaderFilePath);
+    const loadedShaderSource = basicShaderSource;
     const shaderHandle = createShaderHandle(
       resourceManager,
       "StandardShader",

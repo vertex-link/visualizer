@@ -1,10 +1,25 @@
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import * as path from "node:path";
+import * as fs from "node:fs";
+
+// Custom plugin to handle WGSL shader files
+function wgslLoader() {
+    return {
+        name: 'wgsl-loader',
+        load(id: string) {
+            if (id.endsWith('.wgsl')) {
+                const shaderContent = fs.readFileSync(id, 'utf-8');
+                return `export default ${JSON.stringify(shaderContent)};`;
+            }
+        }
+    };
+}
 
 export default defineConfig({
     plugins: [
-        vue()
+        vue(),
+        wgslLoader()
     ],
     server: {
         port: 8000,

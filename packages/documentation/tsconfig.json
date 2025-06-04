@@ -42,6 +42,7 @@
     "src/**/*.d.ts",
     "src/**/*.tsx",
     "src/**/*.vue",
+    "src/**/*.wgsl",
     "vite.config.ts"
   ],
   "exclude": [
