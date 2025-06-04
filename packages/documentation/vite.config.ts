@@ -1,31 +1,30 @@
-// packages/documentation/vite.config.ts
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import path from 'path';
 
 export default defineConfig({
-    plugins: [vue()],
+    plugins: [
+        vue()
+    ],
     server: {
         port: 8000,
         open: false,
     },
     resolve: {
         alias: {
-            '@vertex-link/acs': path.resolve(__dirname, '../acs/src/index.ts'),
-            '@vertex-link/engine': path.resolve(__dirname, '../engine/src/index.ts'),
+            '@vertex-link/acs': path.resolve(__dirname, '../acs/dist/index.js'),
+            '@vertex-link/engine': path.resolve(__dirname, '../acs/dist/index.js'),
         },
     },
-    // Add or modify the esbuild options
-    esbuild: {
-        target: 'esnext', // Setting a modern target for esbuild can also be helpful.
-        // This ensures esbuild uses the settings relevant for decorators
-        tsconfigRaw: {
-            compilerOptions: {
-                experimentalDecorators: false,
-                emitDecoratorMetadata: false,
-                // Preserve JSX for Vue if not already handled by the Vue plugin
-                // jsx: "preserve", // Check if your Vue plugin handles this
-            },
-        },
+    optimizeDeps: {
+        include: ['reflect-metadata'],
+        exclude: ['@vertex-link/acs', '@vertex-link/engine'],
+        esbuildOptions: {
+            target: 'ESNext',
+            keepNames: true,
+        }
     },
+    build: {
+        target: 'ESNext',
+    }
 });

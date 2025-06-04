@@ -5,6 +5,7 @@
   "private": true,
   "devDependencies": {
     "@types/bun": "latest",
+    "concurrently": "^9.1.2",
     "vite": "^6.3.5"
   },
   "workspaces": [
@@ -16,10 +17,12 @@
   "scripts": {
     "build:acs": "bun run --cwd ./packages/acs build",
     "build:engine": "bun run --cwd ./packages/engine build",
-    "dev:visualizer": "bun run --cwd ./packages/documentation dev",
     "build:visualizer": "bun run --cwd ./packages/documentation build",
     "build:all-libs": "bun run build:acs && bun run build:engine",
-    "typecheck": "tsc --noEmit -p ./tsconfig.json"
+    "typecheck": "tsc --noEmit -p ./tsconfig.json",
+    "dev": "concurrently \"bun run dev:libs\" \"bun run dev:visualizer\"",
+    "dev:libs": "concurrently \"cd packages/acs && bun run dev\" \"cd packages/engine && bun run dev\"",
+    "dev:visualizer": "cd packages/documentation && bun run dev"
   },
   "dependencies": {
     "@webgpu/types": "^0.1.61"

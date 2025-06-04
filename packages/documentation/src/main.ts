@@ -1,8 +1,29 @@
-import "reflect-metadata";
-import {Actor} from "@vertex-link/acs";
+import 'reflect-metadata';
+
+// Ensure Reflect is available globally
+if (typeof window !== 'undefined' && !window.Reflect) {
+    console.error('Reflect-metadata not loaded properly!');
+}
+
+import {Actor, RequireComponent} from "@vertex-link/acs";
+import {TransformComponent} from "@vertex-link/engine";
 
 console.log('🚀 Vertex Link Documentation - Simplified Version');
 console.log(Actor);
+
+class TestActor extends Actor {
+    @RequireComponent<TransformComponent>()
+    transform: TransformComponent;
+    
+    constructor() {
+        super('test-actor');
+        console.log('transform', this.transform);
+    }
+}
+
+const testActor = new TestActor();
+console.log(testActor);
+
 class DocumentationApp {
     private initialized = false;
 

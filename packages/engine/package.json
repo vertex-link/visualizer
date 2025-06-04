@@ -2,14 +2,13 @@
   "name": "@vertex-link/engine",
   "version": "0.1.0",
   "type": "module",
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "types": "./src/index.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "import": "./src/index.ts",
+      "types": "./src/index.ts"
     }
   },
   "dependencies": {
@@ -19,8 +18,5 @@
     "build": "bun build ./src/index.ts --outdir ./dist --target bun --splitting --format esm --sourcemap=external",
     "typecheck": "tsc --noEmit -p ./tsconfig.json",
     "dev": "bun build ./src/index.ts --outdir ./dist --watch"
-  },
-  "files": [
-    "dist"
-  ]
+  }
 }
