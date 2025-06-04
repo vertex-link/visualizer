@@ -1,4 +1,3 @@
-// Main Entities
 export { default as Actor } from './Actor'; //
 export type { ServiceKey } from './Service'; //
 export { type IService, ServiceRegistry } from './Service'; //
@@ -11,14 +10,14 @@ export { RequireComponent, OptionalComponent } from './component/Decorators'; //
 
 // Event System
 export {
-    Event,
-    EventBus,
-    type IEventBus,
-    getEventBus,
-    initializeEventBus,
-    emit,
-    on,
-    off
+  Event,
+  EventBus,
+  type IEventBus,
+  getEventBus,
+  initializeEventBus,
+  emit,
+  on,
+  off
 } from './events/Event'; //
 export type { EventPayload, EventHandler, EventClass } from './events/Event'; //
 export * from './events/CoreEvents'; //

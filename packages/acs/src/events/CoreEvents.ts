@@ -1,4 +1,4 @@
-﻿import { Event } from './Event';
+import { Event } from './Event';
 import Actor from '../Actor';
 import Component from '../component/Component';
 import { Scene } from '../scene/Scene';
@@ -9,58 +9,58 @@ import { Scene } from '../scene/Scene';
  * Entity lifecycle events
  */
 export class EntityCreatedEvent extends Event<{
-    entity: Actor;
-    scene?: Scene;
+  entity: Actor;
+  scene?: Scene;
 }> {
-    static readonly eventType = 'core.entity.created';
+  static readonly eventType = 'core.entity.created';
 }
 
 export class EntityDestroyedEvent extends Event<{
-    entity: Actor;
-    scene?: Scene;
+  entity: Actor;
+  scene?: Scene;
 }> {
-    static readonly eventType = 'core.entity.destroyed';
+  static readonly eventType = 'core.entity.destroyed';
 }
 
 /**
  * Component lifecycle events
  */
 export class ComponentAddedEvent extends Event<{
-    actor: Actor;
-    component: Component;
-    componentType: string;
+  actor: Actor;
+  component: Component;
+  componentType: string;
 }> {
-    static readonly eventType = 'core.component.added';
+  static readonly eventType = 'core.component.added';
 }
 
 export class ComponentRemovedEvent extends Event<{
-    actor: Actor;
-    component: Component;
-    componentType: string;
+  actor: Actor;
+  component: Component;
+  componentType: string;
 }> {
-    static readonly eventType = 'core.component.removed';
+  static readonly eventType = 'core.component.removed';
 }
 
 export class ComponentInitializedEvent extends Event<{
-    actor: Actor;
-    component: Component;
+  actor: Actor;
+  component: Component;
 }> {
-    static readonly eventType = 'core.component.initialized';
+  static readonly eventType = 'core.component.initialized';
 }
 
 /**
  * Scene events
  */
 export class SceneActivatedEvent extends Event<{
-    scene: Scene;
+  scene: Scene;
 }> {
-    static readonly eventType = 'core.scene.activated';
+  static readonly eventType = 'core.scene.activated';
 }
 
 export class SceneDeactivatedEvent extends Event<{
-    scene: Scene;
+  scene: Scene;
 }> {
-    static readonly eventType = 'core.scene.deactivated';
+  static readonly eventType = 'core.scene.deactivated';
 }
 
 // ==================== Engine Events (Examples) ====================
@@ -69,38 +69,38 @@ export class SceneDeactivatedEvent extends Event<{
  * Input events
  */
 export class KeyDownEvent extends Event<{
-    key: string;
-    repeat: boolean;
-    ctrlKey: boolean;
-    shiftKey: boolean;
-    altKey: boolean;
+  key: string;
+  repeat: boolean;
+  ctrlKey: boolean;
+  shiftKey: boolean;
+  altKey: boolean;
 }> {
-    static readonly eventType = 'engine.input.keydown';
+  static readonly eventType = 'engine.input.keydown';
 }
 
 export class KeyUpEvent extends Event<{
-    key: string;
+  key: string;
 }> {
-    static readonly eventType = 'engine.input.keyup';
+  static readonly eventType = 'engine.input.keyup';
 }
 
 export class MouseClickEvent extends Event<{
-    x: number;
-    y: number;
-    button: number;
-    screenX: number;
-    screenY: number;
+  x: number;
+  y: number;
+  button: number;
+  screenX: number;
+  screenY: number;
 }> {
-    static readonly eventType = 'engine.input.mouseclick';
+  static readonly eventType = 'engine.input.mouseclick';
 }
 
 export class MouseMoveEvent extends Event<{
-    x: number;
-    y: number;
-    deltaX: number;
-    deltaY: number;
+  x: number;
+  y: number;
+  deltaX: number;
+  deltaY: number;
 }> {
-    static readonly eventType = 'engine.input.mousemove';
+  static readonly eventType = 'engine.input.mousemove';
 }
 
 // ==================== Game Events (Examples) ====================
@@ -109,45 +109,45 @@ export class MouseMoveEvent extends Event<{
  * Entity interaction events
  */
 export class EntityDamagedEvent extends Event<{
-    target: Actor;
-    damage: number;
-    source?: Actor;
-    damageType: string;
+  target: Actor;
+  damage: number;
+  source?: Actor;
+  damageType: string;
 }> {
-    static readonly eventType = 'game.entity.damaged';
+  static readonly eventType = 'game.entity.damaged';
 }
 
 export class EntityHealedEvent extends Event<{
-    target: Actor;
-    amount: number;
-    source?: Actor;
+  target: Actor;
+  amount: number;
+  source?: Actor;
 }> {
-    static readonly eventType = 'game.entity.healed';
+  static readonly eventType = 'game.entity.healed';
 }
 
 export class EntityDiedEvent extends Event<{
-    target: Actor;
-    killer?: Actor;
-    damageType?: string;
+  target: Actor;
+  killer?: Actor;
+  damageType?: string;
 }> {
-    static readonly eventType = 'game.entity.died';
+  static readonly eventType = 'game.entity.died';
 }
 
 /**
  * Collision events
  */
 export class CollisionStartEvent extends Event<{
-    actorA: Actor;
-    actorB: Actor;
-    contactPoint: { x: number; y: number; z: number };
-    normal: { x: number; y: number; z: number };
+  actorA: Actor;
+  actorB: Actor;
+  contactPoint: { x: number; y: number; z: number };
+  normal: { x: number; y: number; z: number };
 }> {
-    static readonly eventType = 'game.collision.start';
+  static readonly eventType = 'game.collision.start';
 }
 
 export class CollisionEndEvent extends Event<{
-    actorA: Actor;
-    actorB: Actor;
+  actorA: Actor;
+  actorB: Actor;
 }> {
-    static readonly eventType = 'game.collision.end';
+  static readonly eventType = 'game.collision.end';
 }

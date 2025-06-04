@@ -4,18 +4,18 @@ import { ComponentClass } from '../component/Component';
  * Query condition types
  */
 export interface ComponentQueryCondition {
-    readonly type: 'component';
-    readonly components: ComponentClass[];
+  readonly type: 'component';
+  readonly components: ComponentClass[];
 }
 
 export interface TagQueryCondition {
-    readonly type: 'tag';
-    readonly tags: string[];
+  readonly type: 'tag';
+  readonly tags: string[];
 }
 
 export interface ExcludeTagQueryCondition {
-    readonly type: 'excludeTag';
-    readonly tags: string[];
+  readonly type: 'excludeTag';
+  readonly tags: string[];
 }
 
 export type QueryCondition = ComponentQueryCondition | TagQueryCondition | ExcludeTagQueryCondition;
@@ -24,8 +24,8 @@ export type QueryCondition = ComponentQueryCondition | TagQueryCondition | Exclu
  * Interface for providing data to query builders
  */
 export interface IQueryDataProvider {
-    getAllActors(): Set<any>;
-    getActorsWithAnyTag(tags: string[]): Set<any>;
-    getActorsWithAllComponents(components: ComponentClass[]): Set<any>;
-    getActorsWithoutTags(tags: string[]): Set<any>;
+  getAllActors(): Set<any>;
+  getActorsWithAnyTag(tags: string[]): Set<any>;
+  getActorsWithAllComponents(components: ComponentClass[]): Set<any>;
+  getActorsWithoutTags(tags: string[]): Set<any>;
 }

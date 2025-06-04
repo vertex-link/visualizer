@@ -1,5 +1,3 @@
-﻿// src/webgpu/shaders/basic.wgsl (Corrected for proper lighting)
-
 struct VertexInput {
     @location(0) position: vec3f,
     @location(1) normal: vec3f,
@@ -24,10 +22,10 @@ struct Uniforms {
 @vertex
 fn vs_main(input: VertexInput) -> VertexOutput {
     var output: VertexOutput;
-    
+
     // Transform position to clip space: VP * Model * Position
     output.position = uniforms.viewProjection * uniforms.model * vec4f(input.position, 1.0);
-    
+
     // Calculate world position (optional, for fragment shader effects)
     let worldPos4 = uniforms.model * vec4f(input.position, 1.0);
     output.world_pos = worldPos4.xyz;
@@ -35,7 +33,7 @@ fn vs_main(input: VertexInput) -> VertexOutput {
     // Transform normal to world space for correct lighting
     output.normal = normalize((uniforms.model * vec4f(input.normal, 0.0)).xyz);
     output.uv = input.uv;
-    
+
     return output;
 }
 
@@ -45,10 +43,10 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
     let light_dir = normalize(vec3f(1.0, 1.0, 1.0)); // Example light direction
     let ambient = 0.3;
     // input.normal is world-space normal from vertex shader, already normalized by vs_main
-    let diffuse_intensity = max(dot(input.normal, light_dir), 0.0); 
-    
+    let diffuse_intensity = max(dot(input.normal, light_dir), 0.0);
+
     let lighting = ambient + diffuse_intensity * 0.7; // Combine ambient and diffuse
-    
+
     // Combine with uniform color and lighting
     return vec4f(uniforms.color.rgb * lighting, uniforms.color.a);
 }
