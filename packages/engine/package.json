@@ -14,6 +14,9 @@
   "dependencies": {
     "@vertex-link/acs": "workspace:*"
   },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
   "scripts": {
     "build": "bun build ./src/index.ts --outdir ./dist --target bun --splitting --format esm --sourcemap=external",
     "typecheck": "tsc --noEmit -p ./tsconfig.json",

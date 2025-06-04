@@ -1,4 +1,5 @@
 ﻿import {BufferDescriptor, BufferUsage, IBuffer} from "../rendering/interfaces/IBuffer";
+import {generateUUID} from "@vertex-link/acs";
 
 /**
  * WebGPU implementation of the IBuffer interface.

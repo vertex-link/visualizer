@@ -1,8 +1,6 @@
-import Component from '../../src/core/component/Component.ts';
-import { Update } from '../../src/core/processor/Decorators.ts'; // Use generic Update
-import { RequireComponent } from '../../src/core/component/Decorators.ts';
-import { TransformComponent, Vec3 } from '../../src/engine/rendering/components/TransformComponent.ts';
-import { Transform } from '../../src/engine/rendering/math/Transform.ts';
+import {Component, RequireComponent, Update} from "@vertex-link/acs";
+import {Transform, TransformComponent} from "@vertex-link/engine";
+
 
 export class RotatingComponent extends Component {
 

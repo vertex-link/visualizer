@@ -12,9 +12,13 @@
     "isolatedModules": true,
     "noEmit": true,
 
-    // DO NOT enable these for Stage 3 decorators
+    // Critical: These must be false for Stage 3 decorators
     "experimentalDecorators": false,
     "emitDecoratorMetadata": false,
+
+    // Add these for better decorator support
+    "useDefineForClassFields": true,
+    "allowSyntheticDefaultImports": true,
 
     "paths": {
       "@vertex-link/acs": ["./packages/acs/src/index.ts"],

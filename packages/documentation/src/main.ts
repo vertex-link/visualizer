@@ -1,249 +1,299 @@
-import 'reflect-metadata';
+import "reflect-metadata"
+// import { ServiceRegistry } from "../../src/core/Service";
+// import { Scene } from "../../src/core/scene/Scene";
+// import Actor from "../../src/core/Actor";
+// import { ProcessorRegistry } from "../../src/core/processor/ProcessorRegistry";
+// import { WebGPUProcessor } from "../../src/engine/processors/WebGPUProcessor";
+// import { TransformComponent } from "../../src/engine/rendering/components/TransformComponent";
+// import { MeshRendererComponent } from "../../src/engine/rendering/components/MeshRendererComponent";
+// import {
+//     CameraComponent,
+//     ProjectionType,
+// } from "../../src/engine/rendering/camera/CameraComponent";
+// import { RotatingComponent } from "./RotatingComponent";
+// import {
+//     ResourceManager,
+//     IResourceManagerKey,
+//     createShaderHandle,
+//     createMaterialHandle,
+//     createMeshHandle,
+//     ResourceHandle, // Import ResourceHandle type
+// } from "../../src/engine/resources/ResourceManager";
+// import { GeometryUtils } from "../../src/engine/resources/GeometryUtils.ts";
+// import {
+//     MeshDescriptor,
+//     VertexAttribute as EngineVertexAttribute,
+// } from "../../src/engine/resources/MeshResource.ts";
+// import {
+//     MaterialResource,
+//     UniformDescriptor,
+// } from "../../src/engine/resources/MaterialResource.ts";
+// import { Resource } from "../../src/engine/resources/Resource.ts"; // Import base Resource type
+// import {
+//     VertexLayout,
+//     VertexAttribute as PipelineVertexAttribute,
+// } from "../../src/engine/rendering/interfaces/IPipeline.ts";
 
-// Ensure Reflect is available globally
-if (typeof window !== 'undefined' && !window.Reflect) {
-    console.error('Reflect-metadata not loaded properly!');
+// Helper to fetch shader source
+import {
+    CameraComponent,
+    createMaterialHandle, createMeshHandle,
+    createShaderHandle, GeometryUtils,
+    IResourceManagerKey, MaterialResource, MeshRendererComponent, ProjectionType,
+    Resource,
+    ResourceHandle,
+    ResourceManager, TransformComponent,
+    WebGPUProcessor
+} from "@vertex-link/engine";
+import {Actor, ProcessorRegistry, Scene, ServiceRegistry} from "@vertex-link/acs";
+import {RotatingComponent} from "./RotatingComponent.ts";
+
+async function loadShaderSource(path: string): Promise<string> {
+    const response = await fetch(path);
+    if (!response.ok) {
+        throw new Error(
+            `Failed to load shader from ${path}: ${response.statusText}`,
+        );
+    }
+    return response.text();
 }
 
-import {Actor, RequireComponent} from "@vertex-link/acs";
-import {TransformComponent} from "@vertex-link/engine";
-
-console.log('🚀 Vertex Link Documentation - Simplified Version');
-console.log(Actor);
-
-class TestActor extends Actor {
-    @RequireComponent<TransformComponent>()
-    transform: TransformComponent;
-    
-    constructor() {
-        super('test-actor');
-        console.log('transform', this.transform);
+// Generic helper to get a resource from its handle and ensure it's compiled
+async function initializeAndGetResource<
+    TResource extends Resource & {
+        setDevice?: (device: GPUDevice, format?: GPUTextureFormat) => void;
+        compile?: () => Promise<void>;
+    },
+>(
+    handle: ResourceHandle<TResource> | null,
+    device: GPUDevice,
+    preferredFormat?: GPUTextureFormat, // Optional: only for material-like resources
+): Promise<TResource> {
+    if (!handle) {
+        // Attempt to extract a meaningful ID or fallback for the error message.
+        const handleId = (handle as any)?.resourceId || "unknown";
+        throw new Error(`Invalid resource handle provided (ID: ${handleId}).`);
     }
+
+    const resource = await handle.get();
+    if (!resource) {
+        // Similar to above, try to get resourceId for better error logging.
+        const resourceId = (handle as any)?.resourceId || "unknown";
+        throw new Error(`Failed to get resource from handle (ID: ${resourceId}).`);
+    }
+
+    if (resource.setDevice) {
+        if (resource instanceof MaterialResource && preferredFormat) {
+            resource.setDevice(device, preferredFormat);
+        } else if (typeof resource.setDevice === "function") {
+            // Assuming other resources with setDevice take only the device argument.
+            (resource.setDevice as (d: GPUDevice) => void)(device);
+        }
+    }
+    if (resource.compile) {
+        await resource.compile();
+    }
+    return resource;
 }
 
-const testActor = new TestActor();
-console.log(testActor);
+async function rotatingCubesDemo() {
+    const canvas = document.getElementById("renderCanvas") as HTMLCanvasElement;
+    const statusDiv = document.getElementById("status")!;
 
-class DocumentationApp {
-    private initialized = false;
-
-    constructor() {
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => this.init());
-        } else {
-            this.init();
-        }
+    function log(msg: string) {
+        console.log(msg);
+        if (statusDiv) statusDiv.textContent = msg;
     }
 
-    private init() {
-        if (this.initialized) return;
-        this.initialized = true;
+    try {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        log(`Canvas: ${canvas.width}x${canvas.height}`);
 
-        console.log('📚 Documentation app initialized');
+        // 1. Setup Core Systems
+        log("Initializing core systems...");
+        const resourceManager = new ResourceManager();
+        await resourceManager.initialize();
 
-        this.setupWebGPUCheck();
-        this.setupExampleLinks();
-        this.addVersionInfo();
-        this.setupCardHovers();
-        this.setupScrollAnimations();
-        this.addStatusPanel();
+        const serviceRegistry = new ServiceRegistry();
+        serviceRegistry.register(IResourceManagerKey, resourceManager);
 
-        // Test imports after everything else is set up
-        this.testEngineImports();
-    }
+        const gpuProcessor = new WebGPUProcessor(canvas, "webgpu");
+        await gpuProcessor.initialize();
+        const device = gpuProcessor.getDevice()!;
+        if (!device) throw new Error("Failed to get WebGPU device from processor.");
+        resourceManager.setDevice(device); // Important for ResourceManager's internal compilation logic if it were used
 
-    private setupWebGPUCheck() {
-        const statusDot = document.querySelector('.status-dot') as HTMLElement;
-        const statusText = document.querySelector('.server-status span') as HTMLElement;
+        const scene = new Scene("RotatingCubesScene");
+        gpuProcessor.setScene(scene);
+        ProcessorRegistry.register(gpuProcessor);
 
-        if (navigator.gpu) {
-            console.log('✅ WebGPU is available');
-            if (statusText) statusText.textContent = 'WebGPU Ready - Development Server Running';
-        } else {
-            console.warn('❌ WebGPU is not available');
-            if (statusDot) {
-                statusDot.style.background = '#ff6b6b';
-                statusDot.style.boxShadow = '0 0 10px rgba(255, 107, 107, 0.6)';
-            }
-            if (statusText) statusText.textContent = 'WebGPU Not Available - Limited Functionality';
-        }
-    }
+        // 2. Define and Load Common Resources
+        log("Loading common resources...");
 
-    private setupExampleLinks() {
-        document.querySelectorAll('.example-link').forEach((link) => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                const target = e.target as HTMLAnchorElement;
-                const example = target.textContent?.trim() || 'Unknown';
+        // Shader
+        const shaderFilePath = basicShader;
+        const loadedShaderSource = await loadShaderSource(shaderFilePath);
+        const shaderHandle = createShaderHandle(
+            resourceManager,
+            "StandardShader",
+            loadedShaderSource,
+            loadedShaderSource,
+        );
+        const standardShader = await initializeAndGetResource(shaderHandle, device);
+        log(`Shader compiled: ${standardShader.isCompiled}`);
 
-                console.log(`🎯 Example clicked: ${example}`);
+        // Mesh
+        const cubeMeshDescriptor: MeshDescriptor = GeometryUtils.createBox(
+            2.0,
+            2.0,
+            2.0,
+        );
+        const cubeMeshHandle = createMeshHandle(
+            resourceManager,
+            "StdCubeMesh",
+            cubeMeshDescriptor,
+        );
+        const cubeMesh = await initializeAndGetResource(cubeMeshHandle, device);
+        log(`Mesh compiled: ${cubeMesh.isCompiled}`);
 
-                target.style.opacity = '0.7';
-                const originalText = target.innerHTML;
-                target.innerHTML = '🚀 Loading...';
+        // Vertex Layout
+        const defaultVertexLayout: VertexLayout = {
+            stride: cubeMeshDescriptor.vertexStride,
+            attributes: cubeMeshDescriptor.vertexAttributes.map(
+                (
+                    attr: EngineVertexAttribute,
+                    index: number,
+                ): PipelineVertexAttribute => ({
+                    location: index,
+                    format: (attr.type +
+                        (attr.size > 1 ? `x${attr.size}` : "")) as GPUVertexFormat,
+                    offset: attr.offset,
+                }),
+            ),
+        };
 
-                setTimeout(() => {
-                    target.style.opacity = '1';
-                    target.innerHTML = originalText;
-                    alert(`${example} - Coming Soon!\n\nCheck console for import test results.`);
-                }, 1000);
-            });
-        });
-    }
-
-    private setupCardHovers() {
-        document.querySelectorAll('.example-card').forEach((card, index) => {
-            (card as HTMLElement).style.animationDelay = `${index * 0.1}s`;
-        });
-    }
-
-    private setupScrollAnimations() {
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach((entry) => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('animate-in');
-                }
-            });
-        }, { threshold: 0.1 });
-
-        document.querySelectorAll('.example-card').forEach((card) => {
-            observer.observe(card);
-        });
-    }
-
-    private addVersionInfo() {
-        const versionInfo = document.createElement('div');
-        versionInfo.style.cssText = `
-            margin-top: 20px; padding: 10px; background: rgba(255, 255, 255, 0.05);
-            border-radius: 8px; display: inline-block;
-        `;
-
-        versionInfo.innerHTML = `
-            <small style="color: #666; font-size: 0.8rem;">
-                Dev Build • ${new Date().toLocaleString()} • Import Testing
-            </small>
-        `;
-
-        const header = document.querySelector('header');
-        if (header) {
-            header.appendChild(versionInfo);
-        }
-    }
-
-    private addStatusPanel() {
-        const statusContainer = document.createElement('div');
-        statusContainer.style.cssText = `
-            position: fixed; top: 20px; left: 20px;
-            background: rgba(0, 0, 0, 0.8); color: white;
-            padding: 15px 20px; border-radius: 8px; font-size: 0.8rem;
-            z-index: 1000; border: 1px solid rgba(255, 255, 255, 0.2);
-            min-width: 220px; max-width: 300px;
-        `;
-
-        statusContainer.innerHTML = `
-            <div style="margin-bottom: 10px; font-weight: bold;">📦 Import Test Status</div>
-            <div id="acs-status">🔄 ACS: Testing...</div>
-            <div id="engine-status">🔄 Engine: Testing...</div>
-            <div style="margin-top: 10px; font-size: 0.7rem; color: #aaa;">
-                Check console for detailed results
-            </div>
-        `;
-
-        document.body.appendChild(statusContainer);
-    }
-
-    private async testEngineImports() {
-        console.log('🧪 Testing engine package imports...');
-
-        // Test ACS package
-        try {
-            console.log('🔍 Testing @vertex-link/acs import...');
-            const acsModule = await import('@vertex-link/acs');
-            console.log('✅ @vertex-link/acs imported successfully!');
-            console.log('📦 ACS exports:', Object.keys(acsModule));
-            this.updateStatus('acs-status', '✅ ACS: Ready', '#4ecdc4');
-        } catch (error) {
-            console.log('❌ @vertex-link/acs import failed:', error);
-            this.updateStatus('acs-status', '❌ ACS: Failed', '#ff6b6b');
-
-            // Try alternative import methods
-            this.tryAlternativeImports('acs');
-        }
-
-        // Test Engine package
-        try {
-            console.log('🔍 Testing @vertex-link/engine import...');
-            const engineModule = await import('@vertex-link/engine');
-            console.log('✅ @vertex-link/engine imported successfully!');
-            console.log('📦 Engine exports:', Object.keys(engineModule));
-            this.updateStatus('engine-status', '✅ Engine: Ready', '#4ecdc4');
-        } catch (error) {
-            console.log('❌ @vertex-link/engine import failed:', error);
-            this.updateStatus('engine-status', '❌ Engine: Failed', '#ff6b6b');
-
-            // Try alternative import methods
-            this.tryAlternativeImports('engine');
-        }
-    }
-
-    private async tryAlternativeImports(packageName: 'acs' | 'engine') {
-        console.log(`🔄 Trying alternative imports for ${packageName}...`);
-
-        const paths = [
-            `../../${packageName}/dist/index.js`,
-            `../../${packageName}/dist/index.ts`,
-            `../../../${packageName}/dist/index.js`,
-            `/@fs/packages/${packageName}/dist/index.js`
+        // Materials
+        const materialDefs: {
+            name: string;
+            color: number[];
+            uniforms: Record<string, UniformDescriptor>;
+        }[] = [
+            {
+                name: "RedMaterial",
+                color: [1.0, 0.2, 0.2, 1.0],
+                uniforms: {
+                    color: { type: "vec4", size: 16, value: [1.0, 0.2, 0.2, 1.0] },
+                },
+            },
+            {
+                name: "GreenMaterial",
+                color: [0.2, 1.0, 0.2, 1.0],
+                uniforms: {
+                    color: { type: "vec4", size: 16, value: [0.2, 1.0, 0.2, 1.0] },
+                },
+            },
+            {
+                name: "BlueMaterial",
+                color: [0.2, 0.2, 1.0, 1.0],
+                uniforms: {
+                    color: { type: "vec4", size: 16, value: [0.2, 0.2, 1.0, 1.0] },
+                },
+            },
         ];
 
-        for (const path of paths) {
-            try {
-                console.log(`🔍 Trying: ${path}`);
-                const module = await import(path);
-                console.log(`✅ Alternative import worked: ${path}`);
-                console.log('📦 Exports:', Object.keys(module));
-                this.updateStatus(`${packageName}-status`, `✅ ${packageName.toUpperCase()}: Alt path`, '#45b7d1');
-                return;
-            } catch (error) {
-                console.log(`❌ Failed: ${path}`, error.message);
-            }
+        const materialResources: MaterialResource[] = [];
+        for (const def of materialDefs) {
+            const materialHandle = await createMaterialHandle(
+                resourceManager,
+                def.name,
+                shaderHandle!, // Shader handle is guaranteed to be non-null here
+                def.uniforms,
+                defaultVertexLayout,
+            );
+            const materialRes = await initializeAndGetResource(
+                materialHandle,
+                device,
+                (gpuProcessor as any).renderer.getFormat(),
+            );
+            materialResources.push(materialRes);
+            log(`Material ${def.name} compiled: ${materialRes.isCompiled}`);
         }
 
-        console.log(`😞 All alternative imports failed for ${packageName}`);
-    }
+        // 3. Create Actors (Cubes)
+        log("Creating actors...");
+        const cubeConfigs = [
+            {
+                name: "RedCube",
+                position: [-3.5, 0, 0],
+                material: materialResources[0],
+                rotationSpeed: 0.4,
+            },
+            {
+                name: "GreenCube",
+                position: [0, 0, 0],
+                material: materialResources[1],
+                rotationSpeed: 0.6,
+            },
+            {
+                name: "BlueCube",
+                position: [3.5, 0, 0],
+                material: materialResources[2],
+                rotationSpeed: 0.8,
+            },
+        ];
 
-    private updateStatus(elementId: string, text: string, color: string) {
-        const element = document.getElementById(elementId);
-        if (element) {
-            element.innerHTML = text;
-            element.style.color = color;
+        for (const config of cubeConfigs) {
+            const cubeActor = new Actor(config.name);
+            const transform = cubeActor.addComponent(TransformComponent);
+            transform.setPosition(
+                config.position[0],
+                config.position[1],
+                config.position[2],
+            );
+
+            cubeActor.addComponent(MeshRendererComponent, {
+                mesh: cubeMesh, // Pass the initialized MeshResource
+                material: config.material, // Pass the initialized MaterialResource
+            });
+
+            const rotator = cubeActor.addComponent(RotatingComponent);
+            rotator.speed = config.rotationSpeed;
+
+            scene.addActor(cubeActor);
+            log(`Created ${config.name}`);
         }
-    }
-}
 
-// Initialize the documentation app
-new DocumentationApp();
+        // 4. Setup Camera
+        // ... (camera setup remains the same as your previous version)
+        log("Setting up camera...");
+        const cameraActor = new Actor("MainCamera");
+        const cameraTransform = cameraActor.addComponent(TransformComponent);
+        cameraTransform.setPosition(0, 1.5, 8);
 
-// Development mode indicator
-if (window.location.hostname === 'localhost') {
-    const devIndicator = document.createElement('div');
-    devIndicator.style.cssText = `
-        position: fixed; bottom: 10px; right: 10px;
-        background: rgba(78, 205, 196, 0.9); color: white;
-        padding: 8px 12px; border-radius: 6px; font-size: 0.8rem;
-        z-index: 1000; cursor: pointer;
-    `;
-    devIndicator.textContent = '🔧 DEV - Testing Imports';
-    devIndicator.onclick = () => {
-        console.log('🛠️ Running manual import test...');
-        // Manual test that you can trigger
-        import('@vertex-link/acs').then(m => {
-            console.log('✅ Manual ACS test passed:', Object.keys(m));
-        }).catch(e => {
-            console.log('❌ Manual ACS test failed:', e);
+        cameraActor.addComponent(CameraComponent, {
+            projectionType: ProjectionType.PERSPECTIVE,
+            perspectiveConfig: {
+                fov: Math.PI / 3,
+                aspect: canvas.width / canvas.height,
+                near: 0.1,
+                far: 100.0,
+            },
+            isActive: true,
         });
-    };
-    document.body.appendChild(devIndicator);
+        scene.addActor(cameraActor);
+        log(`Camera positioned at [${cameraTransform.position.join(", ")}]`);
+
+        // 5. Start the Engine's Processor
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        gpuProcessor.start();
+        log("🚀 Rotating Cubes Demo Running!");
+    } catch (error) {
+        const e = error as Error;
+        log(`❌ DEMO ERROR: ${e.message}`);
+        console.error("Full error:", e);
+        if (e.stack) console.error("Stack:", e.stack);
+    }
 }
 
-export { DocumentationApp };
+rotatingCubesDemo();
