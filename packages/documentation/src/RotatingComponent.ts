@@ -1,4 +1,4 @@
-import { Component, OptionalComponent, RequireComponent, Update } from "@vertex-link/acs";
+import { Component, RequireComponent, Update } from "@vertex-link/acs";
 import { Transform, TransformComponent, Vec3 } from "@vertex-link/engine";
 
 

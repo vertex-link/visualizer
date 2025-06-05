@@ -1,78 +1,14 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Rotating Cubes Demo</title>
-    <style>
-        body {
-            margin: 0;
-            background-color: #222;
-            color: #fff;
-            font-family: monospace;
-            overflow: hidden;
-        }
-        canvas {
-            display: block;
-            width: 100vw;
-            height: 100vh;
-        }
-        #status {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            background: rgba(0, 0, 0, 0.8);
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid #555;
-            max-width: 400px;
-        }
-        #info {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.8);
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid #555;
-            max-width: 300px;
-        }
-        .highlight {
-            color: #4f4;
-        }
-        .error {
-            color: #f44;
-        }
-    </style>
-</head>
-<body>
-<div id="status">Starting rotating cubes demo...</div>
-<div id="info">
-    <strong>🎮 Rotating Cubes Demo</strong><br /><br />
-    <span class="highlight">Expected:</span><br />
-    • 3 cubes (Red, Green, Blue)<br />
-    • Different rotation speeds<br />
-    • Proper 3D lighting<br /><br />
-    <strong>Fixes Applied:</strong><br />
-    • Buffer alignment (4-byte boundary)<br />
-    • Proper MVP matrix usage<br />
-    • Correct vertex layouts<br />
-</div>
-<canvas id="renderCanvas"></canvas>
-<a
-        href="../index.html"
-        style="
-                position: fixed;
-                bottom: 20px;
-                left: 20px;
-                color: #8af;
-                text-decoration: none;
-                background: rgba(0, 0, 0, 0.8);
-                padding: 10px;
-                border-radius: 5px;
-            "
->← Back to Examples</a
->
-<script type="module" src="/src/main.ts"></script>
-</body>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <title>Vertex Link Documentation</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
 </html>

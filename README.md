@@ -1,98 +1,173 @@
-﻿# Vertex Link - Modular TypeScript Game Engine/Framework
-This document outlines the architecture of Vertex Link, a modular and flexible TypeScript framework designed for game development and interactive applications. It prioritizes decoupling, testability, and an event-driven, component-based structure.
-## 1. Core Philosophy
-Vertex Link moves away from a monolithic "Engine" class, offering instead a set of core concepts and a structured way to manage application logic and state. It leverages modern TypeScript features, including decorators for events and update loops, and promotes a loosely coupled architecture. Developers compose applications by combining:
-- **Scenes**: Manage collections of Actors and provide querying capabilities.
-- **Actors**: Represent individual entities within a scene.
-- **Components**: Encapsulate data and behaviour, attached to Actors.
-- **Services**: Provide shared, cross-cutting functionalities.
-- **Processors**: Manage update loops (e.g., rendering, physics).
-- **Events**: Facilitate communication between decoupled parts.
+# Vertex Link - Modular TypeScript Game Engine/Framework
 
-## 2. Core Entities & Their Roles
-### 2.1. Actors (src/core/Actor.ts)
-- Represent individual entities (player, enemy, UI element).
-- Act as containers for Components.
-- Have a lifecycle and manage their components.
-- Can have methods decorated to run in Processor update loops.
+> ⚠️ **EXPERIMENTAL PLAYGROUND WARNING** ⚠️  
+> This is a highly experimental, very unstable, and completely untested project! It's my overengineering and vibecoding playground where I explore wild ideas and architectural patterns. Expect frequent breaking changes, half-implemented features, and code that might make you question my sanity. Use at your own risk, and don't say I didn't warn you! 🚧🎮✨
 
-### 2.2. Components (src/core/component/Component.ts)
-- Hold data and implement specific functionalities for an Actor.
-- Define an Actor's characteristics and state.
-- Feature a dependency injection system using decorators (@RequireComponent, @OptionalComponent).
-- Can have methods decorated to run in Processor update loops or handle events.
-- Their lifecycle is tied to their parent Actor and dependency resolution.
+Vertex Link is a modular and flexible TypeScript framework designed for game development and interactive 3D applications, aiming to become a powerful, open-source web engine with features like WebGPU rendering and buffer streaming.
 
-### 2.3. Services (src/core/Service.ts)
-- Provide shared functionalities across the application (e.g., Logging, Pokemon Data).
-- Defined by an IService interface with optional lifecycle methods (initialize, update, dispose).
-- Registered and resolved using unique ServiceKey symbols via a ServiceRegistry.
-- The framework doesn't enforce a single global ServiceManager; instead, ServiceRegistry instances can be created and managed as needed (e.g., per-scene or globally by the application).
+**This repository contains the core `acs` (Actor-Component-System) package, the `engine` package for rendering and resource management, and `documentation` including examples.**
 
-### 2.4. Scenes (src/core/scene/Scene.ts)
-- Manage collections of Actors.
-- Provide efficient querying capabilities for Actors based on their components or tags using a QueryBuilder.
-- Can have their own EventBus or share one.
-- Handle adding, removing, and indexing actors.
+## Core Philosophy
 
-### 2.5. Events (src/core/events/Event.ts, src/core/events/Decorators.ts)
-- A robust, type-safe event system based on an EventBus.
-- Events extend a base Event class and define a static eventType.
-- Classes (like Components or Actors) can listen to events using the @OnEvent decorator, which automatically registers and unregisters handlers.
-- A global EventBus can be initialized and accessed, or specific instances can be used.
+Vertex Link emphasizes a decoupled, component-based architecture. It provides a set of core concepts:
 
-### 2.6. Processors (src/core/processor/Processor.ts, src/engine/processors/)
-- Manage distinct update loops.
-- The framework provides a RenderProcessor (using requestAnimationFrame) and a FixedTickProcessor (using setInterval).
-- Methods within Actors or Components can be hooked into these loops using decorators like @RenderUpdate or @FixedTickUpdate.
-- Processors are managed by a ProcessorRegistry, allowing custom processors and decorators to be added.
+-   **Scenes**: Manage collections of Actors and provide querying capabilities.
+-   **Actors**: Represent entities, acting as containers for Components.
+-   **Components**: Encapsulate data and behavior for Actors.
+-   **Services**: Provide shared, cross-cutting functionalities.
+-   **Processors**: Manage distinct update loops (e.g., rendering, game logic).
+-   **Events**: Facilitate type-safe, decoupled communication via an EventBus.
 
-## 3. How It Works (Conceptual Flow)
-### Initialization (examples/app.ts):
-- An EventBus is initialized.
-- A ServiceRegistry is created, and services (like PokemonService) are registered.
-- Processors (like RenderProcessor, FixedTickProcessor) would typically be registered with the ProcessorRegistry and started here (though not explicitly shown in examples/app.ts).
-- A main application/UI layer (like Vue.js in the example) is set up.
+Modern TypeScript features, including decorators, are leveraged for an intuitive and efficient developer experience.
 
-### Scene & Actors (examples/components/BattleScreen.ts):
-- A Scene is created, often using the main EventBus.
-- Actors are created and added to the Scene.
-- Components (like PokemonStatsComponent) are added to Actors, providing data and behaviour. Components automatically attempt to resolve their dependencies (@RequireComponent) once added.
+## Key Features
 
-### Event Handling (examples/game/systems.ts, examples/components/ActionBar.ts):
-- Actors or Components use @OnEvent to listen for specific events (e.g., BattleStartEvent, PlayerChoseMoveEvent).
-- When an event is emitted (using emit(new MyEvent(...))), the corresponding decorated methods are automatically invoked.
+-   **Actor-Component-System (ACS)**: A robust foundation for entity management.
+-   **Event-Driven**: Decoupled communication using a central EventBus and `@OnEvent` decorators.
+-   **Decorator-Based API**: Simplifies hooking into update loops (`@Update`, `@WebGPUUpdate`), event handling, and dependency injection (`@RequireComponent`).
+-   **Resource Management**: System for loading, compiling, and managing assets like meshes, materials, and shaders.
+-   **WebGPU Rendering**: High-performance rendering using the modern WebGPU API, managed by the `WebGPUProcessor` and `RenderGraph`.
+-   **Modular Design**: Core logic (`@vertex-link/acs`) is separate from the rendering engine (`@vertex-link/engine`), promoting flexibility.
 
-### Update Loops:
-- If an Actor or Component has a method decorated with @RenderUpdate or @FixedTickUpdate, the corresponding Processor will call it during its loop, passing the deltaTime.
+## Dive Deeper
 
-### Data Flow:
-- Components primarily hold state.
-- Events communicate changes or requests between different parts.
-- Services provide access to external data or shared logic.
-- Vue components (in the example) react to changes in state and emit events based on user interaction.
+For comprehensive information, please refer to the full **Vertex Link Visualizer Documentation**.This documentation includes:
 
-## 4. Key Architectural Features
-- **Modularity & Decoupling**: Services, Events, and the ECS-like (Actor-Component) structure promote low coupling.
-- **Testability**: Decoupled parts are easier to test in isolation. Mock services and event buses can be injected.
-- **Event-Driven**: Central EventBus and @OnEvent decorators simplify communication.
-- **Decorator-Based**: Simplifies hooking into update loops (@RenderUpdate) and handling events (@OnEvent), and managing dependencies (@RequireComponent).
-- **Flexible Scoping**: While a global EventBus is common, ServiceRegistry instances can be scoped.
-- **Scene Management**: Scene provides a container for actors and querying.
+-   Detailed Architectural Overview
+-   Getting Started Guide & Project Setup
+-   Complete API Documentation for `@vertex-link/acs` and `@vertex-link/engine`
+-   Information on Upcoming Features (like Component-Driven Resources and Buffer Streaming)
 
-## 5. Getting Started (Based on Example)
-1. **Set up HTML (examples/index.html)**: Create a basic HTML file, include Vue.js (or your chosen view layer), and link your main application script.
-2. **Define Services (examples/services/PokemonService.ts)**: Create interfaces and implementations for any shared services you need.
-3. **Define Components (examples/game/components.ts)**: Create Component classes to hold data and logic for your actors.
-4. **Define Events (examples/game/events.ts)**: Define the Event classes that will drive communication.
-5. **Create Systems/Event Handlers (examples/game/systems.ts)**: Implement classes with @OnEvent methods to handle game logic.
-6. **Build UI/Views (examples/components/*.ts)**: Create UI components that interact with the engine by:
-    - Accessing services.
-    - Creating Actors and adding Components.
-    - Emitting events based on user input.
-    - Listening to events to update the UI.
+## Development Setup
 
-7. **Bootstrap (examples/app.ts)**: Initialize the EventBus, ServiceRegistry, register services, and mount your application.
-8. **Run Dev Server (scripts/dev_server.ts)**: Use the Deno-based development server to transpile TypeScript and serve your application with live reload.
+This project uses [Bun](https://bun.sh/) as the primary JavaScript runtime, package manager, and bundler. It's structured as a monorepo using Bun's workspaces feature.
 
-This architecture provides a powerful and flexible foundation for building games and interactive applications in TypeScript.
+### Prerequisites
+
+-   Install [Bun](https://bun.sh/docs/installation).
+-   A modern browser with WebGPU support (for running the visualizer examples).
+
+### Local Setup & Running
+
+1.  **Clone the repository:**
+    ```bash
+    git clone git@github.com:vertex-link/visualizer.git
+    cd visualizer
+    ```
+
+2.  **Install Dependencies:**
+    Bun automatically installs dependencies when you run scripts if they are not already present. Or, you can explicitly install them:
+    ```bash
+    bun install
+    ```
+    This will install dependencies for the root project and all packages within the `packages/*` workspaces (e.g., `@vertex-link/acs`, `@vertex-link/engine`, `@vertex-link/documentation`).
+
+3.  **Running the Development Environment:**
+    To develop the libraries (`acs`, `engine`) and the visualizer examples (`documentation`) concurrently with live reloading:
+    ```bash
+    bun run dev
+    ```
+    This command:
+    -   Runs `bun run dev:libs`, which concurrently starts the development build process (with watching) for `@vertex-link/acs` and `@vertex-link/engine`.
+        -   `packages/acs` dev script: `bun build ./src/index.ts --outdir ./dist --watch`
+        -   `packages/engine` dev script: `bun build ./src/index.ts --outdir ./dist --watch`
+    -   Runs `bun run dev:visualizer`, which starts the Vite development server for the `@vertex-link/documentation` package.
+        -   This typically serves the examples on `http://localhost:8000`.
+
+    The `@vertex-link/documentation` package uses Vite, which is configured to resolve `@vertex-link/acs` and `@vertex-link/engine` to their source `index.ts` files, enabling hot-reloading across packages.
+
+4.  **Accessing the Examples:**
+    Open your browser and navigate to the URL provided by the Vite development server (usually `http://localhost:8000`). The `index.html` in the `documentation` package serves as the entry point for examples.
+
+### Building Packages
+
+-   **Build a specific library:**
+    ```bash
+    bun run --cwd ./packages/acs build
+    # or
+    bun run --cwd ./packages/engine build
+    ```
+    These scripts use `bun build` to compile the TypeScript source to ESM format in the `dist` directory of each package, including sourcemaps.
+
+-   **Build all libraries (`acs` and `engine`):**
+    ```bash
+    bun run build:all-libs
+    ```
+
+
+-   **Build the documentation/visualizer examples:**
+    ```bash
+    bun run --cwd ./packages/documentation build
+    ```
+    This uses Vite to build the documentation site.
+
+### Type Checking
+
+-   **Type check a specific package:**
+    Navigate to the package directory (e.g., `cd packages/engine`) and run:
+    ```bash
+    bun run typecheck
+    ```
+    This executes `tsc --noEmit -p ./tsconfig.json` for that package.
+
+-   **Type check the entire project:**
+    From the root directory:
+    ```bash
+    bun run typecheck
+    ```
+    This runs `tsc --noEmit -p ./tsconfig.json` using the root `tsconfig.json`, which should cover all workspace packages due to project references or includes if configured appropriately. The root `tsconfig.json` extends `tsconfig.base.json`.
+
+### Docker (Optional)
+
+A `docker-compose.yml` is provided for a Bun development environment.
+To use it:
+```bash
+docker-compose up bun_dev
+```
+This will mount the current directory into `/app` in the container and expose port 8000. You can then run the Bun commands from within the container's shell.
+
+## Getting Started (Quick Look)
+
+A brief example of creating an actor and adding components, based on the structure in `packages/documentation/src/main.ts`:
+
+1.  **Initialize Core Systems**: Set up `ResourceManager`, `ServiceRegistry`, `WebGPUProcessor`, and `Scene`.
+2.  **Load Resources**: Use `ResourceManager` to load/create `ShaderResource`, `MeshResource`, `MaterialResource`.
+3.  **Create Actors**: Instantiate `Actor` and add `TransformComponent`, `MeshRendererComponent`, and custom behavior `Component`s.
+4.  **Set up Camera**: Create an `Actor` with `CameraComponent` and `TransformComponent`.
+5.  **Start Processors**: Call `.start()` on your registered processors (e.g., `WebGPUProcessor`).
+
+```typescript
+// --- In your main application setup ---
+
+// (Assuming scene, myMeshResource, myMaterialResource are already initialized)
+
+// Create an Actor
+const myActor = new Actor("MyCube");
+scene.addActor(myActor); // Add actor to the scene
+
+// Add TransformComponent and set its initial position
+myActor.addComponent(TransformComponent, { position: [0, 0, 0] });
+
+// Add MeshRendererComponent with the pre-loaded mesh and material
+myActor.addComponent(MeshRendererComponent, {
+    mesh: myMeshResource,
+    material: myMaterialResource
+});
+
+// Add a custom component for behavior
+// Assuming MyCustomRotationComponent is defined elsewhere
+// and takes an options object with a 'speed' property
+myActor.addComponent(MyCustomRotationComponent, { speed: 1.0 });
+
+// (Continue with camera setup and starting processors)
+```
+
+## Development Plan Highlights
+
+-   **Component-Driven Resources**: Simplifying how resources are accessed and managed by actors.
+-   **Streamlined Material System**: More flexible and instance-based material properties.
+-   **Declarative Scene Setup API**: Reducing boilerplate for scene creation.
+-   **Advanced Hierarchy System**: Robust parent-child relationships for actors.
+-   **Buffer Streaming**: A key long-term goal for efficient handling of large-scale scenes and data.
+
+We encourage you to explore the code, examples, and the full documentation to understand the capabilities and future direction of Vertex Link.

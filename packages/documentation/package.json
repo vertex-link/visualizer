@@ -15,6 +15,11 @@
     "@vertex-link/engine": "workspace:*",
     "@vitejs/plugin-vue": "^5.2.4",
     "reflect-metadata": "^0.2.2",
-    "vue": "^3.3.0"
+    "vue": "^3.3.0",
+    "vue-router": "^4.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
   }
 }
