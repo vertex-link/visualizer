@@ -21,12 +21,12 @@
             </div>
           </div>
         </template>
-        
+
         <BaseText variant="body" size="sm" color="secondary" class="mb-4">
-          Demonstrates the WebGPU rendering pipeline with rotating cube entities 
+          Demonstrates the WebGPU rendering pipeline with rotating cube entities
           using the Actor-Component-System architecture.
         </BaseText>
-        
+
         <div class="example-features">
           <BaseText variant="label" color="tertiary" class="mb-2">FEATURES</BaseText>
           <div class="feature-tags">
@@ -36,13 +36,19 @@
             <span class="tag">Real-time Updates</span>
           </div>
         </div>
-        
+
         <template #footer>
           <div class="example-actions">
-            <Button variant="primary" icon="play_arrow">
-              Launch Demo
-            </Button>
-            <Button variant="secondary" icon="code">
+            <router-link to="/examples/rotating-cubes">
+              <Button variant="primary" icon="play_arrow">
+                Launch Demo
+              </Button>
+            </router-link>
+            <Button
+              variant="secondary"
+              icon="code"
+              @click="viewSource('rotating-cubes')"
+            >
               View Source
             </Button>
           </div>
@@ -53,10 +59,39 @@
       <Card variant="outlined" class="example-card placeholder">
         <div class="placeholder-content">
           <span class="material-icons placeholder-icon">upcoming</span>
-          <BaseText variant="h4" color="tertiary" class="mb-2">MORE EXAMPLES</BaseText>
+          <BaseText variant="h4" color="tertiary" class="mb-2">PHYSICS SIMULATION</BaseText>
           <BaseText variant="body" size="sm" color="tertiary">
-            Additional demos and tutorials coming soon.
+            Real-time physics with collision detection and response.
           </BaseText>
+          <div class="coming-soon">
+            <Status variant="warning" size="sm">COMING SOON</Status>
+          </div>
+        </div>
+      </Card>
+
+      <Card variant="outlined" class="example-card placeholder">
+        <div class="placeholder-content">
+          <span class="material-icons placeholder-icon">terrain</span>
+          <BaseText variant="h4" color="tertiary" class="mb-2">TERRAIN RENDERING</BaseText>
+          <BaseText variant="body" size="sm" color="tertiary">
+            Large-scale terrain with procedural generation and level-of-detail.
+          </BaseText>
+          <div class="coming-soon">
+            <Status variant="warning" size="sm">COMING SOON</Status>
+          </div>
+        </div>
+      </Card>
+
+      <Card variant="outlined" class="example-card placeholder">
+        <div class="placeholder-content">
+          <span class="material-icons placeholder-icon">games</span>
+          <BaseText variant="h4" color="tertiary" class="mb-2">GAME PROTOTYPE</BaseText>
+          <BaseText variant="body" size="sm" color="tertiary">
+            Complete game prototype showcasing input handling and game logic.
+          </BaseText>
+          <div class="coming-soon">
+            <Status variant="warning" size="sm">COMING SOON</Status>
+          </div>
         </div>
       </Card>
     </div>
@@ -68,6 +103,13 @@ import BaseText from '../components/base/BaseText.vue'
 import Button from '../components/base/Button.vue'
 import Card from '../components/base/Card.vue'
 import Status from '../components/base/Status.vue'
+
+const viewSource = (exampleName: string) => {
+  // This could open a modal with syntax-highlighted source code
+  // or navigate to a GitHub link
+  console.log(`View source for: ${exampleName}`)
+  // For now, just log - implement source viewing later
+}
 </script>
 
 <style scoped>
@@ -135,6 +177,10 @@ import Status from '../components/base/Status.vue'
   gap: var(--space-3);
 }
 
+.example-actions a {
+  text-decoration: none;
+}
+
 .placeholder {
   display: flex;
   align-items: center;
@@ -144,6 +190,7 @@ import Status from '../components/base/Status.vue'
 
 .placeholder-content {
   text-align: center;
+  padding: var(--space-6);
 }
 
 .placeholder-icon {
@@ -152,11 +199,29 @@ import Status from '../components/base/Status.vue'
   margin-bottom: var(--space-4);
 }
 
+.coming-soon {
+  margin-top: var(--space-4);
+  display: flex;
+  justify-content: center;
+}
+
+.mb-2 {
+  margin-bottom: var(--space-2);
+}
+
+.mb-4 {
+  margin-bottom: var(--space-4);
+}
+
+.mb-8 {
+  margin-bottom: var(--space-8);
+}
+
 @media (max-width: 640px) {
   .examples-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .example-actions {
     flex-direction: column;
   }

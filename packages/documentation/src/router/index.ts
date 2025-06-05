@@ -1,12 +1,15 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 
-// Import views (these will be created later)
+// Import views
 import Home from '../views/Home.vue'
 import Documentation from '../views/Documentation.vue'
 import Components from '../views/Components.vue'
 import Examples from '../views/Examples.vue'
 import About from '../views/About.vue'
+
+// Import example components
+import RotatingCubesExample from '../examples/rotating-cubes/RotatingCubesExample.vue'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -39,6 +42,15 @@ const routes: RouteRecordRaw[] = [
     component: Examples,
     meta: {
       title: 'Examples'
+    }
+  },
+  {
+    path: '/examples/rotating-cubes',
+    name: 'RotatingCubes',
+    component: RotatingCubesExample,
+    meta: {
+      title: 'Rotating Cubes Demo',
+      layout: 'fullscreen' // Custom layout for examples
     }
   },
   {
