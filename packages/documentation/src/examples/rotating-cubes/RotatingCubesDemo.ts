@@ -22,7 +22,7 @@ import {
   WebGPUProcessor
 } from "@vertex-link/engine";
 import { Actor, ProcessorRegistry, Scene, ServiceRegistry } from "@vertex-link/acs";
-import { RotatingComponent } from "../../RotatingComponent";
+import { RotatingComponent } from "./RotatingComponent";
 
 // Import local shader file
 import basicShaderSource from "../../../../engine/src/webgpu/shaders/basic.wgsl?raw";
