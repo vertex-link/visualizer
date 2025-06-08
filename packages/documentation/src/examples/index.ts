@@ -1,5 +1,3 @@
-// packages/documentation/src/examples/index.ts
-
 // Export reusable components
 export { default as ExampleContainer } from './components/ExampleContainer.vue'
 export { default as InfoPanel } from './components/InfoPanel.vue'
@@ -35,6 +33,21 @@ export const examples: ExampleMetadata[] = [
       'WebGPU Rendering',
       'Component System',
       '3D Transforms',
+      'Real-time Updates'
+    ]
+  },
+  {
+    id: 'resources',
+    title: 'Resource Handling',
+    description: 'Resource Handling and setup',
+    component: () => import('./resources/ResourcesDemo.vue'),
+    route: '/examples/rotating-cubes',
+    difficulty: 'beginner',
+    technologies: ['WebSockets', 'TypeScript', 'ZigLang', 'Wasm'],
+    features: [
+      'Buffer Streaming',
+      'Component System',
+      'Processor System',
       'Real-time Updates'
     ]
   }

@@ -7,7 +7,7 @@ export { default as Component } from './component/Component'; //
 export type { ComponentClass, ComponentConstructorParameters } from './component/Component'; //
 export { ComponentTypeRegistry } from './component/ComponentRegistry'; //
 export { RequireComponent, OptionalComponent } from './component/Decorators'; //
-
+export { ResourceComponent } from './component/ResourceComponent'
 // Event System
 export {
   Event,
@@ -39,3 +39,8 @@ export type { ComponentQueryCondition, TagQueryCondition, ExcludeTagQueryConditi
 
 // Utilities (if considered part of core)
 export { generateUUID } from './utils/uuid'; //
+
+
+export { Resource, ResourceStatus } from './resources/Resource';
+// Resources
+// export {Resource}

@@ -1,0 +1,54 @@
+import { Actor, Component } from '@vertex-link/acs';
+import { Resource } from '../resources/Resource';
+
+export class ResourceComponent extends Component {
+  private resources = new Set<Resource>();
+
+  constructor(actor: Actor, resources: Resource[] = []) {
+    super(actor);
+
+    // Add initial resources
+    for (const resource of resources) {
+      this.resources.add(resource);
+    }
+  }
+
+  /**
+   * Add a resource
+   */
+  add(resource: Resource): void {
+    this.resources.add(resource);
+  }
+
+  /**
+   * Get first resource of specific type
+   */
+  get<T extends Resource>(type: new (...args: any[]) => T): T | undefined {
+    for (const resource of this.resources) {
+      if (resource instanceof type) {
+        return resource as T;
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * Get all resources of specific type
+   */
+  getAll<T extends Resource>(type: new (...args: any[]) => T): T[] {
+    const results: T[] = [];
+    for (const resource of this.resources) {
+      if (resource instanceof type) {
+        results.push(resource as T);
+      }
+    }
+    return results;
+  }
+
+  /**
+   * Get all resources
+   */
+  getResources(): ReadonlySet<Resource> {
+    return this.resources;
+  }
+}

@@ -55,6 +55,51 @@
         </template>
       </Card>
 
+      <Card variant="elevated" interactive class="example-card">
+        <template #header>
+          <div class="example-header">
+            <div class="example-icon">
+              <span class="material-icons">source</span>
+            </div>
+            <div>
+              <BaseText variant="h3">RESOURCE HANDLING</BaseText>
+              <Status variant="active" size="sm">zig/wasm | websockets</Status>
+            </div>
+          </div>
+        </template>
+
+        <BaseText variant="body" size="sm" color="secondary" class="mb-4">
+            Demonstrates how resource handling works and what they can do.
+        </BaseText>
+
+        <div class="example-features">
+          <BaseText variant="label" color="tertiary" class="mb-2">FEATURES</BaseText>
+          <div class="feature-tags">
+            <span class="tag">Data/Buffer streaming</span>
+            <span class="tag">Component System</span>
+            <span class="tag">wasm handling</span>
+            <span class="tag">Porcessor System</span>
+          </div>
+        </div>
+
+        <template #footer>
+          <div class="example-actions">
+            <router-link to="/examples/resources">
+              <Button variant="primary" icon="play_arrow">
+                Launch Demo
+              </Button>
+            </router-link>
+            <Button
+              variant="secondary"
+              icon="code"
+              @click="viewSource('resources')"
+            >
+              View Source
+            </Button>
+          </div>
+        </template>
+      </Card>
+
       <!-- Placeholder for Future Examples -->
       <Card variant="outlined" class="example-card placeholder">
         <div class="placeholder-content">

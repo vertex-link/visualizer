@@ -10,6 +10,7 @@ import About from '../views/About.vue'
 
 // Import example components
 import RotatingCubesExample from '../examples/rotating-cubes/RotatingCubesExample.vue'
+import ResourceExample from '../examples/resourecs/ResourceExample.vue'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -48,6 +49,15 @@ const routes: RouteRecordRaw[] = [
     path: '/examples/rotating-cubes',
     name: 'RotatingCubes',
     component: RotatingCubesExample,
+    meta: {
+      title: 'Rotating Cubes Demo',
+      layout: 'fullscreen' // Custom layout for examples
+    }
+  },
+  {
+    path: '/examples/resources',
+    name: 'RotatingCubes',
+    component: ResourceExample,
     meta: {
       title: 'Rotating Cubes Demo',
       layout: 'fullscreen' // Custom layout for examples

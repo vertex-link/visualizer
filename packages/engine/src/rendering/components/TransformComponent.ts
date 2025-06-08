@@ -1,5 +1,3 @@
-
-
 // Type aliases for 3D math (simple arrays for now)
 import { Actor, Component } from "@vertex-link/acs";
 
