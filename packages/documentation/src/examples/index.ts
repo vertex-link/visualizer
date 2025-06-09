@@ -36,21 +36,21 @@ export const examples: ExampleMetadata[] = [
       'Real-time Updates'
     ]
   },
-  {
-    id: 'resources',
-    title: 'Resource Handling',
-    description: 'Resource Handling and setup',
-    component: () => import('./resources/ResourcesDemo.vue'),
-    route: '/examples/rotating-cubes',
-    difficulty: 'beginner',
-    technologies: ['WebSockets', 'TypeScript', 'ZigLang', 'Wasm'],
-    features: [
-      'Buffer Streaming',
-      'Component System',
-      'Processor System',
-      'Real-time Updates'
-    ]
-  }
+  // {
+  //   id: 'resources',
+  //   title: 'Resource Handling',
+  //   description: 'Resource Handling and setup',
+  //   component: () => import('./resources/ResourcesDemo.vue'),
+  //   route: '/examples/resources',
+  //   difficulty: 'beginner',
+  //   technologies: ['WebSockets', 'TypeScript', 'ZigLang', 'Wasm'],
+  //   features: [
+  //     'Buffer Streaming',
+  //     'Component System',
+  //     'Processor System',
+  //     'Real-time Updates'
+  //   ]
+  // }
   // Add more examples here as they are created
 ]
 

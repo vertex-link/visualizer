@@ -1,4 +1,4 @@
-import {Actor, Component, RequireComponent, Resource} from "@vertex-link/acs";
+import {Actor, Component, Resource} from "@vertex-link/acs";
 import { ResourceComponent } from "@vertex-link/acs";
 import { TransformComponent } from "@vertex-link/engine";
 
@@ -7,29 +7,35 @@ type ResourceData = {
 }
 
 class DependencyTestComponent extends Component {
-  @RequireComponent(ResourceComponent)
-  resources: ResourceComponent;
-  
-  @RequireComponent(TransformComponent)
-  transform: TransformComponent;
+  _resources?: ResourceComponent;
+  _transform?: TransformComponent;
   
   constructor(actor: Actor) {
     super(actor);
-    console.log('[DEBUG] DependencyTestComponent constructor - dependencies not yet checked');
   }
 
-  protected onDependenciesResolved(): void {
-    console.log('[DEBUG] DependencyTestComponent - all dependencies resolved!');
-    console.log('[DEBUG] this.resources:', this.resources);
-    console.log('[DEBUG] this.transform:', this.transform);
-    
-    // Now you can safely use your dependencies
-    this.initializeWithDependencies();
-  }
+  get transform(): TransformComponent {
+    if (this._transform) {
+      return this._transform;
+    }
 
-  protected onDependenciesLost(): void {
-    console.log('[DEBUG] DependencyTestComponent - dependencies lost, cleaning up');
-    // Handle cleanup when dependencies are removed
+    this._transform = this.actor.getComponent(TransformComponent);
+    if (!this._transform) {
+      throw new Error('Transform not initialized');
+    }
+    return this._transform;
+  }
+  
+  get resources(): ResourceComponent {
+    if (this._resources) {
+      return this._resources;
+    }
+
+    this._resources = this.actor.getComponent(ResourceComponent);
+    if (!this._resources) {
+      throw new Error('Transform not initialized');
+    }
+    return this._resources;
   }
 
   private initializeWithDependencies(): void {
@@ -38,30 +44,11 @@ class DependencyTestComponent extends Component {
 } 
 
 class CustomActor extends Actor {
-  @RequireComponent(ResourceComponent)
-  resources: ResourceComponent;
-
-  public someMethod(): void {
-    // Safe access - will warn if not available but won't crash
-    const resources = this.resources;
-    if (resources) {
-      // Use resources safely
-      console.log('Resources available:', resources);
-    } else {
-      console.log('Resources not yet available, skipping operation');
-    }
-  }
-
-  // Alternative explicit approach
-  public anotherMethod(): void {
-    const resources = this.getDependency(ResourceComponent);
-    if (resources) {
-      // Use resources
-    }
-  }
+  resources?: ResourceComponent;
 
   constructor() {
     super('customactor');
+    this.resources = this.getComponent(ResourceComponent);
   }
 
   protected onBeforeInitialize(): void {
@@ -75,23 +62,6 @@ class CustomActor extends Actor {
   }
 
   protected onInitialize(): void {
-    console.log('[DEBUG] onInitialize - checking decorator');
-    
-    // Debug the component system
-    console.log('[DEBUG] All components:', this.getAllComponents());
-    console.log('[DEBUG] Has ResourceComponent:', this.hasComponent(ResourceComponent));
-    console.log('[DEBUG] getComponent(ResourceComponent):', this.getComponent(ResourceComponent));
-    
-    // Debug the decorator
-    console.log('[DEBUG] Constructor dependencies:', (this.constructor as any)._componentDependencies);
-    
-    // Now test the decorator getter
-    console.log('[DEBUG] Accessing this.resources (decorator getter):', this.resources);
-    
-    // Try accessing it again
-    setTimeout(() => {
-      console.log('[DEBUG] Delayed access to this.resources:', this.resources);
-    }, 0);
   }
 }
 

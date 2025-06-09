@@ -1,4 +1,3 @@
-<!-- packages/documentation/src/examples/rotating-cubes/RotatingCubesExample.vue -->
 <template>
   <ExampleContainer
     title="Rotating Cubes"

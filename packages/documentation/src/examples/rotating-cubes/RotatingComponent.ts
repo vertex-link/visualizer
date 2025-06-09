@@ -1,20 +1,25 @@
-import { Component, RequireComponent, Update } from "@vertex-link/acs";
+import { Component, Update } from "@vertex-link/acs";
 import { Transform, TransformComponent, Vec3 } from "@vertex-link/engine";
 
 
 export class RotatingComponent extends Component {
 
-  @RequireComponent(TransformComponent)
   private transform!: TransformComponent;
   public speed: number = 0.5; // Radians per second
 
-  protected onDependenciesResolved(): void {
-    this.transform = this.actor.getComponent(TransformComponent)!;
+  getTransform(): TransformComponent {
+    if (!this.transform) {
+      this.transform = this.actor.getComponent(TransformComponent)!;
+    }
+    return this.transform;
   }
-
+  
   @Update('webgpu') // Use 'webgpu' processor name, not 'render'
   update(deltaTime: number): void {
-    if (!this.transform) return;
+    if (!this.getTransform()) {
+      console.log("transform not found returning");
+      return
+    };
 
     const deltaAngle = this.speed * deltaTime;
 

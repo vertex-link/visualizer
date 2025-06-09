@@ -6,7 +6,6 @@ export { type IService, ServiceRegistry } from './Service'; //
 export { default as Component } from './component/Component'; //
 export type { ComponentClass, ComponentConstructorParameters } from './component/Component'; //
 export { ComponentTypeRegistry } from './component/ComponentRegistry'; //
-export { RequireComponent, OptionalComponent } from './component/Decorators'; //
 export { ResourceComponent } from './component/ResourceComponent'
 // Event System
 export {

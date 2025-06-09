@@ -1,4 +1,4 @@
-import { Actor, Component, ProcessorRegistry, RequireComponent } from "@vertex-link/acs";
+import { Actor, Component, ProcessorRegistry } from "@vertex-link/acs";
 import { TransformComponent } from "../../rendering/components/TransformComponent";
 import { WebGPUProcessor, WebGPUUpdate } from "../../processors/WebGPUProcessor";
 import { MeshResource } from "../../resources/MeshResource";
@@ -25,8 +25,7 @@ export class MeshRendererComponent extends Component {
   private lastUpdateFrame = -1;
   private isVisible = true;
 
-  @RequireComponent(TransformComponent)
-  private transform!: TransformComponent;
+  private transform?: TransformComponent;
 
   constructor(
     actor: Actor,
@@ -43,6 +42,7 @@ export class MeshRendererComponent extends Component {
     if (config?.material) this.material = config.material;
     if (config?.enabled !== undefined) this.enabled = config.enabled;
     if (config?.layer !== undefined) this.layer = config.layer;
+    this.transform = this.actor.getComponent(TransformComponent);
   }
 
   /**
@@ -100,7 +100,11 @@ export class MeshRendererComponent extends Component {
    * Get the transform component (guaranteed to exist due to @RequireComponent).
    */
   getTransform(): TransformComponent {
-    return this.transform;
+    if (this.transform !== undefined) {
+      return this.transform;
+    } else {
+      throw new Error("Transform component not found.");
+    }
   }
 
   /**
@@ -136,14 +140,7 @@ export class MeshRendererComponent extends Component {
     // Higher layer = render later (for transparency)
     return this.layer * 1000 + (this.material?.id.hashCode() || 0);
   }
-
-  protected onDependenciesResolved(): void {
-    // Transform component is now available
-    // Any initialization that requires transform can go here
-    this.transform = this.actor.getComponent(TransformComponent)!;
-    console.log(`✅ MeshRenderer initialized for ${this.actor.label}`);
-  }
-
+  
   /**
    * Cleanup when component is removed
    */

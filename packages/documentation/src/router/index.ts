@@ -56,10 +56,10 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/examples/resources',
-    name: 'RotatingCubes',
+    name: 'Reosurces',
     component: ResourceExample,
     meta: {
-      title: 'Rotating Cubes Demo',
+      title: 'Reources',
       layout: 'fullscreen' // Custom layout for examples
     }
   },

@@ -1,4 +1,4 @@
-import { Actor, Component, RequireComponent } from "@vertex-link/acs";
+import { Actor, Component } from "@vertex-link/acs";
 import { Mat4, TransformComponent, Vec3 } from "../../rendering/components/TransformComponent";
 import { Transform } from "../../rendering/math/Transform";
 
@@ -39,7 +39,6 @@ export class CameraComponent extends Component {
   public isActive: boolean = true;
   public layerMask: number = 0xFFFFFFFF;
 
-  @RequireComponent(TransformComponent)
   private transform!: TransformComponent;
 
   private _viewMatrix: Mat4 = Transform.identity();
@@ -67,18 +66,6 @@ export class CameraComponent extends Component {
 
     if (config.isActive !== undefined) this.isActive = config.isActive;
     if (config.layerMask !== undefined) this.layerMask = config.layerMask;
-  }
-
-  protected onDependenciesResolved(): void {
-    // Transform is now guaranteed to be available
-    this.transform = this.actor.getComponent(TransformComponent)!;
-
-    // Force initial matrix computation
-    this.markViewDirty();
-    this.markProjectionDirty();
-    this._lastTransformVersion = -1; // Force update on first frame
-
-    console.log(`📷 Camera ${this.actor.label} initialized with transform`);
   }
 
   /**
