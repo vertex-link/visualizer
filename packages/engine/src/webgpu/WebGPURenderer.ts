@@ -17,7 +17,7 @@ export class WebGPURenderer {
   private currentRenderPass: GPURenderPassEncoder | null = null;
   private _buffersToDestroy: GPUBuffer[] = []; // New: Collect buffers to destroy at frame end
 
-  protected device: GPUDevice | null = null;
+  readonly device: GPUDevice | null = null;
 
   /**
    * Initialize WebGPU with the given canvas.
@@ -34,6 +34,7 @@ export class WebGPURenderer {
       throw new Error('Failed to get WebGPU adapter');
     }
 
+    //@ts-ignore
     this.device = await this.adapter.requestDevice();
     if (!this.device) {
       throw new Error('Failed to get WebGPU device');
@@ -252,6 +253,8 @@ export class WebGPURenderer {
 
     this.canvas = null;
     this.adapter = null;
+
+    //@ts-ignore
     this.device = null;
     this.context = null;
     this.currentEncoder = null;
