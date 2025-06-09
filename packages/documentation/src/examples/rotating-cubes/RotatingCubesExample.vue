@@ -77,7 +77,6 @@ import {
   Actor,
   Scene,
   ResourceComponent,
-  Component,
   ProcessorRegistry
 } from '@vertex-link/acs'
 import {
@@ -85,11 +84,7 @@ import {
   TransformComponent,
   MeshRendererComponent,
   CameraComponent,
-  ProjectionType,
-  GeometryUtils,
-  MeshResource,
-  MaterialResource,
-WebGPUUpdate
+  ProjectionType
 } from '@vertex-link/engine'
 
 // Import example components
@@ -101,7 +96,6 @@ import BaseText from '../../components/base/BaseText.vue'
 
 // Import simplified resource classes
 // import basicShaderSource from '@vertex-link/engine/webgpu/shaders/basic.wgsl'
-import { StandardShaderResource } from '../resources/StandardShaderResource'
 import { CubeMeshResource } from '../resources/CubeMeshResource'
 import { BasicMaterialResource } from '../resources/BasicMaterialResource'
 import { RotatingComponent } from './RotatingComponent'
@@ -138,10 +132,9 @@ async function startDemo() {
     // Initialize WebGPU processor (simplified!)
     processor = new WebGPUProcessor(canvas)
     ProcessorRegistry.register(processor);
-    await processor.initialize()
+    await processor.initialize();
 
-    // Set global device for resource compilation
-    ;(globalThis as any).__webgpu_device__ = processor.getDevice()
+    console.log(processor);
 
     statusText.value = 'Creating scene...'
 

@@ -3,6 +3,8 @@ import { TransformComponent } from "../../rendering/components/TransformComponen
 import { WebGPUProcessor, WebGPUUpdate } from "../../processors/WebGPUProcessor";
 import { MeshResource } from "../../resources/MeshResource";
 import { MaterialResource } from "../../resources/MaterialResource";
+import { emit } from "@vertex-link/acs";
+import { ResourceReadyEvent } from "@vertex-link/acs";
 
 /**
  * Simplified MeshRendererComponent - gets resources from ResourceComponent
@@ -56,15 +58,15 @@ export class MeshRendererComponent extends Component {
    */
   @WebGPUUpdate()
   updateForRender(deltaTime: number): void {
+    // Always ensure resources are compiled first
+    this.ensureResourcesCompiled();
+
     if (!this.enabled || !this.isRenderable()) {
       return;
     }
 
     // Mark transform as used this frame (for batching optimization)
     this.lastUpdateFrame = performance.now();
-
-    // Ensure resources are compiled
-    this.ensureResourcesCompiled();
 
     // Processor will automatically batch this component based on material
     // No direct GPU calls here - that's handled by the render graph
@@ -78,7 +80,7 @@ export class MeshRendererComponent extends Component {
     const mesh = this.mesh;
     const material = this.material;
 
-    return this.enabled &&
+    const result = this.enabled &&
       this.isVisible &&
       mesh !== undefined &&
       material !== undefined &&
@@ -86,6 +88,61 @@ export class MeshRendererComponent extends Component {
       material.isLoaded() &&
       mesh.isCompiled &&
       material.isCompiled;
+
+    // Debug logging
+    if (!result) {
+      console.log(`🔍 ${this.actor.label} not renderable:`, {
+        enabled: this.enabled,
+        visible: this.isVisible,
+        hasMesh: mesh !== undefined,
+        hasMaterial: material !== undefined,
+        meshLoaded: mesh?.isLoaded(),
+        materialLoaded: material?.isLoaded(),
+        meshCompiled: mesh?.isCompiled,
+        materialCompiled: material?.isCompiled,
+        materialId: material?.id,
+        materialName: material?.name
+      });
+    }
+
+    return result;
+  }
+
+  /**
+   * Ensure GPU resources are ready (loaded and compiled)
+   */
+  private async ensureResourcesCompiled(): Promise<void> {
+    const wasRenderable = this.isRenderable();
+
+    console.log(`🔧 ${this.actor.label} ensuring resources ready, wasRenderable: ${wasRenderable}`);
+
+    try {
+      const mesh = this.mesh;
+      const material = this.material;
+
+      if (mesh) {
+        console.log(`🔧 ${this.actor.label} waiting for mesh to be ready...`);
+        await mesh.whenReady();
+        console.log(`🔧 ${this.actor.label} mesh ready: loaded=${mesh.isLoaded()}, compiled=${mesh.isCompiled}`);
+      }
+
+      if (material) {
+        console.log(`🔧 ${this.actor.label} waiting for material to be ready... ID: ${material.id}, name: ${material.name}`);
+        await material.whenReady();
+        console.log(`🔧 ${this.actor.label} material ready: loaded=${material.isLoaded()}, compiled=${material.isCompiled}`);
+      }
+
+      const nowRenderable = this.isRenderable();
+      console.log(`🔧 ${this.actor.label} nowRenderable: ${nowRenderable}`);
+
+      // Emit event if we just became renderable
+      if (!wasRenderable && nowRenderable) {
+        console.log(`🚀 ${this.actor.label} became renderable! Emitting ResourceReadyEvent`);
+        emit(new ResourceReadyEvent({ meshRenderer: this }));
+      }
+    } catch (error) {
+      console.error(`❌ Failed to ensure resources ready for ${this.actor.label}:`, error);
+    }
   }
 
   /**
@@ -146,27 +203,6 @@ export class MeshRendererComponent extends Component {
     // Let the processor know this component is gone
     this.markDirty();
     super.dispose();
-  }
-
-  // === Private Methods ===
-
-  /**
-   * Ensure GPU resources are compiled
-   */
-  private async ensureResourcesCompiled(): Promise<void> {
-    try {
-      const mesh = this.mesh;
-      const material = this.material;
-
-      if (mesh && !mesh.isCompiled) {
-        await mesh.compile();
-      }
-      if (material && !material.isCompiled) {
-        await material.compile();
-      }
-    } catch (error) {
-      console.error(`❌ Failed to compile resources for ${this.actor.label}:`, error);
-    }
   }
 
   /**

@@ -1,7 +1,8 @@
-import { Resource } from "@vertex-link/acs";
+import { ProcessorRegistry, Resource, ResourceStatus } from "@vertex-link/acs";
 import { ShaderResource, ShaderStage } from "./ShaderResource";
 import { VertexLayout } from "../rendering/interfaces/IPipeline";
 import { WebGPUPipeline } from "./../webgpu/WebGPUPipeline";
+import { WebGPUProcessor } from "../processors/WebGPUProcessor";
 
 /**
  * Uniform data types supported by materials.
@@ -58,7 +59,7 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
 
   protected async loadInternal(): Promise<MaterialDescriptor> {
     // Ensure shader is loaded first
-    await this.payload.shader.whenLoaded();
+    await this.payload.shader.whenReady();
 
     // Update uniform buffer
     this.updateUniformBuffer();
@@ -67,29 +68,21 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
   }
 
   async compile(): Promise<void> {
-    if (this.isCompiled || !this.isLoaded()) {
-      return;
-    }
+    console.log(`🔧 MaterialResource "${this.name}" (ID: ${this.id}) starting compilation. isCompiled: ${this.isCompiled}`);
 
-    // Get device from global processor or similar
-    this.device = this.getDevice();
-    if (!this.device) {
-      throw new Error(`MaterialResource "${this.name}": No GPU device available for compilation`);
+    const device = this.getDevice();
+    if (!device) {
+      throw new Error(`MaterialResource "${this.name}": WebGPU device is not available on globalThis for compilation.`);
     }
+    this.device = device;
+    const shader = this.payload.shader;
+    // The base class will have already triggered the shader's loadAndCompile process.
+    // We can await its `whenReady` promise to ensure it's compiled before we use it.
+    await shader.whenReady();
 
     try {
-      // Ensure shader is compiled
-      const shader = this.payload.shader;
-      if (!shader.isCompiled) {
-        (shader as any).setDevice(this.device); // Cast needed for legacy method
-        await shader.compile();
-      }
-
-      // Create render pipeline
-      this.pipeline = await this.createPipeline();
-      this.isCompiled = true;
-
-      console.log(`✅ MaterialResource "${this.name}" compiled successfully`);
+      this.pipeline = await this.createPipeline(device);
+      console.log(`✅ MaterialResource "${this.name}" (ID: ${this.id}) compiled successfully. isCompiled: ${this.isCompiled}`);
     } catch (error) {
       console.error(`❌ Failed to compile MaterialResource "${this.name}":`, error);
       throw error;
@@ -100,16 +93,10 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
    * Get the compiled render pipeline
    */
   getPipeline(): GPURenderPipeline | null {
-    if (!this.isCompiled || !this.pipeline) {
+    if (!this.pipeline) {
       return null;
     }
-
-    try {
-      return this.pipeline.getGPURenderPipeline();
-    } catch (error) {
-      console.error(`MaterialResource "${this.name}": Error getting GPU pipeline:`, error);
-      return null;
-    }
+    return this.pipeline.getGPURenderPipeline();
   }
 
   /**
@@ -161,41 +148,31 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
     return Array.from(this.uniformData.keys());
   }
 
-  /**
-   * Create render pipeline from material descriptor
-   */
-  private async createPipeline(): Promise<WebGPUPipeline> {
-    if (!this.device) {
-      throw new Error('No device available for pipeline creation');
-    }
-
+  private async createPipeline(device: GPUDevice): Promise<WebGPUPipeline> {
     const shader = this.payload.shader;
 
-    // Get compiled shader modules
-    const vertexShader = (shader as any).getCompiledShader(ShaderStage.VERTEX);
-    const fragmentShader = (shader as any).getCompiledShader(ShaderStage.FRAGMENT);
+    // This part will now succeed because we awaited the shader's readiness.
+    const vertexShader = shader.getCompiledShader(ShaderStage.VERTEX);
+    const fragmentShader = shader.getCompiledShader(ShaderStage.FRAGMENT);
 
     if (!vertexShader || !fragmentShader) {
-      throw new Error(`MaterialResource "${this.name}": Missing required shader stages`);
+      // If this error still occurs, the problem lies within ShaderResource.compile itself.
+      throw new Error(`MaterialResource "${this.name}": Missing required shader stages.`);
     }
 
-    // Create pipeline descriptor
     const pipelineDescriptor = {
       vertexShader: shader.vertexSource || '',
       fragmentShader: shader.fragmentSource || '',
       vertexLayout: this.payload.vertexLayout || {
-        stride: 12, // Default: position only (3 floats)
-        attributes: [{
-          location: 0,
-          format: 'float32x3',
-          offset: 0
-        }]
+        stride: 12,
+        attributes: [{ location: 0, format: 'float32x3', offset: 0 }]
       },
       label: `${this.name}_pipeline`
     };
 
-    return new WebGPUPipeline(this.device, pipelineDescriptor, this.preferredFormat);
+    return new WebGPUPipeline(device, pipelineDescriptor, this.preferredFormat);
   }
+
 
   /**
    * Update uniform buffer with proper WebGPU alignment
@@ -307,18 +284,19 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
     }
   }
 
-  /**
-   * Get GPU device - simplified approach (you'll need to implement this)
-   */
   private getDevice(): GPUDevice | null {
-    // TODO: Get device from global WebGPUProcessor or similar
-    // This is a simplified approach for the refactor
-    // In practice, you might pass device during compilation or get from processor registry
+    if (this.device) {
+      return this.device;
+    }
 
-    // For now, return null and implement device injection separately
-    return (globalThis as any).__webgpu_device__ || null;
+    const processor = ProcessorRegistry.get<WebGPUProcessor>('webgpu');
+    if (!this.device && processor) {
+      this.device = processor.renderer.device;
+      return this.device;
+    } else {
+      throw new Error("No GPU Device found. No webgpuProcessor");
+    }
   }
-
   /**
    * Create basic material with standard uniforms
    */

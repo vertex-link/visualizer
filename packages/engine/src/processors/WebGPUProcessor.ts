@@ -6,6 +6,7 @@ import { RenderGraph } from "../rendering/RenderGraph";
 import { CameraComponent } from "../rendering/camera/CameraComponent";
 import { TransformComponent } from "../rendering/components/TransformComponent";
 import { MaterialResource } from "../resources/MaterialResource";
+import { on, off, ResourceReadyEvent } from "@vertex-link/acs";
 
 /**
  * Decorator to hook into WebGPU rendering loop
@@ -56,7 +57,7 @@ export class WebGPUProcessor extends Processor {
   }
 
   /**
-   * Initialize WebGPU device and resources
+   * Initialize WebGPU processor with canvas
    */
   async initialize(): Promise<void> {
     await this.renderer.initialize(this.canvas);
@@ -67,6 +68,11 @@ export class WebGPUProcessor extends Processor {
 
     // Update camera aspect ratio based on canvas
     this.updateCameraAspectRatios();
+
+    // Listen for resources becoming ready
+    on(ResourceReadyEvent, this.handleResourceReady, this);
+
+    console.log(this.renderer.device?.adapterInfo.vendor);
 
     console.log("✅ WebGPUProcessor initialized");
   }
@@ -144,6 +150,49 @@ export class WebGPUProcessor extends Processor {
 
     console.log(`📦 Created ${this.cachedBatches.length} render batches for ${renderables.length} objects`);
   }
+
+  /**
+   * Handle ResourceReadyEvent - add single object to render batches
+   */
+  private handleResourceReady = (event: ResourceReadyEvent): void => {
+    const meshRenderer = event.payload.meshRenderer as MeshRendererComponent;
+    
+    console.log(`📨 ResourceReadyEvent received for ${meshRenderer?.actor?.label}`);
+    console.log(`📨 meshRenderer.isRenderable(): ${meshRenderer?.isRenderable()}`);
+    
+    if (!meshRenderer?.isRenderable()) {
+      console.log(`📨 Skipping - not renderable`);
+      return;
+    }
+
+    const material = meshRenderer.material!;
+    const materialId = material.id;
+
+    console.log(`📨 Adding to batches with material: ${material.name}`);
+
+    // Find existing batch for this material
+    let batch = this.cachedBatches.find(b => b.material.id === materialId);
+    
+    if (batch) {
+      // Add to existing batch if not already there
+      if (!batch.instances.includes(meshRenderer)) {
+        batch.instances.push(meshRenderer);
+        console.log(`📨 Added to existing batch. New batch size: ${batch.instances.length}`);
+      } else {
+        console.log(`📨 Already in batch`);
+      }
+    } else {
+      // Create new batch for this material
+      batch = {
+        material,
+        instances: [meshRenderer],
+        pipeline: undefined,
+        bindGroup: undefined
+      };
+      this.cachedBatches.push(batch);
+      console.log(`📨 Created new batch. Total batches: ${this.cachedBatches.length}`);
+    }
+  };
 
   /**
    * Update the active camera from scene
@@ -259,6 +308,9 @@ export class WebGPUProcessor extends Processor {
     // Cleanup resources
     this.resourcePool.dispose();
     this.renderer.dispose();
+
+    // Cleanup event listeners
+    off(ResourceReadyEvent, this.handleResourceReady);
 
     console.log("🛑 WebGPUProcessor stopped");
   }

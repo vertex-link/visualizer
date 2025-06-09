@@ -66,6 +66,15 @@ export class SceneDeactivatedEvent extends Event<{
 // ==================== Engine Events (Examples) ====================
 
 /**
+ * Resource events
+ */
+export class ResourceReadyEvent extends Event<{
+  meshRenderer: any; // Using any to avoid circular import
+}> {
+  static readonly eventType = 'engine.resource.ready';
+}
+
+/**
  * Input events
  */
 export class KeyDownEvent extends Event<{

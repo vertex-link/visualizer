@@ -136,7 +136,7 @@ export class ShaderResource extends Resource<ShaderDescriptor> {
     }
   }
 
-  protected async loadInternal() {
+  protected async loadInternal(): Promise<ShaderDescriptor> {
     console.log('load internal shader');
     return this.payload;
   }
@@ -156,41 +156,60 @@ export class ShaderResource extends Resource<ShaderDescriptor> {
 
   //   console.debug(`ShaderResource "${this.name}" loaded with stages: ${this.availableStages.join(', ')}`);
   // }
+  private async getDevice(): Promise<GPUDevice> {
+    if (this.device) {
+      return this.device;
+    }
 
+    const processor = ProcessorRegistry.get<WebGPUProcessor>('webgpu');
+    if (!processor) {
+      throw new Error("No GPU Device found. No webgpuProcessor");
+    }
+
+    // Wait for the renderer device to be available
+    while (!processor.renderer.device) {
+      await new Promise(resolve => setTimeout(resolve, 10)); // Wait 10ms before checking again
+    }
+
+    this.device = processor.renderer.device;
+    return this.device;
+  }
   /**
    * Compile shader source into GPU modules.
    * Requires device to be set first!
    */
   async compile(): Promise<void> {
-    if (this.isCompiled || !this.isLoaded()) {
-      return;
-    }
-
-    if (!this.device) {
-      throw new Error(`ShaderResource "${this.name}": No GPU device set for compilation. Call setDevice() first.`);
+    const device = await this.getDevice();
+    if (!device) {
+      throw new Error(`ShaderResource "${this.name}": WebGPU device not available on globalThis.`);
     }
 
     if (!this.payload) {
       throw new Error(`ShaderResource "${this.name}": Cannot compile without shader data`);
     }
 
-    try {
-      // Clear previous compilation
-      this.compiledShaders.clear();
+    this.compiledShaders.clear();
 
-      // Compile each available stage
-      for (const stage of this.availableStages) {
-        const compiled = await this.compileStage(stage);
-        this.compiledShaders.set(stage, compiled);
-      }
+    for (const stage of this.availableStages) {
+      const source = this.getSourceForStage(stage);
+      const module = device.createShaderModule({ code: source, label: `${this.name}_${stage}` });
+      this.compiledShaders.set(stage, {
+        stage,
+        module,
+        entryPoint: this.getEntryPoint(stage),
+        source
+      });
+    }
 
-      this.isCompiled = true;
-      console.debug(`ShaderResource "${this.name}" compiled successfully`);
+    console.debug(`ShaderResource "${this.name}" compiled successfully`);
+  }
 
-    } catch (error) {
-      console.error(`Failed to compile ShaderResource "${this.name}":`, error);
-      this.compiledShaders.clear();
-      throw error;
+  private getSourceForStage(stage: ShaderStage): string {
+    switch (stage) {
+      case ShaderStage.VERTEX: return this.payload.vertexSource!;
+      case ShaderStage.FRAGMENT: return this.payload.fragmentSource!;
+      case ShaderStage.COMPUTE: return this.payload.computeSource!;
+      default: throw new Error(`Unsupported shader stage: ${stage}`);
     }
   }
 
@@ -207,35 +226,35 @@ export class ShaderResource extends Resource<ShaderDescriptor> {
     console.debug(`ShaderResource "${this.name}" unloaded`);
   }
 
-  /**
-   * Compile a specific shader stage.
-   */
-  private async compileStage(stage: ShaderStage): Promise<CompiledShader> {
-    if (!this.payload || !this.device) {
-      throw new Error('No shader data or device for compilation');
-    }
+  // /**
+  //  * Compile a specific shader stage.
+  //  */
+  // private async compileStage(stage: ShaderStage): Promise<CompiledShader> {
+  //   if (!this.payload || !this.device) {
+  //     throw new Error('No shader data or device for compilation');
+  //   }
 
-    let source: string;
-    switch (stage) {
-      case ShaderStage.VERTEX: source = this.payload.vertexSource!; break;
-      case ShaderStage.FRAGMENT: source = this.payload.fragmentSource!; break;
-      case ShaderStage.COMPUTE: source = this.payload.computeSource!; break;
-      default: throw new Error(`Unsupported shader stage: ${stage}`);
-    }
+  //   let source: string;
+  //   switch (stage) {
+  //     case ShaderStage.VERTEX: source = this.payload.vertexSource!; break;
+  //     case ShaderStage.FRAGMENT: source = this.payload.fragmentSource!; break;
+  //     case ShaderStage.COMPUTE: source = this.payload.computeSource!; break;
+  //     default: throw new Error(`Unsupported shader stage: ${stage}`);
+  //   }
 
-    // Compile through device directly
-    const module = this.device.createShaderModule({
-      code: source,
-      label: `${this.name}_${stage}`
-    });
+  //   // Compile through device directly
+  //   const module = this.device.createShaderModule({
+  //     code: source,
+  //     label: `${this.name}_${stage}`
+  //   });
 
-    return {
-      stage,
-      module,
-      entryPoint: this.getEntryPoint(stage),
-      source
-    };
-  }
+  //   return {
+  //     stage,
+  //     module,
+  //     entryPoint: this.getEntryPoint(stage),
+  //     source
+  //   };
+  // }
 
   /**
    * Validate WGSL shader source (basic validation).
