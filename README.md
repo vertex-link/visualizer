@@ -18,16 +18,83 @@ Vertex Link emphasizes a decoupled, component-based architecture. It provides a 
 -   **Processors**: Manage distinct update loops (e.g., rendering, game logic).
 -   **Events**: Facilitate type-safe, decoupled communication via an EventBus.
 
-Modern TypeScript features, including decorators, are leveraged for an intuitive and efficient developer experience.
+The framework uses explicit dependency resolution for simplicity and maintainability, avoiding complex decorator-based dependency injection in favor of straightforward component access patterns.
 
 ## Key Features
 
 -   **Actor-Component-System (ACS)**: A robust foundation for entity management.
--   **Event-Driven**: Decoupled communication using a central EventBus and `@OnEvent` decorators.
--   **Decorator-Based API**: Simplifies hooking into update loops (`@Update`, `@WebGPUUpdate`), event handling, and dependency injection (`@RequireComponent`).
+-   **Event-Driven**: Decoupled communication using a central EventBus.
+-   **Explicit Component Dependencies**: Clear, maintainable component relationships without decorator complexity.
 -   **Resource Management**: System for loading, compiling, and managing assets like meshes, materials, and shaders.
 -   **WebGPU Rendering**: High-performance rendering using the modern WebGPU API, managed by the `WebGPUProcessor` and `RenderGraph`.
 -   **Modular Design**: Core logic (`@vertex-link/acs`) is separate from the rendering engine (`@vertex-link/engine`), promoting flexibility.
+
+## Component Dependency Pattern
+
+Components now handle dependencies explicitly through getter methods and manual resolution:
+
+```typescript
+class MyComponent extends Component {
+  private _transform?: TransformComponent;
+  private _resources?: ResourceComponent;
+  
+  constructor(actor: Actor) {
+    super(actor);
+  }
+
+  get transform(): TransformComponent {
+    if (this._transform) {
+      return this._transform;
+    }
+
+    this._transform = this.actor.getComponent(TransformComponent);
+    if (!this._transform) {
+      throw new Error('TransformComponent not found');
+    }
+    return this._transform;
+  }
+  
+  get resources(): ResourceComponent {
+    if (this._resources) {
+      return this._resources;
+    }
+
+    this._resources = this.actor.getComponent(ResourceComponent);
+    if (!this._resources) {
+      throw new Error('ResourceComponent not found');
+    }
+    return this._resources;
+  }
+}
+```
+
+
+## Actor Lifecycle
+
+Actors provide lifecycle hooks for proper component initialization:
+
+```typescript
+class CustomActor extends Actor {
+  resources?: ResourceComponent;
+
+  constructor() {
+    super('customactor');
+  }
+
+  protected onBeforeInitialize(): void {
+    // Add components here - before dependency resolution
+    this.addComponent(ResourceComponent);
+    this.addComponent(TransformComponent);
+    this.addComponent(MyCustomComponent);
+  }
+
+  protected onInitialize(): void {
+    // Access components after they're all added and initialized
+    this.resources = this.getComponent(ResourceComponent);
+  }
+}
+```
+
 
 ## Dive Deeper
 
@@ -50,23 +117,26 @@ This project uses [Bun](https://bun.sh/) as the primary JavaScript runtime, pack
 ### Local Setup & Running
 
 1.  **Clone the repository:**
-    ```bash
-    git clone git@github.com:vertex-link/visualizer.git
+```shell script
+git clone git@github.com:vertex-link/visualizer.git
     cd visualizer
-    ```
+```
+
 
 2.  **Install Dependencies:**
     Bun automatically installs dependencies when you run scripts if they are not already present. Or, you can explicitly install them:
-    ```bash
-    bun install
-    ```
+```shell script
+bun install
+```
+
     This will install dependencies for the root project and all packages within the `packages/*` workspaces (e.g., `@vertex-link/acs`, `@vertex-link/engine`, `@vertex-link/documentation`).
 
 3.  **Running the Development Environment:**
     To develop the libraries (`acs`, `engine`) and the visualizer examples (`documentation`) concurrently with live reloading:
-    ```bash
-    bun run dev
-    ```
+```shell script
+bun run dev
+```
+
     This command:
     -   Runs `bun run dev:libs`, which concurrently starts the development build process (with watching) for `@vertex-link/acs` and `@vertex-link/engine`.
         -   `packages/acs` dev script: `bun build ./src/index.ts --outdir ./dist --watch`
@@ -82,88 +152,155 @@ This project uses [Bun](https://bun.sh/) as the primary JavaScript runtime, pack
 ### Building Packages
 
 -   **Build a specific library:**
-    ```bash
-    bun run --cwd ./packages/acs build
+```shell script
+bun run --cwd ./packages/acs build
     # or
     bun run --cwd ./packages/engine build
-    ```
+```
+
     These scripts use `bun build` to compile the TypeScript source to ESM format in the `dist` directory of each package, including sourcemaps.
 
 -   **Build all libraries (`acs` and `engine`):**
-    ```bash
-    bun run build:all-libs
-    ```
+```shell script
+bun run build:all-libs
+```
+
 
 
 -   **Build the documentation/visualizer examples:**
-    ```bash
-    bun run --cwd ./packages/documentation build
-    ```
+```shell script
+bun run --cwd ./packages/documentation build
+```
+
     This uses Vite to build the documentation site.
 
 ### Type Checking
 
 -   **Type check a specific package:**
     Navigate to the package directory (e.g., `cd packages/engine`) and run:
-    ```bash
-    bun run typecheck
-    ```
+```shell script
+bun run typecheck
+```
+
     This executes `tsc --noEmit -p ./tsconfig.json` for that package.
 
 -   **Type check the entire project:**
     From the root directory:
-    ```bash
-    bun run typecheck
-    ```
+```shell script
+bun run typecheck
+```
+
     This runs `tsc --noEmit -p ./tsconfig.json` using the root `tsconfig.json`, which should cover all workspace packages due to project references or includes if configured appropriately. The root `tsconfig.json` extends `tsconfig.base.json`.
 
 ### Docker (Optional)
 
 A `docker-compose.yml` is provided for a Bun development environment.
 To use it:
-```bash
+```shell script
 docker-compose up bun_dev
 ```
+
 This will mount the current directory into `/app` in the container and expose port 8000. You can then run the Bun commands from within the container's shell.
 
 ## Getting Started (Quick Look)
 
-A brief example of creating an actor and adding components, based on the structure in `packages/documentation/src/main.ts`:
-
-1.  **Initialize Core Systems**: Set up `ResourceManager`, `ServiceRegistry`, `WebGPUProcessor`, and `Scene`.
-2.  **Load Resources**: Use `ResourceManager` to load/create `ShaderResource`, `MeshResource`, `MaterialResource`.
-3.  **Create Actors**: Instantiate `Actor` and add `TransformComponent`, `MeshRendererComponent`, and custom behavior `Component`s.
-4.  **Set up Camera**: Create an `Actor` with `CameraComponent` and `TransformComponent`.
-5.  **Start Processors**: Call `.start()` on your registered processors (e.g., `WebGPUProcessor`).
+A brief example of creating an actor and adding components:
 
 ```typescript
 // --- In your main application setup ---
 
-// (Assuming scene, myMeshResource, myMaterialResource are already initialized)
+// Initialize core systems
+const resourceManager = new ResourceManager();
+await resourceManager.initialize();
+
+const serviceRegistry = new ServiceRegistry();
+serviceRegistry.register(IResourceManagerKey, resourceManager);
+
+const gpuProcessor = new WebGPUProcessor(canvas, "webgpu");
+await gpuProcessor.initialize();
+
+const scene = new Scene("MyScene");
 
 // Create an Actor
 const myActor = new Actor("MyCube");
-scene.addActor(myActor); // Add actor to the scene
+scene.addActor(myActor);
 
-// Add TransformComponent and set its initial position
-myActor.addComponent(TransformComponent, { position: [0, 0, 0] });
+// Add components explicitly
+const transform = myActor.addComponent(TransformComponent);
+transform.setPosition(0, 0, 0);
 
-// Add MeshRendererComponent with the pre-loaded mesh and material
-myActor.addComponent(MeshRendererComponent, {
+const meshRenderer = myActor.addComponent(MeshRendererComponent, {
     mesh: myMeshResource,
     material: myMaterialResource
 });
 
-// Add a custom component for behavior
-// Assuming MyCustomRotationComponent is defined elsewhere
-// and takes an options object with a 'speed' property
-myActor.addComponent(MyCustomRotationComponent, { speed: 1.0 });
+// Add custom behavior components
+const rotator = myActor.addComponent(RotatingComponent);
+rotator.speed = 1.0;
 
-// (Continue with camera setup and starting processors)
+// Create camera
+const cameraActor = new Actor("MainCamera");
+const cameraTransform = cameraActor.addComponent(TransformComponent);
+cameraTransform.setPosition(0, 1.5, 8);
+
+cameraActor.addComponent(CameraComponent, {
+    projectionType: ProjectionType.PERSPECTIVE,
+    perspectiveConfig: {
+        fov: Math.PI / 3,
+        aspect: canvas.width / canvas.height,
+        near: 0.1,
+        far: 100.0,
+    },
+    isActive: true,
+});
+
+scene.addActor(cameraActor);
+
+// Start the processor
+gpuProcessor.start();
 ```
+
+
+## Resource Management Pattern
+
+Resources are created and managed through handles with explicit compilation:
+
+```typescript
+// Create shader handle
+const shaderHandle = createShaderHandle(
+    resourceManager,
+    "StandardShader",
+    vertexShaderSource,
+    fragmentShaderSource,
+);
+
+// Get and compile the resource
+const standardShader = await shaderHandle.get();
+standardShader.setDevice(device);
+await standardShader.compile();
+
+// Create mesh and material similarly
+const meshHandle = createMeshHandle(resourceManager, "CubeMesh", meshDescriptor);
+const mesh = await meshHandle.get();
+mesh.setDevice(device);
+await mesh.compile();
+
+const materialHandle = createMaterialHandle(
+    resourceManager,
+    "CubeMaterial",
+    shaderHandle,
+    uniforms,
+    vertexLayout,
+);
+const material = await materialHandle.get();
+material.setDevice(device, preferredFormat);
+await material.compile();
+```
+
 
 ## Development Plan Highlights
 
+-   **Simplified Architecture**: Removing decorator complexity for better maintainability and debugging.
 -   **Component-Driven Resources**: Simplifying how resources are accessed and managed by actors.
 -   **Streamlined Material System**: More flexible and instance-based material properties.
 -   **Declarative Scene Setup API**: Reducing boilerplate for scene creation.
