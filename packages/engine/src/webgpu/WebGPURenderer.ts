@@ -9,7 +9,6 @@ import { BufferDescriptor, BufferUsage } from "./../rendering/interfaces/IBuffer
 export class WebGPURenderer {
   private canvas: HTMLCanvasElement | null = null;
   private adapter: GPUAdapter | null = null;
-  private device: GPUDevice | null = null;
   private context: GPUCanvasContext | null = null;
   private format: GPUTextureFormat = 'bgra8unorm';
   private depthTexture: GPUTexture | null = null;
@@ -17,6 +16,8 @@ export class WebGPURenderer {
   private currentEncoder: GPUCommandEncoder | null = null;
   private currentRenderPass: GPURenderPassEncoder | null = null;
   private _buffersToDestroy: GPUBuffer[] = []; // New: Collect buffers to destroy at frame end
+
+  protected device: GPUDevice | null = null;
 
   /**
    * Initialize WebGPU with the given canvas.

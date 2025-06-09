@@ -1,5 +1,4 @@
-import { Resource } from "./Resource";
-import { ServiceRegistry } from "@vertex-link/acs";
+import { Resource } from "@vertex-link/acs";
 import { BufferUsage } from "../rendering/interfaces/IBuffer";
 import { WebGPUBuffer } from "./../webgpu/WebGPUBuffer";
 
@@ -25,72 +24,98 @@ export interface MeshDescriptor {
 }
 
 /**
- * Resource that holds 3D mesh geometry data.
- * Manages vertex and index buffers for rendering.
+ * Simplified MeshResource - no service registry, no resource manager
+ * Resources auto-load and auto-compile when used
  */
-export class MeshResource extends Resource {
-  private meshDescriptor: MeshDescriptor | null = null;
+export class MeshResource extends Resource<MeshDescriptor> {
+  private device: GPUDevice | null = null;
   private vertexBuffer: WebGPUBuffer | null = null;
   private indexBuffer: WebGPUBuffer | null = null;
-
-  // Direct device reference instead of going through service
-  private device: GPUDevice | null = null;
-
-  // Compiled state
   public isCompiled: boolean = false;
-  public version: number = 1;
 
-  constructor(name: string, serviceRegistry: ServiceRegistry, uuid?: string) {
-    super(name, serviceRegistry, uuid);
+  constructor(name: string, meshData: MeshDescriptor) {
+    super(name, meshData);
   }
 
-  /**
-   * Set the GPU device for compilation (called by processor/manager)
-   */
-  setDevice(device: GPUDevice): void {
-    this.device = device;
+  protected async loadInternal(): Promise<MeshDescriptor> {
+    // Mesh data is provided in constructor, so just validate and return
+    if (!this.payload.vertices || this.payload.vertices.length === 0) {
+      throw new Error(`MeshResource "${this.name}": No vertex data provided`);
+    }
+
+    console.debug(`MeshResource "${this.name}" loaded with ${this.vertexCount} vertices`);
+    return this.payload;
+  }
+
+  async compile(): Promise<void> {
+    if (this.isCompiled || !this.isLoaded()) {
+      return;
+    }
+
+    // Get device from global processor
+    this.device = this.getDevice();
+    if (!this.device) {
+      throw new Error(`MeshResource "${this.name}": No GPU device available for compilation`);
+    }
+
+    try {
+      // Create vertex buffer
+      this.vertexBuffer = await this.createVertexBuffer();
+
+      // Create index buffer if indices exist
+      if (this.payload.indices) {
+        this.indexBuffer = await this.createIndexBuffer();
+      }
+
+      this.isCompiled = true;
+      console.debug(`MeshResource "${this.name}" compiled successfully`);
+
+    } catch (error) {
+      console.error(`Failed to compile MeshResource "${this.name}":`, error);
+      throw error;
+    }
   }
 
   /**
    * Get vertex count for rendering.
    */
   get vertexCount(): number {
-    return this.meshDescriptor ? this.meshDescriptor.vertices.length / (this.meshDescriptor.vertexStride / 4) : 0;
+    return this.payload ? this.payload.vertices.length / (this.payload.vertexStride / 4) : 0;
   }
 
   /**
    * Get index count for rendering.
    */
   get indexCount(): number {
-    return this.meshDescriptor?.indices ? this.meshDescriptor.indices.length : 0;
+    return this.payload?.indices ? this.payload.indices.length : 0;
   }
 
   /**
    * Get vertex stride in bytes.
    */
   get vertexStride(): number {
-    return this.meshDescriptor?.vertexStride || 0;
+    return this.payload?.vertexStride || 0;
   }
 
   /**
    * Get vertex attributes.
    */
   get vertexAttributes(): VertexAttribute[] {
-    return this.meshDescriptor?.vertexAttributes || [];
+    return this.payload?.vertexAttributes || [];
   }
 
   /**
    * Get primitive topology.
    */
   get primitiveTopology(): string {
-    return this.meshDescriptor?.primitiveTopology || 'triangle-list';
+    return this.payload?.primitiveTopology || 'triangle-list';
   }
 
   /**
    * Check if mesh has indices.
    */
   get hasIndices(): boolean {
-    return this.meshDescriptor?.indices !== undefined;
+    return this.payload?.indices !== undefined;
   }
 
   /**
@@ -108,26 +133,14 @@ export class MeshResource extends Resource {
   }
 
   /**
-   * Set mesh data from descriptor.
-   */
-  setMeshData(descriptor: MeshDescriptor): void {
-    this.meshDescriptor = descriptor;
-    this.isCompiled = false; // Need to recompile
-    this.data = descriptor; // Store as resource data
-  }
-
-  /**
    * Create mesh from raw vertex/index data.
    */
   static createFromArrays(
     name: string,
-    serviceRegistry: ServiceRegistry,
     vertices: Float32Array,
     indices?: Uint16Array,
     vertexAttributes?: VertexAttribute[]
   ): MeshResource {
-    const mesh = new MeshResource(name, serviceRegistry);
-
     // Default attributes if not provided (position only)
     const defaultAttributes: VertexAttribute[] = vertexAttributes || [
       { name: 'position', size: 3, type: 'float32', offset: 0 }
@@ -135,69 +148,68 @@ export class MeshResource extends Resource {
 
     const vertexStride = defaultAttributes.reduce((sum, attr) => sum + attr.size * 4, 0);
 
-    mesh.setMeshData({
+    const descriptor: MeshDescriptor = {
       vertices,
       indices,
       vertexAttributes: defaultAttributes,
       vertexStride,
       primitiveTopology: 'triangle-list'
-    });
+    };
 
-    return mesh;
+    return new MeshResource(name, descriptor);
   }
 
   /**
-   * Load mesh data (placeholder for file loading).
+   * Create vertex buffer from mesh data.
    */
-  protected async performLoad(): Promise<void> {
-    if (!this.meshDescriptor) {
-      throw new Error(`MeshResource "${this.name}": No mesh data provided`);
+  private async createVertexBuffer(): Promise<WebGPUBuffer> {
+    if (!this.payload || !this.device) {
+      throw new Error('No mesh data or device for vertex buffer creation');
     }
 
-    this.data = this.meshDescriptor;
-    console.debug(`MeshResource "${this.name}" loaded with ${this.vertexCount} vertices`);
+    const buffer = new WebGPUBuffer(this.device, {
+      size: this.payload.vertices.byteLength,
+      usage: BufferUsage.VERTEX,
+      label: `${this.name}_vertices`
+    }, false);
+
+    // Upload vertex data
+    buffer.setData(this.payload.vertices);
+    return buffer;
   }
 
   /**
-   * Compile mesh data into GPU buffers.
-   * Requires device to be set first!
+   * Create index buffer from mesh data.
    */
-  async compile(): Promise<void> {
-    if (this.isCompiled || !this.isLoaded()) {
-      return;
+  private async createIndexBuffer(): Promise<WebGPUBuffer> {
+    if (!this.payload?.indices || !this.device) {
+      throw new Error('No index data or device for index buffer creation');
     }
 
-    if (!this.device) {
-      throw new Error(`MeshResource "${this.name}": No GPU device set for compilation. Call setDevice() first.`);
-    }
+    const buffer = new WebGPUBuffer(this.device, {
+      size: this.payload.indices.byteLength,
+      usage: BufferUsage.INDEX,
+      label: `${this.name}_indices`
+    }, false);
 
-    if (!this.meshDescriptor) {
-      throw new Error(`MeshResource "${this.name}": Cannot compile without mesh data`);
-    }
-
-    try {
-      // Create vertex buffer
-      this.vertexBuffer = await this.createVertexBuffer();
-
-      // Create index buffer if indices exist
-      if (this.meshDescriptor.indices) {
-        this.indexBuffer = await this.createIndexBuffer();
-      }
-
-      this.isCompiled = true;
-      console.debug(`MeshResource "${this.name}" compiled successfully`);
-
-    } catch (error) {
-      console.error(`Failed to compile MeshResource "${this.name}":`, error);
-      throw error;
-    }
+    // Upload index data
+    buffer.setData(this.payload.indices);
+    return buffer;
   }
 
   /**
-   * Unload mesh data and free GPU resources.
+   * Get GPU device - simplified approach
    */
-  protected async performUnload(): Promise<void> {
-    // Destroy GPU buffers
+  private getDevice(): GPUDevice | null {
+    // TODO: Get device from global WebGPUProcessor or similar
+    // This is a simplified approach for the refactor
+    return (globalThis as any).__webgpu_device__ || null;
+  }
+
+  /**
+   * Dispose resources
+   */
+  dispose(): void {
     if (this.vertexBuffer) {
       this.vertexBuffer.destroy();
       this.vertexBuffer = null;
@@ -209,65 +221,6 @@ export class MeshResource extends Resource {
     }
 
     this.isCompiled = false;
-    this.meshDescriptor = null;
     this.device = null;
-    console.debug(`MeshResource "${this.name}" unloaded`);
-  }
-
-  /**
-   * Create vertex buffer from mesh data.
-   */
-  private async createVertexBuffer(): Promise<WebGPUBuffer> {
-    if (!this.meshDescriptor || !this.device) {
-      throw new Error('No mesh data or device for vertex buffer creation');
-    }
-
-    const buffer = new WebGPUBuffer(this.device, {
-      size: this.meshDescriptor.vertices.byteLength,
-      usage: BufferUsage.VERTEX,
-      label: `${this.name}_vertices`
-    }, false); // Not mapped at creation
-
-    // Upload vertex data
-    buffer.setData(this.meshDescriptor.vertices);
-
-    return buffer;
-  }
-
-  /**
-   * Create index buffer from mesh data.
-   */
-  private async createIndexBuffer(): Promise<WebGPUBuffer> {
-    if (!this.meshDescriptor?.indices || !this.device) {
-      throw new Error('No index data or device for index buffer creation');
-    }
-
-    const buffer = new WebGPUBuffer(this.device, {
-      size: this.meshDescriptor.indices.byteLength,
-      usage: BufferUsage.INDEX,
-      label: `${this.name}_indices`
-    }, false); // Not mapped at creation
-
-    // Upload index data
-    buffer.setData(this.meshDescriptor.indices);
-
-    return buffer;
-  }
-
-  /**
-   * Future streaming support - create delta for changed mesh data.
-   */
-  createDelta?(sinceVersion: number): unknown {
-    // Placeholder for future streaming implementation
-    if (sinceVersion < this.version) {
-      return {
-        type: 'mesh_delta',
-        resourceId: this.uuid,
-        fromVersion: sinceVersion,
-        toVersion: this.version,
-        // Would include vertex/index changes
-      };
-    }
-    return null;
   }
 }

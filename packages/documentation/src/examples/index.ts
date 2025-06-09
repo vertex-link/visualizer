@@ -6,7 +6,6 @@ export { default as ControlGroup } from './components/ControlGroup.vue'
 
 // Export specific examples
 export { default as RotatingCubesExample } from './rotating-cubes/RotatingCubesExample.vue'
-export { RotatingCubesDemo } from './rotating-cubes/RotatingCubesDemo'
 
 // Example metadata for routing and discovery
 export interface ExampleMetadata {

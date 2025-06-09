@@ -1,8 +1,7 @@
-import { Resource } from "./Resource";
+import { Resource } from "@vertex-link/acs";
 import { ShaderResource, ShaderStage } from "./ShaderResource";
 import { VertexLayout } from "../rendering/interfaces/IPipeline";
 import { WebGPUPipeline } from "./../webgpu/WebGPUPipeline";
-import { ServiceRegistry } from "@vertex-link/acs";
 
 /**
  * Uniform data types supported by materials.
@@ -35,220 +34,62 @@ export interface MaterialDescriptor {
 }
 
 /**
- * Resource that combines shaders with uniform data to create render materials.
- * Manages render pipeline creation and uniform buffer updates.
+ * Simplified MaterialResource - no service registry, no resource manager
+ * Resources auto-load and auto-compile when used
  */
-export class MaterialResource extends Resource {
-  private materialDescriptor: MaterialDescriptor | null = null;
+export class MaterialResource extends Resource<MaterialDescriptor> {
+  private device: GPUDevice | null = null;
   private pipeline: WebGPUPipeline | null = null;
   private uniformBuffer: ArrayBuffer | null = null;
   private uniformData: Map<string, UniformDescriptor> = new Map();
-  readonly id = crypto.randomUUID();
-
-  // Direct device reference instead of going through service
-  private device: GPUDevice | null = null;
+  public isCompiled: boolean = false;
   private preferredFormat: GPUTextureFormat = 'bgra8unorm';
 
-  // Compiled state
-  public isCompiled: boolean = false;
-  public version: number = 1;
+  constructor(name: string, materialData: MaterialDescriptor) {
+    super(name, materialData);
 
-  constructor(name: string, serviceRegistry: ServiceRegistry, uuid?: string) {
-    super(name, serviceRegistry, uuid);
-  }
-
-  /**
-   * Set the GPU device and format for compilation (called by processor/manager)
-   */
-  setDevice(device: GPUDevice, preferredFormat: GPUTextureFormat = 'bgra8unorm'): void {
-    this.device = device;
-    this.preferredFormat = preferredFormat;
-  }
-
-  /**
-   * Get the associated shader resource.
-   */
-  get shader(): ShaderResource | null {
-    return this.materialDescriptor?.shader || null;
-  }
-
-  /**
-   * Get the compiled render pipeline.
-   */
-  getPipeline(): GPURenderPipeline | null {
-    if (!this.isCompiled || !this.pipeline) {
-      console.warn(`MaterialResource "${this.name}": Pipeline requested but not ready (compiled: ${this.isCompiled}, pipeline exists: ${!!this.pipeline})`);
-      return null;
-    }
-
-    try {
-      const gpuPipeline = this.pipeline.getGPURenderPipeline();
-      if (!gpuPipeline) {
-        console.error(`MaterialResource "${this.name}": WebGPUPipeline.getGPURenderPipeline() returned null`);
-        return null;
-      }
-      return gpuPipeline;
-    } catch (error) {
-      console.error(`MaterialResource "${this.name}": Error getting GPU pipeline:`, error);
-      return null;
-    }
-  }
-
-  /**
-   * Get uniform buffer data.
-   */
-  getUniformBuffer(): ArrayBuffer | null {
-    return this.uniformBuffer;
-  }
-
-  /**
-   * Get render state configuration.
-   */
-  get renderState() {
-    return this.materialDescriptor?.renderState || {};
-  }
-
-  /**
-   * Get vertex layout for this material.
-   */
-  get vertexLayout(): VertexLayout | undefined {
-    return this.materialDescriptor?.vertexLayout;
-  }
-
-  /**
-   * Set material data from descriptor.
-   */
-  setMaterialData(descriptor: MaterialDescriptor): void {
-    this.materialDescriptor = descriptor;
-    this.isCompiled = false; // Need to recompile
-
-    // Process uniforms
-    this.uniformData.clear();
-    if (descriptor.uniforms) {
-      for (const [name, uniform] of Object.entries(descriptor.uniforms)) {
+    // Process uniforms immediately
+    if (materialData.uniforms) {
+      for (const [name, uniform] of Object.entries(materialData.uniforms)) {
         this.uniformData.set(name, uniform);
       }
     }
-
-    this.data = descriptor; // Store as resource data
   }
 
-  /**
-   * Create material from shader and uniforms.
-   */
-  static createFromShader(
-    name: string,
-    serviceRegistry: ServiceRegistry,
-    shader: ShaderResource,
-    uniforms?: Record<string, UniformDescriptor>,
-    vertexLayout?: VertexLayout
-  ): MaterialResource {
-    const material = new MaterialResource(name, serviceRegistry);
+  protected async loadInternal(): Promise<MaterialDescriptor> {
+    // Ensure shader is loaded first
+    await this.payload.shader.whenLoaded();
 
-    material.setMaterialData({
-      shader,
-      uniforms,
-      vertexLayout,
-      renderState: {
-        cullMode: 'back',
-        depthWrite: true,
-        depthTest: true,
-        blendMode: 'none',
-        wireframe: false
-      }
-    });
-
-    return material;
-  }
-
-  /**
-   * Set a uniform value.
-   */
-  setUniform(name: string, value: UniformValue): void {
-    const uniform = this.uniformData.get(name);
-    if (!uniform) {
-      console.warn(`MaterialResource "<span class="math-inline">\{this\.name\}"\: Uniform "</span>{name}" not found`);
-      return;
-    }
-
-    // Update uniform value
-    uniform.value = value;
-
-    // Mark for uniform buffer update
-    this.updateUniformBuffer();
-  }
-
-  /**
-   * Get a uniform value.
-   */
-  getUniform(name: string): UniformValue | undefined {
-    return this.uniformData.get(name)?.value;
-  }
-
-  /**
-   * Get all uniform names.
-   */
-  getUniformNames(): string[] {
-    return Array.from(this.uniformData.keys());
-  }
-
-  /**
-   * Load material data.
-   */
-  protected async performLoad(): Promise<void> {
-    if (!this.materialDescriptor) {
-      throw new Error(`MaterialResource "${this.name}": No material data provided`);
-    }
-
-    // Ensure shader is loaded
-    if (!this.materialDescriptor.shader.isLoaded()) {
-      await this.materialDescriptor.shader.load();
-    }
-
-    this.data = this.materialDescriptor;
+    // Update uniform buffer
     this.updateUniformBuffer();
 
-    console.debug(`MaterialResource "${this.name}" loaded`);
+    return this.payload;
   }
 
-  /**
-   * Compile material into render pipeline.
-   * Requires device to be set first!
-   */
   async compile(): Promise<void> {
     if (this.isCompiled || !this.isLoaded()) {
-      console.log(`MaterialResource "${this.name}": Already compiled or not loaded (compiled: ${this.isCompiled}, loaded: ${this.isLoaded()})`);
       return;
     }
 
+    // Get device from global processor or similar
+    this.device = this.getDevice();
     if (!this.device) {
-      throw new Error(`MaterialResource "${this.name}": No GPU device set for compilation. Call setDevice() first.`);
+      throw new Error(`MaterialResource "${this.name}": No GPU device available for compilation`);
     }
-
-    if (!this.materialDescriptor) {
-      throw new Error(`MaterialResource "${this.name}": Cannot compile without material data`);
-    }
-
-    console.log(`🔄 MaterialResource "${this.name}": Starting compilation...`);
 
     try {
-      // Ensure shader is compiled and has device
-      const shader = this.materialDescriptor.shader;
-      console.log(`MaterialResource "${this.name}": Checking shader compilation...`);
-
+      // Ensure shader is compiled
+      const shader = this.payload.shader;
       if (!shader.isCompiled) {
-        console.log(`MaterialResource "${this.name}": Compiling shader...`);
-        shader.setDevice(this.device);
+        (shader as any).setDevice(this.device); // Cast needed for legacy method
         await shader.compile();
       }
 
-      console.log(`MaterialResource "${this.name}": Creating pipeline...`);
       // Create render pipeline
       this.pipeline = await this.createPipeline();
-
       this.isCompiled = true;
-      console.log(`✅ MaterialResource "${this.name}" compiled successfully`);
 
+      console.log(`✅ MaterialResource "${this.name}" compiled successfully`);
     } catch (error) {
       console.error(`❌ Failed to compile MaterialResource "${this.name}":`, error);
       throw error;
@@ -256,47 +97,93 @@ export class MaterialResource extends Resource {
   }
 
   /**
-   * Unload material data and free GPU resources.
+   * Get the compiled render pipeline
    */
-  protected async performUnload(): Promise<void> {
-    // Destroy pipeline
-    if (this.pipeline) {
-      this.pipeline.destroy();
-      this.pipeline = null;
+  getPipeline(): GPURenderPipeline | null {
+    if (!this.isCompiled || !this.pipeline) {
+      return null;
     }
 
-    this.isCompiled = false;
-    this.materialDescriptor = null;
-    this.uniformData.clear();
-    this.uniformBuffer = null;
-    this.device = null;
-
-    console.debug(`MaterialResource "${this.name}" unloaded`);
+    try {
+      return this.pipeline.getGPURenderPipeline();
+    } catch (error) {
+      console.error(`MaterialResource "${this.name}": Error getting GPU pipeline:`, error);
+      return null;
+    }
   }
 
   /**
-   * Create render pipeline from material descriptor.
+   * Get uniform buffer data
    */
-  private async createPipeline(): Promise<WebGPUPipeline> {
-    if (!this.materialDescriptor || !this.device) {
-      throw new Error('No material data or device for pipeline creation');
+  getUniformBuffer(): ArrayBuffer | null {
+    return this.uniformBuffer;
+  }
+
+  /**
+   * Get render state configuration
+   */
+  get renderState() {
+    return this.payload.renderState || {};
+  }
+
+  /**
+   * Get vertex layout for this material
+   */
+  get vertexLayout(): VertexLayout | undefined {
+    return this.payload.vertexLayout;
+  }
+
+  /**
+   * Set a uniform value
+   */
+  setUniform(name: string, value: UniformValue): void {
+    const uniform = this.uniformData.get(name);
+    if (!uniform) {
+      console.warn(`MaterialResource "${this.name}": Uniform "${name}" not found`);
+      return;
     }
 
-    const shader = this.materialDescriptor.shader;
+    uniform.value = value;
+    this.updateUniformBuffer();
+  }
+
+  /**
+   * Get a uniform value
+   */
+  getUniform(name: string): UniformValue | undefined {
+    return this.uniformData.get(name)?.value;
+  }
+
+  /**
+   * Get all uniform names
+   */
+  getUniformNames(): string[] {
+    return Array.from(this.uniformData.keys());
+  }
+
+  /**
+   * Create render pipeline from material descriptor
+   */
+  private async createPipeline(): Promise<WebGPUPipeline> {
+    if (!this.device) {
+      throw new Error('No device available for pipeline creation');
+    }
+
+    const shader = this.payload.shader;
 
     // Get compiled shader modules
-    const vertexShader = shader.getCompiledShader(ShaderStage.VERTEX);
-    const fragmentShader = shader.getCompiledShader(ShaderStage.FRAGMENT);
+    const vertexShader = (shader as any).getCompiledShader(ShaderStage.VERTEX);
+    const fragmentShader = (shader as any).getCompiledShader(ShaderStage.FRAGMENT);
 
     if (!vertexShader || !fragmentShader) {
       throw new Error(`MaterialResource "${this.name}": Missing required shader stages`);
     }
 
-    // Create pipeline descriptor using the WebGPUPipeline constructor format
+    // Create pipeline descriptor
     const pipelineDescriptor = {
       vertexShader: shader.vertexSource || '',
       fragmentShader: shader.fragmentSource || '',
-      vertexLayout: this.materialDescriptor.vertexLayout || {
+      vertexLayout: this.payload.vertexLayout || {
         stride: 12, // Default: position only (3 floats)
         attributes: [{
           location: 0,
@@ -307,12 +194,51 @@ export class MaterialResource extends Resource {
       label: `${this.name}_pipeline`
     };
 
-    // Create pipeline directly using WebGPUPipeline
     return new WebGPUPipeline(this.device, pipelineDescriptor, this.preferredFormat);
   }
 
   /**
-   * Pack a uniform value into the buffer.
+   * Update uniform buffer with proper WebGPU alignment
+   */
+  private updateUniformBuffer(): void {
+    if (this.uniformData.size === 0) {
+      this.uniformBuffer = null;
+      return;
+    }
+
+    // Calculate total buffer size with proper WebGPU alignment
+    let totalSize = 0;
+    const uniformEntries = Array.from(this.uniformData.entries());
+
+    // Sort by name for consistent layout
+    uniformEntries.sort(([a], [b]) => a.localeCompare(b));
+
+    for (const [name, uniform] of uniformEntries) {
+      const alignment = this.getUniformAlignment(uniform.type);
+      totalSize = Math.ceil(totalSize / alignment) * alignment;
+      totalSize += uniform.size;
+    }
+
+    // Round up to multiple of 16 (required by WebGPU)
+    totalSize = Math.ceil(totalSize / 16) * 16;
+
+    // Create buffer
+    this.uniformBuffer = new ArrayBuffer(totalSize);
+    const view = new DataView(this.uniformBuffer);
+
+    // Pack uniform data with proper alignment
+    let offset = 0;
+    for (const [name, uniform] of uniformEntries) {
+      const alignment = this.getUniformAlignment(uniform.type);
+      offset = Math.ceil(offset / alignment) * alignment;
+
+      this.packUniformValue(view, offset, uniform);
+      offset += uniform.size;
+    }
+  }
+
+  /**
+   * Pack a uniform value into the buffer
    */
   private packUniformValue(view: DataView, offset: number, uniform: UniformDescriptor): void {
     const value = uniform.value;
@@ -361,64 +287,6 @@ export class MaterialResource extends Resource {
   }
 
   /**
-   * Future streaming support - create delta for changed material properties.
-   */
-  createDelta?(sinceVersion: number): unknown {
-    // Placeholder for future streaming implementation
-    if (sinceVersion < this.version) {
-      return {
-        type: 'material_delta',
-        resourceId: this.uuid,
-        fromVersion: sinceVersion,
-        toVersion: this.version,
-        // Would include uniform changes, shader updates, etc.
-      };
-    }
-    return null;
-  }
-
-  /**
-   * Update uniform buffer with proper WebGPU alignment
-   */
-  private updateUniformBuffer(): void {
-    if (this.uniformData.size === 0) {
-      this.uniformBuffer = null;
-      return;
-    }
-
-    // Calculate total buffer size with proper WebGPU alignment
-    let totalSize = 0;
-    const uniformEntries = Array.from(this.uniformData.entries());
-
-    // Sort by name for consistent layout (not by binding)
-    uniformEntries.sort(([a], [b]) => a.localeCompare(b));
-
-    for (const [name, uniform] of uniformEntries) {
-      // WebGPU requires specific alignment for different types
-      const alignment = this.getUniformAlignment(uniform.type);
-      totalSize = Math.ceil(totalSize / alignment) * alignment;
-      totalSize += uniform.size;
-    }
-
-    // Round up to multiple of 16 (required by WebGPU)
-    totalSize = Math.ceil(totalSize / 16) * 16;
-
-    // Create buffer
-    this.uniformBuffer = new ArrayBuffer(totalSize);
-    const view = new DataView(this.uniformBuffer);
-
-    // Pack uniform data with proper alignment
-    let offset = 0;
-    for (const [name, uniform] of uniformEntries) {
-      const alignment = this.getUniformAlignment(uniform.type);
-      offset = Math.ceil(offset / alignment) * alignment;
-
-      this.packUniformValue(view, offset, uniform);
-      offset += uniform.size;
-    }
-  }
-
-  /**
    * Get required alignment for uniform types (WebGPU spec)
    */
   private getUniformAlignment(type: string): number {
@@ -433,23 +301,32 @@ export class MaterialResource extends Resource {
       case 'vec4':
         return 16;
       case 'mat4':
-        return 16; // Each column is vec4 aligned
+        return 16;
       default:
         return 4;
     }
   }
 
   /**
-   * Create basic material with corrected uniform layout
+   * Get GPU device - simplified approach (you'll need to implement this)
    */
-  static createBasicMaterial(
+  private getDevice(): GPUDevice | null {
+    // TODO: Get device from global WebGPUProcessor or similar
+    // This is a simplified approach for the refactor
+    // In practice, you might pass device during compilation or get from processor registry
+
+    // For now, return null and implement device injection separately
+    return (globalThis as any).__webgpu_device__ || null;
+  }
+
+  /**
+   * Create basic material with standard uniforms
+   */
+  static createBasic(
     name: string,
-    serviceRegistry: ServiceRegistry,
     shader: ShaderResource,
     color: number[] = [1.0, 0.5, 0.2, 1.0]
   ): MaterialResource {
-    const material = new MaterialResource(name, serviceRegistry);
-
     // Identity matrices for initialization
     const identity = new Float32Array([
       1, 0, 0, 0,
@@ -459,13 +336,12 @@ export class MaterialResource extends Resource {
     ]);
 
     const uniforms: Record<string, UniformDescriptor> = {
-      // Order matters for buffer layout - keep consistent
-      viewProjection: { // Renamed from mvpMatrix
+      viewProjection: {
         type: 'mat4',
         size: 64,
         value: new Float32Array(identity)
       },
-      model: { // Renamed from modelMatrix
+      model: {
         type: 'mat4',
         size: 64,
         value: new Float32Array(identity)
@@ -498,7 +374,6 @@ export class MaterialResource extends Resource {
       }
     };
 
-    material.setMaterialData(descriptor);
-    return material;
+    return new MaterialResource(name, descriptor);
   }
 }

@@ -34,12 +34,15 @@ export class ProcessorRegistry {
    * @param name The name of the processor to retrieve.
    * @returns The processor instance if found, otherwise undefined.
    */
-  public static get(name: string): Processor | undefined {
-    if (!name || name.trim() === "") {
+  public static get<T extends Processor>(name: string): T | undefined {
+    const int_processor = this.processors.get(name) as T;
+
+    if (!int_processor || !name || name.trim() === "") {
       console.warn("ProcessorRegistry: Attempted to get processor with empty name.");
       return undefined;
     }
-    return this.processors.get(name);
+
+    return int_processor;
   }
 
   /**

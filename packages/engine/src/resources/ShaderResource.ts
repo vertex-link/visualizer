@@ -1,5 +1,6 @@
-import { Resource } from "./Resource";
+import { ProcessorRegistry, Resource } from "@vertex-link/acs";
 import { ServiceRegistry } from "@vertex-link/acs";
+import { WebGPUProcessor } from "../processors/WebGPUProcessor";
 
 /**
  * Shader stage types supported by the engine.
@@ -38,8 +39,7 @@ export interface CompiledShader {
  * Resource that holds shader source code and manages compilation.
  * Supports vertex, fragment, and compute shaders.
  */
-export class ShaderResource extends Resource {
-  private shaderDescriptor: ShaderDescriptor | null = null;
+export class ShaderResource extends Resource<ShaderDescriptor> {
   private compiledShaders: Map<ShaderStage, CompiledShader> = new Map();
   public isCompiled: boolean = false;
   public version: number = 1;
@@ -47,8 +47,19 @@ export class ShaderResource extends Resource {
   // Direct device reference instead of going through service
   private device: GPUDevice | null = null;
 
-  constructor(name: string, serviceRegistry: ServiceRegistry, uuid?: string) {
-    super(name, serviceRegistry, uuid);
+  constructor(name: string, shaderDescriptor: ShaderDescriptor, device?: GPUDevice) {
+    super(name, shaderDescriptor);
+    console.log(this.payload);
+    const processor = ProcessorRegistry.get<WebGPUProcessor>('webgpu');
+    if (!device && processor) {
+      this.device = processor.renderer.device;
+    } else if (device) {
+      this.device = device;
+    } else {
+      throw Error('Shader reosurce need the gpu device!')
+    }
+
+    this.isCompiled = false; // Need to recompile
   }
 
   /**
@@ -62,12 +73,12 @@ export class ShaderResource extends Resource {
    * Get available shader stages.
    */
   get availableStages(): ShaderStage[] {
-    if (!this.shaderDescriptor) return [];
+    if (!this.payload) return [];
 
     const stages: ShaderStage[] = [];
-    if (this.shaderDescriptor.vertexSource) stages.push(ShaderStage.VERTEX);
-    if (this.shaderDescriptor.fragmentSource) stages.push(ShaderStage.FRAGMENT);
-    if (this.shaderDescriptor.computeSource) stages.push(ShaderStage.COMPUTE);
+    if (this.payload.vertexSource) stages.push(ShaderStage.VERTEX);
+    if (this.payload.fragmentSource) stages.push(ShaderStage.FRAGMENT);
+    if (this.payload.computeSource) stages.push(ShaderStage.COMPUTE);
 
     return stages;
   }
@@ -90,28 +101,28 @@ export class ShaderResource extends Resource {
    * Get vertex shader source.
    */
   get vertexSource(): string | undefined {
-    return this.shaderDescriptor?.vertexSource;
+    return this.payload?.vertexSource;
   }
 
   /**
    * Get fragment shader source.
    */
   get fragmentSource(): string | undefined {
-    return this.shaderDescriptor?.fragmentSource;
+    return this.payload?.fragmentSource;
   }
 
   /**
    * Get compute shader source.
    */
   get computeSource(): string | undefined {
-    return this.shaderDescriptor?.computeSource;
+    return this.payload?.computeSource;
   }
 
   /**
    * Get entry point for a shader stage.
    */
   getEntryPoint(stage: ShaderStage): string {
-    const entryPoints = this.shaderDescriptor?.entryPoints;
+    const entryPoints = this.payload?.entryPoints;
 
     switch (stage) {
       case ShaderStage.VERTEX:
@@ -125,82 +136,26 @@ export class ShaderResource extends Resource {
     }
   }
 
-  /**
-   * Set shader data from descriptor.
-   */
-  setShaderData(descriptor: ShaderDescriptor): void {
-    this.shaderDescriptor = descriptor;
-    this.isCompiled = false; // Need to recompile
-    this.data = descriptor; // Store as resource data
+  protected async loadInternal() {
+    console.log('load internal shader');
+    return this.payload;
   }
 
-  /**
-   * Create shader from source strings.
-   */
-  static createFromSource(
-    name: string,
-    serviceRegistry: ServiceRegistry,
-    vertexSource?: string,
-    fragmentSource?: string,
-    computeSource?: string
-  ): ShaderResource {
-    const shader = new ShaderResource(name, serviceRegistry);
+  // /**
+  //  * Load shader source code.
+  //  */
+  // private async performLoad(): Promise<void> {
+  //   if (!this.payload) {
+  //     throw new Error(`ShaderResource "${this.name}": No shader data provided`);
+  //   }
 
-    shader.setShaderData({
-      vertexSource,
-      fragmentSource,
-      computeSource,
-      entryPoints: {
-        vertex: 'vs_main',
-        fragment: 'fs_main',
-        compute: 'cs_main'
-      }
-    });
+  //   // Validate that at least one stage is provided
+  //   if (this.availableStages.length === 0) {
+  //     throw new Error(`ShaderResource "${this.name}": No shader stages provided`);
+  //   }
 
-    return shader;
-  }
-
-  /**
-   * Create shader from combined WGSL source (contains both vertex and fragment).
-   */
-  static createFromWGSL(
-    name: string,
-    serviceRegistry: ServiceRegistry,
-    source: string,
-    stages: { vertex?: string, fragment?: string, compute?: string } = {}
-  ): ShaderResource {
-    const shader = new ShaderResource(name, serviceRegistry);
-
-    shader.setShaderData({
-      vertexSource: stages.vertex !== undefined ? source : undefined,
-      fragmentSource: stages.fragment !== undefined ? source : undefined,
-      computeSource: stages.compute !== undefined ? source : undefined,
-      entryPoints: {
-        vertex: stages.vertex || 'vs_main',
-        fragment: stages.fragment || 'fs_main',
-        compute: stages.compute || 'cs_main'
-      }
-    });
-
-    return shader;
-  }
-
-  /**
-   * Load shader source code.
-   */
-  protected async performLoad(): Promise<void> {
-    if (!this.shaderDescriptor) {
-      throw new Error(`ShaderResource "${this.name}": No shader data provided`);
-    }
-
-    // Validate that at least one stage is provided
-    if (this.availableStages.length === 0) {
-      throw new Error(`ShaderResource "${this.name}": No shader stages provided`);
-    }
-
-    this.data = this.shaderDescriptor;
-    console.debug(`ShaderResource "${this.name}" loaded with stages: ${this.availableStages.join(', ')}`);
-  }
+  //   console.debug(`ShaderResource "${this.name}" loaded with stages: ${this.availableStages.join(', ')}`);
+  // }
 
   /**
    * Compile shader source into GPU modules.
@@ -215,7 +170,7 @@ export class ShaderResource extends Resource {
       throw new Error(`ShaderResource "${this.name}": No GPU device set for compilation. Call setDevice() first.`);
     }
 
-    if (!this.shaderDescriptor) {
+    if (!this.payload) {
       throw new Error(`ShaderResource "${this.name}": Cannot compile without shader data`);
     }
 
@@ -246,7 +201,7 @@ export class ShaderResource extends Resource {
     // Clear compiled shaders (GPU modules don't need explicit cleanup in WebGPU)
     this.compiledShaders.clear();
     this.isCompiled = false;
-    this.shaderDescriptor = null;
+    (this.payload as any) = null;
     this.device = null;
 
     console.debug(`ShaderResource "${this.name}" unloaded`);
@@ -256,15 +211,15 @@ export class ShaderResource extends Resource {
    * Compile a specific shader stage.
    */
   private async compileStage(stage: ShaderStage): Promise<CompiledShader> {
-    if (!this.shaderDescriptor || !this.device) {
+    if (!this.payload || !this.device) {
       throw new Error('No shader data or device for compilation');
     }
 
     let source: string;
     switch (stage) {
-      case ShaderStage.VERTEX: source = this.shaderDescriptor.vertexSource!; break;
-      case ShaderStage.FRAGMENT: source = this.shaderDescriptor.fragmentSource!; break;
-      case ShaderStage.COMPUTE: source = this.shaderDescriptor.computeSource!; break;
+      case ShaderStage.VERTEX: source = this.payload.vertexSource!; break;
+      case ShaderStage.FRAGMENT: source = this.payload.fragmentSource!; break;
+      case ShaderStage.COMPUTE: source = this.payload.computeSource!; break;
       default: throw new Error(`Unsupported shader stage: ${stage}`);
     }
 
@@ -320,7 +275,7 @@ export class ShaderResource extends Resource {
     if (sinceVersion < this.version) {
       return {
         type: 'shader_delta',
-        resourceId: this.uuid,
+        resourceId: this.id,
         fromVersion: sinceVersion,
         toVersion: this.version,
         // Would include source code changes

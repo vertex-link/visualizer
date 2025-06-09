@@ -1,48 +1,53 @@
-import { Actor, Component, ProcessorRegistry } from "@vertex-link/acs";
+import { Actor, Component, ResourceComponent, ProcessorRegistry } from "@vertex-link/acs";
 import { TransformComponent } from "../../rendering/components/TransformComponent";
 import { WebGPUProcessor, WebGPUUpdate } from "../../processors/WebGPUProcessor";
 import { MeshResource } from "../../resources/MeshResource";
 import { MaterialResource } from "../../resources/MaterialResource";
 
 /**
- * Component that makes an Actor renderable by associating it with mesh and material resources.
- * Integrates directly with WebGPUProcessor for efficient batched rendering.
+ * Simplified MeshRendererComponent - gets resources from ResourceComponent
+ * No direct resource injection, works with the new ResourceComponent pattern
  */
 export class MeshRendererComponent extends Component {
-  /** The mesh resource containing geometry data */
-  public mesh: MeshResource | null = null;
-
-  /** The material resource containing shader and uniforms */
-  public material: MaterialResource | null = null;
-
   /** Whether this renderer is currently enabled */
   public enabled: boolean = true;
 
   /** Render layer/priority (for sorting) */
   public layer: number = 0;
 
-  // Processor integration
+  // Cached components
+  private transform?: TransformComponent;
+  private resources?: ResourceComponent;
+
+  // Internal state
   private lastUpdateFrame = -1;
   private isVisible = true;
 
-  private transform?: TransformComponent;
-
-  constructor(
-    actor: Actor,
-    config?: {
-      mesh?: MeshResource;
-      material?: MaterialResource;
-      enabled?: boolean;
-      layer?: number;
-    }
-  ) {
+  constructor(actor: Actor, config?: { enabled?: boolean; layer?: number }) {
     super(actor);
 
-    if (config?.mesh) this.mesh = config.mesh;
-    if (config?.material) this.material = config.material;
     if (config?.enabled !== undefined) this.enabled = config.enabled;
     if (config?.layer !== undefined) this.layer = config.layer;
-    this.transform = this.actor.getComponent(TransformComponent);
+  }
+
+  /**
+   * Get mesh resource from ResourceComponent
+   */
+  get mesh(): MeshResource | undefined {
+    if (!this.resources) {
+      this.resources = this.actor.getComponent(ResourceComponent);
+    }
+    return this.resources?.get(MeshResource);
+  }
+
+  /**
+   * Get material resource from ResourceComponent
+   */
+  get material(): MaterialResource | undefined {
+    if (!this.resources) {
+      this.resources = this.actor.getComponent(ResourceComponent);
+    }
+    return this.resources?.get(MaterialResource);
   }
 
   /**
@@ -66,54 +71,46 @@ export class MeshRendererComponent extends Component {
   }
 
   /**
-   * Set the mesh resource for this renderer.
-   */
-  setMesh(mesh: MeshResource): void {
-    this.mesh = mesh;
-    this.markDirty();
-  }
-
-  /**
-   * Set the material resource for this renderer.
-   */
-  setMaterial(material: MaterialResource): void {
-    this.material = material;
-    this.markDirty();
-  }
-
-  /**
    * Check if this renderer is ready to be rendered.
    * Requires both mesh and material to be loaded and compiled.
    */
   isRenderable(): boolean {
+    const mesh = this.mesh;
+    const material = this.material;
+
     return this.enabled &&
       this.isVisible &&
-      this.mesh !== null &&
-      this.material !== null &&
-      this.mesh.isLoaded() &&
-      this.material.isLoaded() &&
-      this.mesh.isCompiled &&
-      this.material.isCompiled;
+      mesh !== undefined &&
+      material !== undefined &&
+      mesh.isLoaded() &&
+      material.isLoaded() &&
+      mesh.isCompiled &&
+      material.isCompiled;
   }
 
   /**
-   * Get the transform component (guaranteed to exist due to @RequireComponent).
+   * Get the transform component (required dependency).
    */
   getTransform(): TransformComponent {
-    if (this.transform !== undefined) {
-      return this.transform;
-    } else {
-      throw new Error("Transform component not found.");
+    if (!this.transform) {
+      this.transform = this.actor.getComponent(TransformComponent);
+      if (!this.transform) {
+        throw new Error(`MeshRendererComponent on actor "${this.actor.label}" requires TransformComponent`);
+      }
     }
+    return this.transform;
   }
 
   /**
    * Get batch key for efficient batching by the processor
    */
   getBatchKey(): string {
-    if (!this.material || !this.mesh) return 'invalid';
+    const material = this.material;
+    const mesh = this.mesh;
 
-    return `${this.material.name}_${this.layer}_${this.getVertexLayoutHash()}`;
+    if (!material || !mesh) return 'invalid';
+
+    return `${material.name}_${this.layer}_${this.getVertexLayoutHash()}`;
   }
 
   /**
@@ -137,10 +134,11 @@ export class MeshRendererComponent extends Component {
    * Get render priority for sorting
    */
   getRenderPriority(): number {
+    const material = this.material;
     // Higher layer = render later (for transparency)
-    return this.layer * 1000 + (this.material?.id.hashCode() || 0);
+    return this.layer * 1000 + (material?.name.hashCode() || 0);
   }
-  
+
   /**
    * Cleanup when component is removed
    */
@@ -157,11 +155,14 @@ export class MeshRendererComponent extends Component {
    */
   private async ensureResourcesCompiled(): Promise<void> {
     try {
-      if (this.mesh && !this.mesh.isCompiled) {
-        await this.mesh.compile();
+      const mesh = this.mesh;
+      const material = this.material;
+
+      if (mesh && !mesh.isCompiled) {
+        await mesh.compile();
       }
-      if (this.material && !this.material.isCompiled) {
-        await this.material.compile();
+      if (material && !material.isCompiled) {
+        await material.compile();
       }
     } catch (error) {
       console.error(`❌ Failed to compile resources for ${this.actor.label}:`, error);
@@ -173,7 +174,6 @@ export class MeshRendererComponent extends Component {
    */
   private markDirty(): void {
     // Find WebGPUProcessor and mark it dirty
-    // This is a simple implementation - in practice you might use events
     const processor = ProcessorRegistry.get("webgpu") as WebGPUProcessor;
     if (processor) {
       processor.markDirty();
@@ -184,9 +184,10 @@ export class MeshRendererComponent extends Component {
    * Get vertex layout hash for batching
    */
   private getVertexLayoutHash(): string {
+    const mesh = this.mesh;
     // This would be based on the mesh's vertex layout
     // For now, return a simple hash
-    return this.mesh?.name.slice(-8) || 'default';
+    return mesh?.name.slice(-8) || 'default';
   }
 }
 

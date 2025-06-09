@@ -31,7 +31,7 @@ interface RenderBatch {
  */
 export class WebGPUProcessor extends Processor {
   private canvas: HTMLCanvasElement;
-  private renderer: WebGPURenderer;
+  readonly renderer: WebGPURenderer;
   private resourcePool: GPUResourcePool;
   private renderGraph: RenderGraph;
 

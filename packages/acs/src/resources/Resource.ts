@@ -56,8 +56,8 @@ export abstract class Resource<TData = unknown> {
   }
 
   /**
-     * Get the resource data (waits for load if needed)
-     */
+   * Get the resource data (waits for load if needed)
+   */
   async get(): Promise<TData> {
     await this.whenLoaded();
     if (this.status === ResourceStatus.FAILED) {

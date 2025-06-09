@@ -2,7 +2,6 @@ export { ILoggingServiceKey, LogLevel, ConsoleLoggingService } from './services/
 export type { ILoggingService } from './services/LoggingService';
 
 // Resources
-export { Resource, ResourceStatus } from './resources/Resource';
 export { ShaderResource, ShaderStage } from './resources/ShaderResource';
 export type { ShaderDescriptor, CompiledShader } from './resources/ShaderResource';
 export { MeshResource } from './resources/MeshResource';
@@ -10,16 +9,6 @@ export type { VertexAttribute as MeshVertexAttribute, MeshDescriptor } from './r
 export { MaterialResource } from './resources/MaterialResource';
 export type { UniformValue, UniformDescriptor, MaterialDescriptor } from './resources/MaterialResource';
 export { GeometryUtils } from './resources/GeometryUtils';
-export {
-  ResourceManager,
-  IResourceManagerKey,
-  ResourceHandle,
-  ResourceComponent, // The one from ResourceManager.ts
-  createShaderHandle,
-  createMaterialHandle,
-  createMeshHandle
-} from './resources/ResourceManager';
-export type { ResourceFactory } from './resources/ResourceManager';
 
 // Rendering Interfaces
 export { BufferUsage } from './rendering/interfaces/IBuffer';
