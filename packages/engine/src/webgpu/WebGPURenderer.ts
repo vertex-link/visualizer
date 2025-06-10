@@ -149,13 +149,18 @@ export class WebGPURenderer {
   /**
    * Set vertex buffer (utility for render passes)
    */
-  setBuffer(binding: number, buffer: GPUBuffer): void {
-    if (!this.currentRenderPass) return;
+  setVertexBuffer(binding: number, buffer: GPUBuffer): void {
+    if (this.currentRenderPass) {
+      this.currentRenderPass.setVertexBuffer(binding, buffer);
+    }
+  }
 
-    if (binding === 0) {
-      this.currentRenderPass.setVertexBuffer(0, buffer);
-    } else if (binding === 1) {
-      this.currentRenderPass.setIndexBuffer(buffer, 'uint16');
+  /**
+   * Set index buffer (utility for render passes)
+   */
+  setIndexBuffer(buffer: GPUBuffer, format: GPUIndexFormat = 'uint16'): void {
+    if (this.currentRenderPass) {
+      this.currentRenderPass.setIndexBuffer(buffer, format);
     }
   }
 
@@ -169,22 +174,18 @@ export class WebGPURenderer {
   }
 
   /**
-   * Create uniform buffer (utility)
+   * Create persistent uniform buffer (not destroyed per frame)
    */
-  createUniformBuffer(data: ArrayBuffer, label?: string): GPUBuffer {
+  createPersistentUniformBuffer(size: number, label?: string): GPUBuffer {
     if (!this.device) {
       throw new Error("Device not initialized");
     }
 
-    const buffer = this.device.createBuffer({
-      size: Math.max(data.byteLength, 16), // Ensure minimum alignment
+    return this.device.createBuffer({
+      size: Math.max(size, 16), // Ensure minimum alignment
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-      label: label || 'Uniform Buffer'
+      label: label || 'Persistent Uniform Buffer'
     });
-
-    this.device.queue.writeBuffer(buffer, 0, data);
-    this._buffersToDestroy.push(buffer); // NEW: Add to list for deferred destruction
-    return buffer;
   }
 
   /**

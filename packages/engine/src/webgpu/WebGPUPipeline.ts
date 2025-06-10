@@ -55,6 +55,7 @@ export class WebGPUPipeline implements IPipeline {
       });
 
       const vertexBufferLayout = this.createWebGPUVertexLayout(descriptor.vertexLayout);
+      const instanceBufferLayout = this.createInstanceBufferLayout();
 
       const depthStencilState: GPUDepthStencilState = {
         depthWriteEnabled: true,
@@ -91,7 +92,7 @@ export class WebGPUPipeline implements IPipeline {
         vertex: {
           module: vertexShaderModule,
           entryPoint: descriptor.entryPoints?.vertex || 'vs_main',
-          buffers: [vertexBufferLayout]
+          buffers: [vertexBufferLayout, instanceBufferLayout]
         },
         fragment: {
           module: fragmentShaderModule,
@@ -132,6 +133,25 @@ export class WebGPUPipeline implements IPipeline {
     };
   }
 
+
+  /**
+   * Create instance buffer layout for model matrix and color
+   */
+  private createInstanceBufferLayout(): GPUVertexBufferLayout {
+    return {
+      arrayStride: 80, // 16 floats (model matrix) + 4 floats (color) = 20 floats * 4 bytes = 80 bytes
+      stepMode: 'instance',
+      attributes: [
+        // Model matrix (4x4) split into 4 vec4 attributes
+        { shaderLocation: 4, format: 'float32x4', offset: 0 },   // Row 0
+        { shaderLocation: 5, format: 'float32x4', offset: 16 },  // Row 1
+        { shaderLocation: 6, format: 'float32x4', offset: 32 },  // Row 2
+        { shaderLocation: 7, format: 'float32x4', offset: 48 },  // Row 3
+        // Instance color
+        { shaderLocation: 8, format: 'float32x4', offset: 64 },  // Color
+      ]
+    };
+  }
 
   private convertVertexFormat(format: string): GPUVertexFormat {
     // Ensure all possible formats are covered or throw an error

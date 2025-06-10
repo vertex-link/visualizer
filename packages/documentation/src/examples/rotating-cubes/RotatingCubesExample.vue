@@ -208,6 +208,8 @@ async function createCubes() {
 
   cubes = []
 
+  const cubeMehsResourceInstance = new CubeMeshResource(1.0);
+
   for (let i = 0; i < cubeCount.value; i++) {
     // Create actor
     const cubeActor = new Actor(`Cube${i}`)
@@ -218,7 +220,7 @@ async function createCubes() {
 
     // Add resources (auto-load, auto-compile!)
     const resources = cubeActor.addComponent(ResourceComponent)
-    resources.add(new CubeMeshResource(1.0))
+    resources.add(cubeMehsResourceInstance)
     resources.add(new BasicMaterialResource([
       Math.random(),
       Math.random(),

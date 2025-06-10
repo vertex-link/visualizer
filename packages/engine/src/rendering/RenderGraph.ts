@@ -1,8 +1,14 @@
 export interface RenderBatch {
   material: any; // MaterialResource
-  instances: any[]; // MeshRendererComponent[]
+  meshId: string;
+  mesh: any; // MeshResource
+  instances: Map<string, any>; // Map<string, InstanceData>
+  instanceBuffer: GPUBuffer | null;
+  instanceData: Float32Array | null;
   pipeline?: GPURenderPipeline;
   bindGroup?: GPUBindGroup;
+  isDirty: boolean;
+  maxInstances: number;
 }
 
 export interface RenderPassContext {
@@ -10,6 +16,7 @@ export interface RenderPassContext {
   batches: RenderBatch[];
   camera: any; // CameraComponent
   deltaTime: number;
+  globalBindGroup: GPUBindGroup | null;
 }
 
 /**
@@ -111,7 +118,7 @@ export class RenderGraph {
   /**
    * Execute all enabled render passes
    */
-  execute(renderer: any, batches: RenderBatch[], camera: any, deltaTime: number): void {
+  execute(renderer: any, batches: RenderBatch[], camera: any, deltaTime: number, globalBindGroup: GPUBindGroup | null = null): void {
     if (!this.device) {
       console.warn("⚠️ RenderGraph: No device set, skipping execution");
       return;
@@ -121,7 +128,8 @@ export class RenderGraph {
       renderer,
       batches,
       camera,
-      deltaTime
+      deltaTime,
+      globalBindGroup
     };
 
     // Execute passes in priority order
@@ -204,14 +212,18 @@ export class ForwardPass extends RenderPass {
     }
 
     try {
-      //  console.log(`🎨 ForwardPass: Rendering ${batches.length} batches`);
-
-      // Render each batch
-      for (const batch of batches) {
-        this.renderBatch(renderer, batch, camera);
+      // Set global uniforms once for all batches
+      const globalUniformsSet = this.setGlobalUniforms(renderer, camera, context.globalBindGroup);
+      
+      if (!globalUniformsSet) {
+        console.log("⚠️ ForwardPass: Skipping render - global uniforms not ready");
+        return; // Skip rendering if global bind group isn't available
       }
 
-      // console.log(`✅ ForwardPass: Completed rendering ${batches.length} batches`);
+      // Render each instanced batch
+      for (const batch of batches) {
+        this.renderInstancedBatch(renderer, batch);
+      }
 
     } catch (error) {
       console.error("❌ ForwardPass: Rendering error:", error);
@@ -222,149 +234,72 @@ export class ForwardPass extends RenderPass {
   }
 
   /**
-   * Validate material and get pipeline with better error handling
+   * Set global uniforms (view-projection matrix) once for all batches
    */
-  private validateAndGetPipeline(batch: RenderBatch): GPURenderPipeline | null {
-    const material = batch.material;
-
-    // Check if material exists
-    if (!material) {
-      console.warn("❌ ForwardPass: Batch has no material");
-      return null;
+  private setGlobalUniforms(renderer: any, camera: any, globalBindGroup: GPUBindGroup | null): boolean {
+    if (globalBindGroup) {
+      renderer.setBindGroup(0, globalBindGroup);
+      return true;
+    } else {
+      console.warn("⚠️ ForwardPass: No global bind group available - skipping render");
+      return false;
     }
-
-    // Check if material has getPipeline method
-    if (typeof material.getPipeline !== 'function') {
-      console.error(`❌ ForwardPass: Material ${material.constructor.name} missing getPipeline method`);
-      return null;
-    }
-
-    // Get pipeline
-    const pipeline = material.getPipeline();
-
-    // Validate pipeline
-    if (!pipeline) {
-      console.error(`❌ ForwardPass: Material ${material.constructor.name} getPipeline() returned null/undefined`);
-
-      // Try to debug the material state
-      if ('isCompiled' in material) {
-        console.log(`Material compiled state: ${material.isCompiled}`);
-      }
-      if ('pipeline' in material) {
-        console.log(`Material internal pipeline:`, material.pipeline);
-      }
-
-      return null;
-    }
-
-    // Validate that it's actually a GPURenderPipeline
-    if (typeof pipeline !== 'object' || !pipeline.constructor || !pipeline.constructor.name.includes('GPURenderPipeline')) {
-      console.error(`❌ ForwardPass: getPipeline() returned invalid type:`, typeof pipeline, pipeline);
-      return null;
-    }
-
-    return pipeline;
   }
 
   /**
-   * Render a single batch
+   * Render an instanced batch with single draw call
    */
-  private renderBatch(renderer: any, batch: RenderBatch, camera: any): void {
-    // Set the render pipeline once per batch (if it exists)
-    const pipeline = this.validateAndGetPipeline(batch);
+  private renderInstancedBatch(renderer: any, batch: RenderBatch): void {
+    if (batch.instances.size === 0) return;
+
+    // Get pipeline from material
+    const pipeline = batch.material.getPipeline();
     if (!pipeline) {
-      console.error("❌ ForwardPass: Cannot render batch, pipeline is invalid.");
+      console.error(`❌ ForwardPass: No pipeline for material ${batch.material.name}`);
       return;
     }
-    renderer.setPipeline(pipeline);
-    // console.log(`🔧 Set pipeline for material: ${batch.material.constructor.name}`);
 
-    const cameraViewProjectionMatrix = camera.getViewProjectionMatrix();
-    const materialColor = batch.material.getUniform('color'); // Get color from material
-
-    // console.log(`🎭 Rendering batch with ${batch.instances.length} instances`);
-
-    // Iterate and render each instance
-    for (let i = 0; i < batch.instances.length; i++) {
-      const instance = batch.instances[i];
-      if (!instance.isRenderable()) {
-        console.log(`⚠️ Instance ${i} not renderable`);
-        continue;
-      }
-
-      const mesh = instance.mesh;
-      const transform = instance.getTransform(); // Get the transform component
-
-      if (!mesh || !transform) {
-        console.warn(`⚠️ ForwardPass: Instance ${i} has invalid mesh or transform`);
-        continue;
-      }
-
-      // 1. Prepare instance-specific uniform buffer (viewProjection, model, color)
-      const modelMatrix = transform.getWorldMatrix(); // Get the instance's world matrix
-      const viewProjectionMatrix = cameraViewProjectionMatrix; // Camera's VP matrix
-
-      const uniformBufferData = new Float32Array(144 / 4); // 144 bytes / 4 bytes per float = 36 floats
-      // Layout: viewProjection (16 floats), model (16 floats), color (4 floats)
-      uniformBufferData.set(viewProjectionMatrix, 0);       // Offset 0 (0 bytes)
-      uniformBufferData.set(modelMatrix, 16);    // Offset 16*4 = 64 bytes
-      uniformBufferData.set(materialColor, 32);  // Offset 32*4 = 128 bytes
-
-      // Create and upload temporary uniform buffer for this instance
-      // The buffer will now be managed by WebGPURenderer for deferred destruction
-      const instanceUniformGPUBuffer = renderer.createUniformBuffer(
-        uniformBufferData.buffer,
-        `Instance_${instance.actor.id}_Uniforms`
-      );
-
-      // Create and set bind group for this instance
-      const device = renderer.getDevice();
-      if (!device) {
-        console.error("❌ ForwardPass: No GPU device available for bind group creation.");
-        // instanceUniformGPUBuffer.destroy(); // Removed: Handled by renderer
-        continue;
-      }
-
-      const bindGroup = device.createBindGroup({
-        label: `Instance_${instance.actor.id}_BindGroup`,
-        layout: pipeline.getBindGroupLayout(0), // Use the pipeline's layout for group 0
-        entries: [{
-          binding: 0,
-          resource: {
-            buffer: instanceUniformGPUBuffer
-          }
-        }]
-      });
-      renderer.setBindGroup(0, bindGroup);
-
-
-      // 2. Set vertex and index buffers
-      const vertexBuffer = mesh.getVertexBuffer();
-      if (vertexBuffer) {
-        renderer.setBuffer(0, vertexBuffer);
-      } else {
-        console.warn(`⚠️ ForwardPass: Instance ${i} has no vertex buffer`);
-        // instanceUniformGPUBuffer.destroy(); // Removed: Handled by renderer
-        continue;
-      }
-
-      const indexBuffer = mesh.getIndexBuffer();
-      if (indexBuffer) {
-        renderer.setBuffer(1, indexBuffer); // Set index buffer
-      }
-
-      // 3. Draw
-      if (mesh.indexCount > 0) {
-        renderer.drawIndexed(mesh.indexCount);
-      } else if (mesh.vertexCount > 0) {
-        renderer.draw(mesh.vertexCount);
-      } else {
-        console.warn(`⚠️ ForwardPass: Instance ${i} mesh has no vertices/indices to draw`);
-      }
-
-      // 4. Clean up the temporary uniform buffer - REMOVED, now handled by WebGPURenderer.endFrame()
-      // instanceUniformGPUBuffer.destroy();
+    // Get mesh from batch
+    const mesh = batch.mesh;
+    if (!mesh) {
+      console.error(`❌ ForwardPass: No mesh for batch with meshId ${batch.meshId}`);
+      return;
     }
+
+    // Set pipeline once for entire batch
+    renderer.setPipeline(pipeline);
+
+    // Set vertex buffers
+    const vertexBuffer = mesh.getVertexBuffer();
+    if (vertexBuffer) {
+      renderer.setVertexBuffer(0, vertexBuffer);
+    } else {
+      console.warn(`⚠️ ForwardPass: No vertex buffer for batch`);
+      return;
+    }
+
+    // Set instance buffer
+    if (batch.instanceBuffer) {
+      renderer.setVertexBuffer(1, batch.instanceBuffer);
+    } else {
+      console.warn(`⚠️ ForwardPass: No instance buffer for batch`);
+      return;
+    }
+
+    // Set index buffer if available
+    const indexBuffer = mesh.getIndexBuffer();
+    if (indexBuffer) {
+      renderer.setIndexBuffer(indexBuffer);
+    }
+
+    // Single draw call for all instances
+    if (mesh.indexCount > 0) {
+      renderer.drawIndexed(mesh.indexCount, batch.instances.size);
+    } else if (mesh.vertexCount > 0) {
+      renderer.draw(mesh.vertexCount, batch.instances.size);
+    }
+
+    // console.log(`🚀 Rendered ${batch.instances.size} instances in single draw call`);
   }
 }
 
