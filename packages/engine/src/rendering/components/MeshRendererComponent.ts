@@ -113,31 +113,22 @@ export class MeshRendererComponent extends Component {
    */
   private async ensureResourcesCompiled(): Promise<void> {
     const wasRenderable = this.isRenderable();
-
-    console.log(`🔧 ${this.actor.label} ensuring resources ready, wasRenderable: ${wasRenderable}`);
-
     try {
       const mesh = this.mesh;
       const material = this.material;
 
       if (mesh) {
-        console.log(`🔧 ${this.actor.label} waiting for mesh to be ready...`);
         await mesh.whenReady();
-        console.log(`🔧 ${this.actor.label} mesh ready: loaded=${mesh.isLoaded()}, compiled=${mesh.isCompiled}`);
       }
 
       if (material) {
-        console.log(`🔧 ${this.actor.label} waiting for material to be ready... ID: ${material.id}, name: ${material.name}`);
         await material.whenReady();
-        console.log(`🔧 ${this.actor.label} material ready: loaded=${material.isLoaded()}, compiled=${material.isCompiled}`);
       }
 
       const nowRenderable = this.isRenderable();
-      console.log(`🔧 ${this.actor.label} nowRenderable: ${nowRenderable}`);
 
       // Emit event if we just became renderable
       if (!wasRenderable && nowRenderable) {
-        console.log(`🚀 ${this.actor.label} became renderable! Emitting ResourceReadyEvent`);
         emit(new ResourceReadyEvent({ meshRenderer: this }));
       }
     } catch (error) {

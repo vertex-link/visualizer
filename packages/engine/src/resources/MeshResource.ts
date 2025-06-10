@@ -128,7 +128,6 @@ export class MeshResource extends Resource<MeshDescriptor> {
    */
   getVertexBuffer(): GPUBuffer | null {
     const buffer = this.vertexBuffer?.getGPUBuffer() || null;
-    console.log(`🔍 MeshResource "${this.name}": getVertexBuffer() called - isCompiled: ${this.isCompiled}, vertexBuffer exists: ${!!this.vertexBuffer}, returning: ${!!buffer}`);
     return buffer;
   }
 

@@ -36,7 +36,7 @@
           type="slider"
           label="Number of Cubes"
           :min="1"
-          :max="10"
+          :max="10000"
           :step="1"
           v-model="cubeCount"
           @update:model-value="recreateCubes"
@@ -214,9 +214,17 @@ async function createCubes() {
     // Create actor
     const cubeActor = new Actor(`Cube${i}`)
 
-    // Add transform
+    // Add transform - arrange in 10x10x10 grid
     const transform = cubeActor.addComponent(TransformComponent)
-    transform.setPosition(i * 2 - (cubeCount.value - 1), 0, 0)
+    const gridSize = 10
+    const spacing = 2.0
+
+    // Calculate 3D grid position (max 10x10x10)
+    const x = (i % gridSize) * spacing - (gridSize - 1) * spacing / 2
+    const y = (Math.floor(i / gridSize) % gridSize) * spacing - (gridSize - 1) * spacing / 2
+    const z = (Math.floor(i / (gridSize * gridSize))) * spacing - (gridSize - 1) * spacing / 2
+
+    transform.setPosition(x, y, z)
 
     // Add resources (auto-load, auto-compile!)
     const resources = cubeActor.addComponent(ResourceComponent)
@@ -253,7 +261,7 @@ function createCamera(canvas: HTMLCanvasElement) {
   const camera = new Actor("Camera")
 
   const cameraTransform = camera.addComponent(TransformComponent)
-  cameraTransform.setPosition(0, 2, 8)
+  cameraTransform.setPosition(0, 3, 15)
 
   camera.addComponent(CameraComponent, {
     projectionType: ProjectionType.PERSPECTIVE,
