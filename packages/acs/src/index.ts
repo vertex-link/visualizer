@@ -1,3 +1,5 @@
+import { ComputeResource } from './resources/ComputeResource';
+
 export { default as Actor } from './Actor'; //
 export type { ServiceKey } from './Service'; //
 export { type IService, ServiceRegistry } from './Service'; //
@@ -41,5 +43,6 @@ export { generateUUID } from './utils/uuid'; //
 
 
 export { Resource, ResourceStatus } from './resources/Resource';
+export { ComputeResource } from './resources/ComputeResource';
 // Resources
 // export {Resource}

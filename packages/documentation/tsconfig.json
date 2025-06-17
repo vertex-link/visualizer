@@ -35,11 +35,13 @@
     },
 
     /* Vue-specific */
-    "types": ["vite/client", "@webgpu/types"]
+    "types": ["vite/client", "@webgpu/types"],
+    "typeRoots": ["./src/types", "./node_modules/@types"]
   },
   "include": [
     "src/**/*.ts",
     "src/**/*.d.ts",
+    "src/**/*.zig",
     "src/**/*.tsx",
     "src/**/*.vue",
     "src/**/*.wgsl",

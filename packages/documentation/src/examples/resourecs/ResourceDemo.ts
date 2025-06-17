@@ -1,4 +1,4 @@
-import {Actor, Component, Resource} from "@vertex-link/acs";
+import { Actor, Component, Resource } from "@vertex-link/acs";
 import { ResourceComponent } from "@vertex-link/acs";
 import { TransformComponent } from "@vertex-link/engine";
 
@@ -9,7 +9,7 @@ type ResourceData = {
 class DependencyTestComponent extends Component {
   _resources?: ResourceComponent;
   _transform?: TransformComponent;
-  
+
   constructor(actor: Actor) {
     super(actor);
   }
@@ -25,7 +25,7 @@ class DependencyTestComponent extends Component {
     }
     return this._transform;
   }
-  
+
   get resources(): ResourceComponent {
     if (this._resources) {
       return this._resources;
@@ -41,7 +41,7 @@ class DependencyTestComponent extends Component {
   private initializeWithDependencies(): void {
     // Your component initialization logic that requires dependencies
   }
-} 
+}
 
 class CustomActor extends Actor {
   resources?: ResourceComponent;
@@ -55,7 +55,7 @@ class CustomActor extends Actor {
     console.log('[DEBUG] onBeforeInitialize - adding components');
     // Add components here - decorators not yet processed
     const resourceComponent = this.addComponent(ResourceComponent);
-    
+
     console.log('[DEBUG] Added ResourceComponent:', resourceComponent);
     console.log('[DEBUG] Has ResourceComponent after adding:', this.hasComponent(ResourceComponent));
     console.log('[DEBUG] Can get ResourceComponent:', this.getComponent(ResourceComponent));
@@ -99,6 +99,6 @@ export class ResourceDemo {
 
     this.resource = new CustomResource('one', { text: 'das is sooo cools' });
 
-    this.resource.whenLoaded().then(res => console.log(res));
+    this.resource.whenReady().then(res => console.log(res));
   }
 }
