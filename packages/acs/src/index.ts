@@ -9,7 +9,9 @@ export { default as Component } from './component/Component'; //
 export type { ComponentClass, ComponentConstructorParameters } from './component/Component'; //
 export { ComponentTypeRegistry } from './component/ComponentRegistry'; //
 export { ResourceComponent } from './component/ResourceComponent'
+
 // Event System
+
 export {
   Event,
   EventBus,

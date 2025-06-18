@@ -1,63 +1,54 @@
 // Internal type transformation - user doesn't need to know about this
-type AsyncifyMethods<T> = {
-  [K in keyof T]: T[K] extends (...args: infer P) => infer R
-  ? (...args: P) => Promise<R>
-  : T[K];
-};
 
-export class ComputeResource<T = any> implements ProxyHandler<ComputeResource<T>> {
-  private worker: Worker;
-  private messageId: number = 0;
-  private pendingCalls = new Map<number, { resolve: Function, reject: Function }>();
+import {Resource} from "./Resource";
 
-  constructor(zigModule: any) {
-    this.worker = new Worker(
-      new URL('./compute-worker?worker', import.meta.url),
-      { type: 'module' }
-    );
+export interface ComputeModule {
+    [key: string]: Function;
+}
 
-    this.setupWorker(zigModule);
+class ComputeResourceBase<T extends ComputeModule = {}> extends Resource<ComputeModule> {
 
-    // Return properly typed proxy with async methods
-    return new Proxy(this, this) as ComputeResource<T> & AsyncifyMethods<T>;
-  }
-
-  private async setupWorker(zigModule: any) {
-    this.worker.postMessage({
-      type: 'init',
-      module: zigModule.module || zigModule
-    });
-
-    this.worker.onmessage = ({ data: { id, result, error } }) => {
-      const pending = this.pendingCalls.get(id);
-      if (pending) {
-        this.pendingCalls.delete(id);
-        error ? pending.reject(new Error(error)) : pending.resolve(result);
-      }
-    };
-  }
-
-  get(target: ComputeResource<T>, prop: string | symbol): any {
-    if (prop in target || typeof prop !== 'string') {
-      return target[prop];
+    constructor(name: string, wasmModule: any) {
+        super(name, wasmModule);
     }
 
-    return (...args: any[]) => {
-      const id = target.messageId++;
-      return new Promise((resolve, reject) => {
-        target.pendingCalls.set(id, { resolve, reject });
-        target.worker.postMessage({
-          type: 'call',
-          id,
-          method: prop,
-          args
-        });
-      });
-    };
-  }
-
-  destroy() {
-    this.worker.terminate();
-    this.pendingCalls.clear();
-  }
+    protected async loadInternal(): Promise<ComputeModule> {
+        // Handle vite-plugin-zig format
+        if (this.payload && typeof this.payload.instantiate === 'function') {
+            // vite-plugin-zig provides an instantiate function
+            const { exports } = await this.payload.instantiate();
+            return exports as ComputeModule;
+        } else if (this.payload && this.payload.exports && this.payload.instantiated) {
+            // vite-plugin-zig with ?instantiate query parameter
+            await this.payload.instantiated;
+            return this.payload.exports as unknown as ComputeModule;
+        } else {
+            throw new Error(`Unsupported WASM module format. Expected vite-plugin-zig format with instantiate function or ?instantiate query.`);
+        }
+    }
 }
+
+export interface ComputeResourceConstructor {
+    new <T extends Record<string, any> = {}>(
+        wasmModule: T
+    ): ComputeResourceBase<T> & T;
+}
+
+const computeResourceImplementation = class <T extends ComputeModule> extends ComputeResourceBase<T> {
+
+    constructor(wasmModule: T) {
+        super(crypto.randomUUID(), wasmModule);
+
+        return new Proxy(this, {
+            get: (target, prop) => {
+                if(typeof prop === 'string' && prop in target.payload) {
+                    return target.payload[prop];
+                }
+
+                return (target as any)[prop];
+            }
+        })
+    }
+}
+
+export const ComputeResource = computeResourceImplementation as ComputeResourceConstructor;
