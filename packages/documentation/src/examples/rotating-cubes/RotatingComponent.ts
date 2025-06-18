@@ -14,7 +14,7 @@ export class RotatingComponent extends Component {
     return this.transform;
   }
   
-  @Update('webgpu') // Use 'webgpu' processor name, not 'render'
+  @Update('webgpu')
   update(deltaTime: number): void {
     if (!this.getTransform()) {
       console.log("transform not found returning");

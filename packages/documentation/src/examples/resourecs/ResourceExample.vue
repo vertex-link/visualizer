@@ -26,14 +26,6 @@ interface MathExports extends ComputeModule {
 console.log(mathModule);
 // Create and use
 
-const testCompute = new ComputeResource({
-  'add': (a: number, b: number) => a + b,
-});
-
-await testCompute.whenReady();
-
-console.log(testCompute.add(2,6));
-
 const mathCompute = new ComputeResource<MathExports>(mathModule);
 await mathCompute.ready;
 // Wait for ready, then use
