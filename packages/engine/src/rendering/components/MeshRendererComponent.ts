@@ -1,4 +1,4 @@
-import { Actor, Component, ResourceComponent, ProcessorRegistry } from "@vertex-link/acs";
+import { Actor, Component, ResourceComponent, ProcessorRegistry, Update } from "@vertex-link/acs";
 import { TransformComponent } from "../../rendering/components/TransformComponent";
 import { WebGPUProcessor, WebGPUUpdate } from "../../processors/WebGPUProcessor";
 import { MeshResource } from "../../resources/MeshResource";

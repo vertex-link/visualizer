@@ -1,5 +1,8 @@
 ﻿# Project Specific
 dist/
+out
+dist
+*.tgz
 
 # Deno specific
 .deno/
@@ -37,3 +40,24 @@ node_modules
 Thumbs.db
 *.log
 .git
+# dependencies (bun install)
+
+# output
+
+
+# code coverage
+coverage
+*.lcov
+
+# logs
+logs
+_.log
+report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
+
+# caches
+.eslintcache
+.cache
+
+# IntelliJ based IDEs
+.idea
+

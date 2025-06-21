@@ -49,7 +49,7 @@ export class WebGPURenderer {
     this.context.configure({
       device: this.device,
       format: this.format,
-      alphaMode: 'premultiplied',
+      alphaMode: 'premultiplied', // Keep this for proper alpha blending
     });
 
     this.createDepthTexture();
@@ -99,7 +99,7 @@ export class WebGPURenderer {
       label: 'Main Render Pass',
       colorAttachments: [{
         view: textureView,
-        clearValue: { r: 0.1, g: 0.15, b: 0.2, a: 1.0 },
+        clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 0.0 }, // Made transparent!
         loadOp: 'clear',
         storeOp: 'store',
       }],
