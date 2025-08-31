@@ -1,4 +1,5 @@
-import { Actor, Component } from '@vertex-link/acs';
+import Actor from '../Actor';
+import Component from './Component';
 import { Resource } from '../resources/Resource';
 
 export class ResourceComponent extends Component {

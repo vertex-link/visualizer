@@ -270,7 +270,7 @@ export class GPUResourcePool {
 
     // Stop cleanup timer
     if (this.cleanupTimer) {
-      clearInterval(this.cleanupTimer);
+      window.clearInterval(this.cleanupTimer as number);
       this.cleanupTimer = null;
     }
 
@@ -373,7 +373,7 @@ export class GPUResourcePool {
   }
 
   private startCleanupTimer(): void {
-    this.cleanupTimer = setInterval(() => {
+    this.cleanupTimer = window.setInterval(() => {
       this.cleanup();
     }, 10000); // Cleanup every 10 seconds
   }

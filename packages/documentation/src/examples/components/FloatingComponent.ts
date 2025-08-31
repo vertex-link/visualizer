@@ -1,6 +1,5 @@
 import { Actor, Component } from "@vertex-link/acs";
 import { TransformComponent } from "@vertex-link/engine";
-import { WebGPUUpdate } from "@vertex-link/engine";
 
 export class FloatingComponent extends Component {
   public amplitude: number = 1.0;
@@ -23,8 +22,8 @@ export class FloatingComponent extends Component {
     }
   }
 
-  @WebGPUUpdate()
-  update(deltaTime: number): void {
+  // Phase 0: no decorators; call tick() from a registered processor task.
+  tick(deltaTime: number): void {
     if (!this.transform) {
       this.transform = this.actor.getComponent(TransformComponent);
     }

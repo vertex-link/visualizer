@@ -5,5 +5,5 @@ import './style.css'
 
 const app = createApp(App)
 
-app.use(router)
+app.use(router as any)
 app.mount('#app')

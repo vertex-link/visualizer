@@ -7,7 +7,31 @@
 3. **Declarative Scene Setup**: Minimal boilerplate, component-driven
 4. **Actor-as-Prefab**: Any Actor can be instantiated as a prefab
 
+## Status Sync (current session)
+
+- Guidelines updated with Architecture Deep Dive and Zig/WASM setup (see .junie/guidelines.md). ✓
+- Testing verified with Bun’s test runner (temporary smoke test ran and was removed). ✓
+- EngineContext introduced and integrated in rotating-cubes example; ProcessorRegistry shim retained for legacy resources. ✓
+- Engine-specific events moved out of ACS; CoreEvents remains engine-agnostic. ✓
+- WebGPU resource lifecycle currently uses explicit setDevice()+compile; decorators are disabled in tsconfig. ✓
+
 ## Implementation Phases
+
+### Phase 0: Core Boundaries & Context Hardening
+
+- Goals:
+  - Replace the global ProcessorRegistry singleton with a scoped EngineContext/World and pass it explicitly to scenes/components/resources.
+  - Move engine-specific events out of ACS; keep ACS engine-agnostic.
+  - Replace stringly lookups (e.g., 'webgpu') with typed constants/symbols and context.get<T>() accessors.
+  - Clarify decorator policy: do not use decorators for component requirements or update hooks; prefer explicit registration and cached getters. Keep tsconfig without experimental decorators.
+  - Prepare for multi-scene/multi-canvas scenarios (no global static state leaks).
+- Deliverables:
+  - EngineContext skeleton with typed accessors (device, renderer, processors, resource pool, event bus).
+  - Adapter layer for existing code paths (temporary shims) to avoid large rewrites.
+  - Documentation updates to reflect non-decorator dependency patterns.
+- Acceptance criteria:
+  - One end-to-end example runs using EngineContext (no ProcessorRegistry.get('webgpu') in that path).
+  - No engine-specific types referenced from ACS.
 
 ### Phase 1: Component-Driven Resource System
 
@@ -42,9 +66,12 @@ class ResourceComponent extends Component {
 
 #### Deletions
 
-- Manual `setDevice()` calls
 - Resource handle helper functions
-- Complex resource initialization
+- Complex implicit resource initialization patterns
+
+#### Clarifications
+
+- Keep explicit setDevice()+compile lifecycle. Do not introduce implicit device coupling.
 
 #### Completed Components
 
@@ -59,7 +86,7 @@ class ResourceComponent extends Component {
 - `MaterialComponent.ts`: Instance data holder
 ```typescript
 class MaterialComponent extends Component {
-    @RequireComponent(ResourceComponent)
+    // Depends on ResourceComponent; resolve via explicit getter on demand
     materialKey: string = "material"
     overrides: Map<string, any> // Instance uniforms
 }
@@ -68,7 +95,7 @@ class MaterialComponent extends Component {
 - `MeshComponent.ts`: Mesh reference holder
 ```typescript
 class MeshComponent extends Component {
-    @RequireComponent(ResourceComponent)
+    // Depends on ResourceComponent; resolve via explicit getter on demand
     meshKey: string = "mesh"
 }
 ```
@@ -148,7 +175,24 @@ scene.createActor("cube")
 - `RenderGraph`: Multiple pass support
 - `GPUResourcePool`: Streaming buffer management
 
+### Phase 6: Hardening & Scalability
+
+- Device loss handling and re-initialization policy; recompile on device change.
+- Visibility: frustum culling and a simple spatial index service.
+- Dirty-flag refinement: separate structural vs transform dirtiness; geometric buffer growth strategy.
+- ComputeResource ergonomics: enforce .ready before use; correct sync types; optional Worker offloading.
+- Testing: unit tests for scene querying, EventBus cleanup, resource lifecycle and device change, context scoping; one compute integration test in documentation package.
+- Desktop/Electron posture: document required flags and fallback when WebGPU is unavailable.
+- Publishing posture: dist exports switch and prepublish checks.
+
 ## Migration Path
+
+### Immediate Actions (Phase 0)
+
+- Introduce EngineContext and adapt one example path to use it
+- Replace ProcessorRegistry.get('webgpu') with typed constant/symbol via context in that path
+- Move engine-specific events out of ACS; rehome them under engine
+- Document non-decorator dependency pattern in README/guidelines
 
 ### Immediate Actions (Phase 1)
 
@@ -159,7 +203,7 @@ scene.createActor("cube")
 
 ### Quick Wins
 
-- Remove all `setDevice()` calls
+- Standardize explicit setDevice()+compile lifecycle with guards and clear errors
 - Delete `ResourceHandle` usage
 - Simplify material creation
 
@@ -167,7 +211,7 @@ scene.createActor("cube")
 
 - Examples require rewrite
 - Components need `ResourceComponent` dependency
-- No manual resource management
+- No manual resource handle management; explicit setDevice()+compile lifecycle remains
 
 ## Detailed Component Designs
 

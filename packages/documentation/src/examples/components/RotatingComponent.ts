@@ -1,6 +1,5 @@
 import { Actor, Component } from "@vertex-link/acs";
 import { TransformComponent } from "@vertex-link/engine";
-import { WebGPUUpdate } from "@vertex-link/engine";
 
 export class RotatingComponent extends Component {
   public speed: number = 1.0;
@@ -12,8 +11,8 @@ export class RotatingComponent extends Component {
     this.speed = config.speed || 1.0;
   }
 
-  @WebGPUUpdate()
-  update(deltaTime: number): void {
+  // Phase 0: no decorators; call tick() from a registered processor task.
+  tick(deltaTime: number): void {
     if (!this.transform) {
       this.transform = this.actor.getComponent(TransformComponent);
     }

@@ -209,17 +209,13 @@ A brief example of creating an actor and adding components:
 ```typescript
 // --- In your main application setup ---
 
-// Initialize core systems
-const resourceManager = new ResourceManager();
-await resourceManager.initialize();
+// Initialize the engine context
+const engineContext = new EngineContext(canvas);
+await engineContext.initialize();
 
-const serviceRegistry = new ServiceRegistry();
-serviceRegistry.register(IResourceManagerKey, resourceManager);
-
-const gpuProcessor = new WebGPUProcessor(canvas, "webgpu");
-await gpuProcessor.initialize();
-
+// Create a scene and set it on the context
 const scene = new Scene("MyScene");
+engineContext.setScene(scene);
 
 // Create an Actor
 const myActor = new Actor("MyCube");
@@ -256,8 +252,8 @@ cameraActor.addComponent(CameraComponent, {
 
 scene.addActor(cameraActor);
 
-// Start the processor
-gpuProcessor.start();
+// Start the engine
+engineContext.start();
 ```
 
 
@@ -308,3 +304,47 @@ await material.compile();
 -   **Buffer Streaming**: A key long-term goal for efficient handling of large-scale scenes and data.
 
 We encourage you to explore the code, examples, and the full documentation to understand the capabilities and future direction of Vertex Link.
+
+
+
+## Composable-like helpers (decorator replacement)
+
+You can replace update/event decorators with thin, context-aware functions inspired by Vue composables. This keeps the OOP style (classes, methods) while avoiding decorators and global singletons.
+
+Helper location: src/composables/context.ts
+- runWithContext(ctx, fn): enter a context for the synchronous duration of fn.
+- getCurrentContext(strict?): fetch current context (throw if strict and missing).
+- useActor/useComponent/useScene/useEventBus/useProcessor/useService: read from the current context.
+- deriveContext(partial): shallow-merge a new context from the current.
+- withContext(ctx, fn): convenience alias for class methods.
+
+Example: OOP component using helpers
+
+import { withContext, useActor, useEventBus } from "./src/composables/context";
+
+class MyComponent {
+  constructor(public actor: any, public bus: any) {}
+
+  update() {
+    return withContext({ component: this, actor: this.actor, eventBus: this.bus }, () => {
+      const actor = useActor<{ name: string }>();
+      const bus = useEventBus<{ emit: (e: string) => void }>();
+      // ... your update logic here
+      bus.emit(`updated:${actor.name}`);
+    });
+  }
+}
+
+Procedural usage:
+
+import { runWithContext, useProcessor } from "./src/composables/context";
+
+runWithContext({ scene, processors: new Map([["webgpu", webgpuProcessor]]) }, () => {
+  const p = useProcessor<any>("webgpu");
+  // ... use the processor
+});
+
+Notes:
+- The helpers are synchronous-scope only. If you jump async (e.g., setTimeout/await), re-enter a context around the async callback or pass dependencies explicitly.
+- This is an incremental migration path: you can start by wrapping selected methods with withContext and gradually remove decorators.
+- The helpers are engine-agnostic. You control what goes into the context (actor, component, eventBus, processors/services), keeping boundaries clear.

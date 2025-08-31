@@ -19,7 +19,7 @@ const createWindow = (): void => {
       sandbox: false,
       nodeIntegration: false,
       contextIsolation: true,
-      experimentaFeatures: true,
+      experimentalFeatures: true,
     }
   })
   
@@ -50,11 +50,6 @@ ipcMain.handle('window-close', () => {
   }
 })
 
-ipcMain.handle('window-start-drag', () => {
-  if (mainWindow) {
-    mainWindow.startDrag()
-  }
-})
 
 // Enable WebGPU command line flags
 app.commandLine.appendSwitch("enable-unsafe-webgpu");

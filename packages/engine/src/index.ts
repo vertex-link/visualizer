@@ -1,6 +1,12 @@
 export { ILoggingServiceKey, LogLevel, ConsoleLoggingService } from './services/LoggingService';
 export type { ILoggingService } from './services/LoggingService';
 
+// Core
+export { EngineContext } from './EngineContext';
+
+// Events
+export * from './events';
+
 // Resources
 export { ShaderResource, ShaderStage } from './resources/ShaderResource';
 export type { ShaderDescriptor, CompiledShader } from './resources/ShaderResource';
@@ -19,7 +25,6 @@ export type { VertexAttribute as PipelineVertexAttribute, VertexLayout, Pipeline
 export { TransformComponent } from './rendering/components/TransformComponent';
 export type { Vec3, Quat, Mat4 } from './rendering/components/TransformComponent';
 export { MeshRendererComponent } from './rendering/components/MeshRendererComponent';
-// Types for MeshRendererComponent's mesh/material properties are simplified, actual resources should be used.
 
 // Camera
 export { CameraComponent, ProjectionType } from './rendering/camera/CameraComponent';
@@ -34,12 +39,11 @@ export { RenderGraph, RenderPass, ForwardPass, PostProcessPass } from './renderi
 export type { RenderBatch, RenderPassContext } from './rendering/RenderGraph';
 export { GPUResourcePool } from './rendering/GPUResourcePool';
 
-export { WebGPUProcessor, WebGPUUpdate } from './processors/WebGPUProcessor';
+export { WebGPUProcessor } from './processors/WebGPUProcessor';
 export { RenderProcessor, RenderUpdate } from './processors/RenderProcessor';
 export { FixedTickProcessor, FixedTickUpdate } from './processors/FixedTickProcessor';
 
-// Potentially export WebGPU wrappers if they are part of the public engine API
-// For now, assuming they are used internally by WebGPUProcessor or resources.
+// WebGPU wrappers
 export { WebGPURenderer } from './webgpu/WebGPURenderer';
 export { WebGPUPipeline } from './webgpu/WebGPUPipeline';
 export { WebGPUBuffer } from './webgpu/WebGPUBuffer';

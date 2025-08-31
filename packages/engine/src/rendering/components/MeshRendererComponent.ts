@@ -1,10 +1,7 @@
-import { Actor, Component, ResourceComponent, ProcessorRegistry, Update } from "@vertex-link/acs";
+import { Actor, Component, ResourceComponent } from "@vertex-link/acs";
 import { TransformComponent } from "../../rendering/components/TransformComponent";
-import { WebGPUProcessor, WebGPUUpdate } from "../../processors/WebGPUProcessor";
 import { MeshResource } from "../../resources/MeshResource";
 import { MaterialResource } from "../../resources/MaterialResource";
-import { emit } from "@vertex-link/acs";
-import { ResourceReadyEvent } from "@vertex-link/acs";
 
 /**
  * Simplified MeshRendererComponent - gets resources from ResourceComponent
@@ -53,10 +50,8 @@ export class MeshRendererComponent extends Component {
   }
 
   /**
-   * WebGPU processor integration - called every frame by WebGPUProcessor
-   * This method is called during the render batching phase
+   * Called by WebGPUProcessor during render batching (no decorators in Phase 0)
    */
-  @WebGPUUpdate()
   updateForRender(deltaTime: number): void {
     // Always ensure resources are compiled first
     this.ensureResourcesCompiled();
@@ -112,7 +107,6 @@ export class MeshRendererComponent extends Component {
    * Ensure GPU resources are ready (loaded and compiled)
    */
   private async ensureResourcesCompiled(): Promise<void> {
-    const wasRenderable = this.isRenderable();
     try {
       const mesh = this.mesh;
       const material = this.material;
@@ -123,13 +117,6 @@ export class MeshRendererComponent extends Component {
 
       if (material) {
         await material.whenReady();
-      }
-
-      const nowRenderable = this.isRenderable();
-
-      // Emit event if we just became renderable
-      if (!wasRenderable && nowRenderable) {
-        emit(new ResourceReadyEvent({ meshRenderer: this }));
       }
     } catch (error) {
       console.error(`❌ Failed to ensure resources ready for ${this.actor.label}:`, error);
@@ -167,7 +154,7 @@ export class MeshRendererComponent extends Component {
   setVisible(visible: boolean): void {
     if (this.isVisible !== visible) {
       this.isVisible = visible;
-      this.markDirty();
+      // Marking dirty is handled by the processor when visibility changes
     }
   }
 
@@ -191,20 +178,8 @@ export class MeshRendererComponent extends Component {
    * Cleanup when component is removed
    */
   public dispose(): void {
-    // Let the processor know this component is gone
-    this.markDirty();
+    // The processor will automatically handle the removal of this component
     super.dispose();
-  }
-
-  /**
-   * Mark render data as dirty (forces processor to re-batch)
-   */
-  private markDirty(): void {
-    // Find WebGPUProcessor and mark it dirty
-    const processor = ProcessorRegistry.get("webgpu") as WebGPUProcessor;
-    if (processor) {
-      processor.markDirty();
-    }
   }
 
   /**

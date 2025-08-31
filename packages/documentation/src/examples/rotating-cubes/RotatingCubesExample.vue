@@ -76,15 +76,16 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 import {
   Actor,
   Scene,
-  ResourceComponent,
-  ProcessorRegistry
+  ResourceComponent
 } from '@vertex-link/acs'
 import {
-  WebGPUProcessor,
+  EngineContext,
   TransformComponent,
   MeshRendererComponent,
   CameraComponent,
-  ProjectionType
+  ProjectionType,
+  Transform,
+  WebGPUProcessor,
 } from '@vertex-link/engine'
 
 // Import example components
@@ -113,10 +114,10 @@ const rotationSpeed = ref(1.0)
 const autoRotateColors = ref(false)
 
 // Demo state
-let processor: WebGPUProcessor | null = null
-let scene: Scene | null = null
+let engineContext: EngineContext | null = null
 let cubes: Actor[] = []
 let colorRotationInterval: number | undefined = undefined
+const rotatorTaskId = Symbol('rotatorTask')
 
 // ==================== Demo Logic ====================
 
@@ -129,18 +130,15 @@ async function startDemo() {
 
     statusText.value = 'Starting WebGPU...'
 
-    // Initialize WebGPU processor (simplified!)
-    processor = new WebGPUProcessor(canvas)
-    ProcessorRegistry.register(processor);
-    await processor.initialize();
-
-    console.log(processor);
+    // Initialize EngineContext
+    engineContext = new EngineContext(canvas)
+    await engineContext.initialize()
 
     statusText.value = 'Creating scene...'
 
-    // Create sceneProcessorRegistry
-    scene = new Scene("RotatingCubesScene")
-    processor.setScene(scene)
+    // Create scene and set it on the context
+    const scene = new Scene("RotatingCubesScene")
+    engineContext.setScene(scene)
 
     // Create cubes
     await createCubes()
@@ -150,8 +148,22 @@ async function startDemo() {
 
     statusText.value = 'Starting render loop...'
 
+    // Register a per-frame task to tick RotatingComponent on all cubes (Phase 0: no decorators)
+    const processor = engineContext.get(WebGPUProcessor)
+    processor?.addTask({
+      id: rotatorTaskId,
+      update: (deltaTime: number) => {
+        // deltaTime is in seconds already from Processor convention
+        for (const cube of cubes) {
+          const rot = cube.getComponent(RotatingComponent)
+          rot?.tick(deltaTime)
+        }
+      },
+      context: null,
+    })
+
     // Start rendering
-    processor.start()
+    engineContext.start()
 
     // Start color rotation if enabled
     if (autoRotateColors.value) {
@@ -171,8 +183,10 @@ async function startDemo() {
 }
 
 function stopDemo() {
-  if (processor) {
-    processor.stop()
+  if (engineContext) {
+    const processor = engineContext.get(WebGPUProcessor)
+    processor?.removeTask(rotatorTaskId)
+    engineContext.stop()
   }
 
   if (colorRotationInterval) {
@@ -188,13 +202,13 @@ function resetDemo() {
   stopDemo()
 
   // Clear scene
+  const scene = engineContext?.getScene();
   if (scene) {
     scene.clear()
   }
 
   cubes = []
-  processor = null
-  scene = null
+  engineContext = null
 
   statusText.value = 'Ready'
   canStart.value = true
@@ -204,6 +218,7 @@ function resetDemo() {
  * Create rotating cubes - SIMPLIFIED VERSION!
  */
 async function createCubes() {
+  const scene = engineContext?.getScene();
   if (!scene) return
 
   cubes = []
@@ -256,6 +271,7 @@ async function createCubes() {
  * Create camera
  */
 function createCamera(canvas: HTMLCanvasElement) {
+  const scene = engineContext?.getScene();
   if (!scene) return
 
   const camera = new Actor("Camera")
@@ -281,6 +297,7 @@ function createCamera(canvas: HTMLCanvasElement) {
  * Recreate cubes when count changes
  */
 async function recreateCubes() {
+  const scene = engineContext?.getScene();
   if (!scene || !isRunning.value) return
 
   // Remove existing cubes
