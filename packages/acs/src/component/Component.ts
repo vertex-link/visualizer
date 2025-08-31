@@ -1,10 +1,6 @@
 import Actor from "../Actor";
 import { generateUUID } from "./../utils/uuid";
 import { emit } from "../events/Event";
-import {
-  registerEventListeners,
-  unregisterEventListeners,
-} from "../events/Decorators";
 import { ComponentAddedEvent, ComponentRemovedEvent, ComponentInitializedEvent } from "../events/CoreEvents";
 
 export type ComponentClass<T extends Component = Component> = new (actor: Actor, ...args: any[]) => T;
@@ -52,20 +48,7 @@ export default abstract class Component {
       componentType: this.constructor.name
     }));
 
-    // Unregister event listeners
-    try {
-      const scene = (this._actor as any).scene;
-      const eventBus = scene?.eventBus;
-
-      if (eventBus) {
-        unregisterEventListeners(this, eventBus);
-      } else {
-        unregisterEventListeners(this);
-      }
-    } catch (error) {
-      // Silent fail
-    }
-
+    // Decorator-based event cleanup removed; components should clean up explicitly if needed
     this._initialized = false;
   }
 }

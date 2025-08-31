@@ -348,3 +348,10 @@ Notes:
 - The helpers are synchronous-scope only. If you jump async (e.g., setTimeout/await), re-enter a context around the async callback or pass dependencies explicitly.
 - This is an incremental migration path: you can start by wrapping selected methods with withContext and gradually remove decorators.
 - The helpers are engine-agnostic. You control what goes into the context (actor, component, eventBus, processors/services), keeping boundaries clear.
+
+Additional ACS composables:
+- packages/acs/src/composables/processors.ts: useUpdate(processorName, fn, context[, id]) to register per-frame/fixed-tick work without decorators.
+- packages/acs/src/composables/events.ts: useOnEvent/useOnceEvent to subscribe to events on the current context's event bus. Both return disposer functions.
+
+Decorator status:
+- Decorator-based hooks are removed/disabled. tsconfig.base.json sets experimentalDecorators=false and emitDecoratorMetadata=false. Prefer the explicit composable APIs above.

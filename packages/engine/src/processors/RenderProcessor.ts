@@ -1,17 +1,4 @@
-import { createProcessorUpdateDecorator, Processor } from "@vertex-link/acs";
-
-/**
- * Decorator to hook a method into the "render" Processor's update loop.
- * The decorated method will be called on each tick of the "render" processor.
- * Signature: `(deltaTime: number, ...args: any[]) => void`.
- *
- * This decorator is defined alongside the RenderProcessor for better modularity.
- */
-export function RenderUpdate() {
-  // The first argument "render" MUST match the name given to the RenderProcessor instance
-  // when it's registered with the ProcessorRegistry.
-  return createProcessorUpdateDecorator("render", "RenderUpdate");
-}
+import { Processor } from "@vertex-link/acs";
 
 /**
  * A Processor that uses `requestAnimationFrame` for its loop, suitable for rendering tasks.

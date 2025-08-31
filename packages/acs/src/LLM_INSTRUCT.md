@@ -42,7 +42,7 @@ The Vertex Link Core Library provides a modular and decoupled architecture for b
 - **Favor Composition**: Encapsulate specific data and logic in Component classes
 - **Leverage Event System**: Use EventBus for communication between components
 - **Use Services**: Create IService implementations for shared functionality
-- **Utilize Processors**: Hook into update loops by registering with ProcessorRegistry
+- **Utilize Processors**: Use composables to hook into update loops explicitly. Prefer useUpdate(processorName, fn, context[, id]) from packages/acs/src/composables/processors.ts. The global ProcessorRegistry still exists for legacy paths but is deprecated.
 - **Scene Management**: Use Scene for Actor collections and queries
 - **Type Safety**: Adhere to TypeScript types
 - **Modularity**: Keep classes focused on single responsibilities
@@ -50,7 +50,7 @@ The Vertex Link Core Library provides a modular and decoupled architecture for b
 - **Efficiency**: Be mindful of performance
 - **Explicit Dependencies**: Use getter methods with caching for component dependencies
 - **Understand Lifecycles**: Use lifecycle methods correctly (`onBeforeInitialize`, `onInitialize`)
-- **TypeScript Configuration**: Enable experimentalDecorators and emitDecoratorMetadata for core library compatibility
+- TypeScript Configuration: Do NOT use experimental decorators. Keep "experimentalDecorators": false and "emitDecoratorMetadata": false (see tsconfig.base.json). Use explicit patterns and composables instead of decorators.
 - **Follow File Structure**: Place elements in appropriate directories
 - **Refer to Examples**: Check examples directory for implementation patterns
 
@@ -140,7 +140,7 @@ src/
 │   │   └── EventBus.ts          # IEventBus interface, EventBus class, global bus functions
 │   ├── processor/
 │   │   ├── Processor.ts         # Processor base class, IProcessable
-│   │   └── ProcessorRegistry.ts # Static registry for Processors
+│   │   └── ProcessorRegistry.ts # Static registry for Processors (deprecated; prefer context + useProcessor/useUpdate)
 │   └── scene/
 │       ├── QueryBuilder.ts      # Fluent API for building queries
 │       ├── QueryCondition.ts    # Interfaces for query conditions & data provider
@@ -257,7 +257,7 @@ src/
     - `abstract start(): void`
     - `abstract stop(): void`
 
-**Class: ProcessorRegistry**
+**Class: ProcessorRegistry (Deprecated)**
 - **Purpose**: Static registry for managing processors
 - **Key Methods**:
     - `register(processor: Processor): void`
@@ -345,7 +345,7 @@ const material = await initializeAndGetResource(materialHandle, device, preferre
 ```
 
 
-## 9. Event System Usage
+## 9. Event System Usage (Decorator-free)
 
 Use the EventBus directly for communication:
 
@@ -360,8 +360,9 @@ class GameLogicComponent extends Component {
     constructor(actor: Actor) {
         super(actor);
         
-        // Subscribe to events
-        this.actor.scene?.eventBus.on(PlayerDeathEvent, this.handlePlayerDeath.bind(this));
+        // Subscribe using composable within a known context (e.g., during onInitialize in a running context)
+        // Or directly against the scene's eventBus if available
+        this.actor.scene?.eventBus.on(PlayerDeathEvent, this.handlePlayerDeath.bind(this)); // simple path
     }
 
     private handlePlayerDeath(event: PlayerDeathEvent): void {
@@ -378,14 +379,43 @@ class GameLogicComponent extends Component {
 
     dispose(): void {
         // Clean up event subscriptions
-        this.actor.scene?.eventBus.off(PlayerDeathEvent, this.handlePlayerDeath.bind(this));
+        this.actor.scene?.eventBus.off(PlayerDeathEvent, this.handlePlayerDeath.bind(this)); // Or call disposer if using useOnEvent
         super.dispose();
     }
 }
 ```
 
 
-## 10. Final Instructions
+## 10. Decorator-free Composition Helpers
+
+Use these helpers to replace decorators with explicit subscriptions/registrations:
+
+- useOnEvent(eventClass, handler, context): subscribe to an event on the current context's event bus; returns a disposer.
+- useOnceEvent(eventClass, handler, context): subscribe once; returns a disposer.
+- useUpdate(processorName, fn, context[, id]): register a per-tick task against a named processor available in context; returns a disposer. Falls back to ProcessorRegistry for legacy flows.
+- Context helpers live at src/composables/context.ts; event/update helpers live at packages/acs/src/composables/.
+
+Example (component registering an update):
+
+```ts
+import { Component } from '@vertex-link/acs';
+import { useUpdate } from '@vertex-link/acs/src/composables/processors';
+
+export class RotatingComponent extends Component {
+  private stop?: () => void;
+  speed = 0.5;
+  onInitialize(): void {
+    this.stop = useUpdate('webgpu', (dt) => this.tick(dt), this, `rot_${this.id}`);
+  }
+  dispose(): void {
+    this.stop?.();
+    super.dispose();
+  }
+  private tick(dt: number) { /* ... */ }
+}
+```
+
+## 11. Final Instructions
 
 1. **Focus on Extension**: Create new classes that use the existing core library
 2. **Identify Issues Separately**: Report bugs or flaws in the core library separately

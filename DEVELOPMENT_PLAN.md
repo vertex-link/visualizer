@@ -1,5 +1,7 @@
 # Vertex Link Architecture Development Plan
 
+Note: This is the canonical plan (correct spelling). The legacy DEVELPMENT_PLAN.md file is deprecated and now redirects to this document.
+
 ## Core Architecture Principles
 
 1. **Component-Driven Resources**: Components pull resources from `ResourceComponent`
@@ -14,6 +16,7 @@
 - EngineContext introduced and integrated in rotating-cubes example; ProcessorRegistry shim retained for legacy resources. ✓
 - Engine-specific events moved out of ACS; CoreEvents remains engine-agnostic. ✓
 - WebGPU resource lifecycle currently uses explicit setDevice()+compile; decorators are disabled in tsconfig. ✓
+- Replaced decorator pattern with explicit composables: src/composables/context.ts and packages/acs/src/composables/{events,processors}.ts. Updated Actor/Component to remove decorator hooks. ✓
 
 ## Implementation Phases
 

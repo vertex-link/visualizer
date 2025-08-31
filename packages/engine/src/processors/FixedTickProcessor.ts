@@ -1,17 +1,5 @@
 
-// --- FixedTickUpdate Decorator ---
 import { Processor } from "@vertex-link/acs";
-import { createProcessorUpdateDecorator } from "@vertex-link/acs";
-
-/**
- * Decorator to hook a method into the "fixedTick" Processor's update loop.
- * The decorated method will be called on each tick of the "fixedTick" processor.
- * Signature: `(deltaTime: number, ...args: any[]) => void`.
- */
-export function FixedTickUpdate() {
-  // "fixedTick" must match the name used when registering an instance of FixedTickProcessor.
-  return createProcessorUpdateDecorator("fixedTick", "FixedTickUpdate");
-}
 
 /**
  * A Processor that uses `setInterval` for a fixed-step loop,

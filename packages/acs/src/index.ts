@@ -24,15 +24,12 @@ export {
 } from './events/Event'; //
 export type { EventPayload, EventHandler, EventClass } from './events/Event'; //
 export * from './events/CoreEvents'; //
-export { OnEvent, OnceEvent, registerEventListeners, unregisterEventListeners } from './events/Decorators'; //
 export { emitToQuery } from './events/EmitToQuery'; //
 
 // Processor System
 export { Processor } from './processor/Processor'; //
 export type { ProcessorTickCallback, IProcessable } from './processor/Processor'; //
 export { ProcessorRegistry } from './processor/ProcessorRegistry'; //
-export { Update, createProcessorUpdateDecorator, HOOKED_METHODS_METADATA_KEY } from './processor/Decorators'; //
-export type { HookedMethodMetadata } from './processor/Decorators'; //
 
 // Scene System
 export { Scene, SceneQueryBuilder } from './scene/Scene'; //

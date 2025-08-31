@@ -40,8 +40,8 @@ export type { RenderBatch, RenderPassContext } from './rendering/RenderGraph';
 export { GPUResourcePool } from './rendering/GPUResourcePool';
 
 export { WebGPUProcessor } from './processors/WebGPUProcessor';
-export { RenderProcessor, RenderUpdate } from './processors/RenderProcessor';
-export { FixedTickProcessor, FixedTickUpdate } from './processors/FixedTickProcessor';
+export { RenderProcessor } from './processors/RenderProcessor';
+export { FixedTickProcessor } from './processors/FixedTickProcessor';
 
 // WebGPU wrappers
 export { WebGPURenderer } from './webgpu/WebGPURenderer';
