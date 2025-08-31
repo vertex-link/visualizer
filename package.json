@@ -17,6 +17,7 @@
     "typescript": "^5"
   },
   "scripts": {
+    "build": "bun run build:all-libs && bun run build:visualizer",
     "dev:desktop": "bun run dev:libs && bun run --cwd ./packages/desktop dev",
     "build:desktop": "bun run build:all-libs && bun run --cwd ./packages/desktop build",
     "build:acs": "bun run --cwd ./packages/acs build",

@@ -1,9 +1,11 @@
 <template>
-  <BaseLayout />
+  <div class="p-3">
+    <RouterView />
+  </div>
 </template>
 
 <script setup lang="ts">
-import BaseLayout from './components/layout/BaseLayout.vue'
+import { RouterView } from 'vue-router'
 </script>
 
 <style>

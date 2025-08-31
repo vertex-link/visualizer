@@ -3,35 +3,31 @@
   <div class="example-container">
     <div class="example-header">
       <div class="example-title">
-        <BaseText variant="h2">{{ title }}</BaseText>
-        <Status :variant="status" size="sm">{{ statusText }}</Status>
+        <h2>{{ title }}</h2>
+        <span class="status-chip" :data-variant="status">{{ statusText }}</span>
       </div>
       <div class="example-actions">
         <Button
           v-if="!isRunning"
-          variant="primary"
-          icon="play_arrow"
+          label="Start Demo"
+          icon="pi pi-play"
           @click="$emit('start')"
           :disabled="!canStart"
-        >
-          {{ statusText === 'Loading...' ? 'Initializing...' : 'Start Demo' }}
-        </Button>
+        />
         <Button
           v-else
-          variant="secondary"
-          icon="stop"
+          label="Stop Demo"
+          icon="pi pi-stop"
+          severity="secondary"
           @click="$emit('stop')"
-        >
-          Stop Demo
-        </Button>
+        />
         <Button
-          variant="secondary"
-          icon="refresh"
+          label="Reset"
+          icon="pi pi-refresh"
+          severity="secondary"
           @click="$emit('reset')"
           :disabled="isRunning"
-        >
-          Reset
-        </Button>
+        />
       </div>
     </div>
 
@@ -45,10 +41,10 @@
         />
         <div v-if="!isRunning" class="canvas-overlay">
           <div class="overlay-content">
-            <span class="material-icons">play_circle</span>
-            <BaseText variant="h4" color="secondary">
+            <i class="pi pi-play-circle" style="font-size: 1.5rem"></i>
+            <h4 class="overlay-title">
               {{ canStart ? 'Click Start to Begin' : (statusText || 'Loading...') }}
-            </BaseText>
+            </h4>
           </div>
         </div>
       </div>
@@ -63,9 +59,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import BaseText from '../../components/base/BaseText.vue'
-import Button from '../../components/base/Button.vue'
-import Status from '../../components/base/Status.vue'
+import Button from 'primevue/button'
 
 interface Props {
   title: string
@@ -143,6 +137,21 @@ defineExpose({
   gap: var(--space-4);
 }
 
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+}
+.status-chip[data-variant='active'] { color: var(--color-success); border-color: var(--color-success); }
+.status-chip[data-variant='inactive'] { color: var(--color-text-tertiary); }
+.status-chip[data-variant='error'] { color: var(--color-error); border-color: var(--color-error); }
+
+.overlay-title { color: var(--color-text-secondary); }
+
 .example-actions {
   display: flex;
   gap: var(--space-3);
@@ -191,7 +200,7 @@ defineExpose({
   text-align: center;
 }
 
-.overlay-content .material-icons {
+.overlay-content i {
   font-size: 48px;
   color: var(--color-accent);
 }

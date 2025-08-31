@@ -1,29 +1,29 @@
 <template>
   <div class="info-panel">
     <div class="panel-header">
-      <span class="material-icons">info</span>
-      <BaseText variant="h4">{{ title }}</BaseText>
+      <i class="pi pi-info-circle" style="font-size: 1.1rem"></i>
+      <h4>{{ title }}</h4>
     </div>
 
     <div class="panel-content">
       <slot />
 
       <div v-if="features.length > 0" class="features-section">
-        <BaseText variant="label" color="tertiary" class="mb-2">FEATURES</BaseText>
+        <label class="section-label">FEATURES</label>
         <div class="feature-list">
           <div
             v-for="feature in features"
             :key="feature"
             class="feature-item"
           >
-            <span class="material-icons">check_circle</span>
-            <BaseText variant="body" size="sm">{{ feature }}</BaseText>
+            <i class="pi pi-check-circle" style="font-size: 0.9rem; color: var(--color-success);"></i>
+            <span class="feature-text">{{ feature }}</span>
           </div>
         </div>
       </div>
 
       <div v-if="technologies.length > 0" class="tech-section">
-        <BaseText variant="label" color="tertiary" class="mb-2">TECHNOLOGIES</BaseText>
+        <label class="section-label">TECHNOLOGIES</label>
         <div class="tech-tags">
           <span
             v-for="tech in technologies"
@@ -39,8 +39,6 @@
 </template>
 
 <script setup lang="ts">
-import BaseText from '../../components/base/BaseText.vue'
-
 interface Props {
   title?: string
   features?: string[]
@@ -67,7 +65,7 @@ withDefaults(defineProps<Props>(), {
   margin-bottom: var(--space-4);
 }
 
-.panel-header .material-icons {
+.panel-header i {
   color: var(--color-accent);
   font-size: 20px;
 }

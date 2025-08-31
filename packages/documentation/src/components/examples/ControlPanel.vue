@@ -1,8 +1,8 @@
 <template>
   <div class="control-panel">
     <div class="panel-header">
-      <span class="material-icons">tune</span>
-      <BaseText variant="h4">{{ title }}</BaseText>
+      <i class="pi pi-sliders-h" style="font-size: 1.1rem"></i>
+      <h4>{{ title }}</h4>
     </div>
 
     <div class="panel-content">
@@ -12,8 +12,6 @@
 </template>
 
 <script setup lang="ts">
-import BaseText from '../../components/base/BaseText.vue'
-
 interface Props {
   title?: string
 }
@@ -35,7 +33,7 @@ withDefaults(defineProps<Props>(), {
   margin-bottom: var(--space-4);
 }
 
-.panel-header .material-icons {
+.panel-header i {
   color: var(--color-accent);
   font-size: 20px;
 }

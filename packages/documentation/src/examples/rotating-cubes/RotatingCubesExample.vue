@@ -22,11 +22,11 @@
         ]"
         :technologies="['WebGPU', 'TypeScript', 'Actor-Component-System']"
       >
-        <BaseText variant="body" size="sm" color="secondary">
+        <p>
           This demo showcases the simplified resource system where resources auto-load
           and auto-compile without ResourceManager complexity. Each cube uses the new
           ResourceComponent pattern with type-safe resource access.
-        </BaseText>
+        </p>
       </InfoPanel>
     </template>
 
@@ -93,7 +93,6 @@ import ExampleContainer from '../../components/examples/ExampleContainer.vue'
 import InfoPanel from '../../components/examples/InfoPanel.vue'
 import ControlPanel from '../../components/examples/ControlPanel.vue'
 import ControlGroup from '../../components/examples/ControlGroup.vue'
-import BaseText from '../../components/base/BaseText.vue'
 
 // Import simplified resource classes
 // import basicShaderSource from '@vertex-link/engine/webgpu/shaders/basic.wgsl'

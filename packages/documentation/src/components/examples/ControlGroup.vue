@@ -1,15 +1,13 @@
 <template>
   <div class="control-group">
     <div class="control-header">
-      <BaseText variant="label" color="secondary">{{ label }}</BaseText>
-      <BaseText
+      <label class="control-label">{{ label }}</label>
+      <code
         v-if="showValue && currentValue !== undefined"
-        variant="mono"
-        size="xs"
-        color="tertiary"
+        class="value-code"
       >
         {{ formatValue(currentValue) }}
-      </BaseText>
+      </code>
     </div>
 
     <!-- Slider Control -->
@@ -40,13 +38,11 @@
     <!-- Button Control -->
     <div v-else-if="type === 'button'" class="button-control">
       <Button
-        :variant="buttonVariant"
-        :icon="buttonIcon"
+        :label="buttonText"
+        :icon="buttonIcon ? `pi pi-${buttonIcon}` : undefined"
         @click="$emit('action')"
         :disabled="disabled"
-      >
-        {{ buttonText }}
-      </Button>
+      />
     </div>
 
     <!-- Select Control -->
@@ -70,8 +66,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import BaseText from '../../components/base/BaseText.vue'
-import Button from '../../components/base/Button.vue'
+import Button from 'primevue/button'
 
 interface Option {
   value: any
@@ -91,7 +86,6 @@ interface Props {
   // Button specific
   buttonText?: string
   buttonIcon?: string
-  buttonVariant?: 'primary' | 'secondary' | 'accent'
   // Select specific
   options?: Option[]
 }
@@ -104,7 +98,6 @@ const props = withDefaults(defineProps<Props>(), {
   precision: 2,
   disabled: false,
   buttonText: 'Action',
-  buttonVariant: 'secondary',
   options: () => []
 })
 

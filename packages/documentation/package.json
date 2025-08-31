@@ -14,6 +14,8 @@
     "@vertex-link/acs": "workspace:*",
     "@vertex-link/engine": "workspace:*",
     "@vitejs/plugin-vue": "^5.2.4",
+    "primevue": "^4.2.1",
+    "primeicons": "^7.0.0",
     "reflect-metadata": "^0.2.2",
     "vue": "^3.3.0",
     "vue-router": "^4.2.0"
