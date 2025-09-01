@@ -4,17 +4,17 @@
   "type": "module",
   "private": true,
   "devDependencies": {
-    "@babel/plugin-transform-typescript": "^7.27.1",
+    "@babel/plugin-transform-typescript": "^7.28.0",
+    "@biomejs/biome": "^1.9.4",
     "@types/bun": "latest",
-    "concurrently": "^9.1.2",
-    "esbuild": "^0.25.5",
-    "vite": "^6.3.5"
+    "concurrently": "^9.2.1",
+    "esbuild": "^0.25.9",
+    "vite": "^6.3.5",
+    "vite-plugin-zig": "^0.0.13"
   },
-  "workspaces": [
-    "packages/*"
-  ],
+  "workspaces": ["packages/*"],
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "^5.8.3"
   },
   "scripts": {
     "build": "bun run build:all-libs && bun run build:visualizer",
@@ -27,9 +27,11 @@
     "typecheck": "tsc --noEmit -p ./tsconfig.json",
     "dev": "concurrently \"bun run dev:libs\" \"bun run dev:visualizer\"",
     "dev:libs": "concurrently \"cd packages/acs && bun run dev\" \"cd packages/engine && bun run dev\"",
-    "dev:visualizer": "cd packages/documentation && bun run dev"
+    "dev:visualizer": "cd packages/documentation && bun run dev",
+    "lint": "biome check packages src tests",
+    "lint:fix": "biome format --write packages src tests && biome check --write packages src tests"
   },
   "dependencies": {
-    "@webgpu/types": "^0.1.61"
+    "@webgpu/types": "^0.1.64"
   }
 }

@@ -1,9 +1,10 @@
 import { Component } from "@vertex-link/acs";
-import { Transform, TransformComponent, Vec3 } from "@vertex-link/engine";
+import { Transform, TransformComponent } from "@vertex-link/engine";
+import type { Vec3 } from "@vertex-link/engine";
 
 export class RotatingComponent extends Component {
   private transform!: TransformComponent;
-  public speed: number = 0.5; // Radians per second
+  public speed = 0.5; // Radians per second
 
   getTransform(): TransformComponent {
     if (!this.transform) {

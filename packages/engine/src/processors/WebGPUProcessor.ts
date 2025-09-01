@@ -1,25 +1,23 @@
-import { IEventBus, Processor, Scene } from "@vertex-link/acs";
-import { MeshRendererComponent } from "../rendering/components/MeshRendererComponent";
-import { WebGPURenderer } from "../webgpu/WebGPURenderer";
+import { type IEventBus, Processor, type Scene } from "@vertex-link/acs";
+import { ResourceReadyEvent } from "../events";
 import { GPUResourcePool } from "../rendering/GPUResourcePool";
 import { RenderGraph } from "../rendering/RenderGraph";
 import { CameraComponent } from "../rendering/camera/CameraComponent";
+import { MeshRendererComponent } from "../rendering/components/MeshRendererComponent";
 import { TransformComponent } from "../rendering/components/TransformComponent";
-import { MaterialResource } from "../resources/MaterialResource";
-import { MeshResource } from "../resources/MeshResource";
-import { ResourceReadyEvent } from "../events";
+import type { MaterialResource } from "../resources/MaterialResource";
+import type { MeshResource } from "../resources/MeshResource";
+import { WebGPURenderer } from "../webgpu/WebGPURenderer";
 
 // Phase 0: Decorator-based update hooks disabled. Keeping placeholder commented out for reference.
-
-
 
 /**
  * Instance data for a single object
  */
 interface InstanceData {
   modelMatrix: Float32Array; // 16 floats
-  color: Float32Array;       // 4 floats
-  transformVersion: number;  // Track transform changes
+  color: Float32Array; // 4 floats
+  transformVersion: number; // Track transform changes
 }
 
 /**
@@ -62,7 +60,7 @@ export class WebGPUProcessor extends Processor {
   private animationFrameId?: number;
   private eventBus: IEventBus;
 
-  constructor(canvas: HTMLCanvasElement, name: string = "webgpu", eventBus: IEventBus) {
+  constructor(canvas: HTMLCanvasElement, name = "webgpu", eventBus: IEventBus) {
     super(name);
     this.canvas = canvas;
     this.renderer = new WebGPURenderer();
@@ -120,7 +118,13 @@ export class WebGPUProcessor extends Processor {
     this.updateGlobalUniforms();
 
     // Execute render graph with camera
-    this.renderGraph.execute(this.renderer, this.cachedBatches, this.activeCamera, deltaTime, this.globalBindGroup);
+    this.renderGraph.execute(
+      this.renderer,
+      this.cachedBatches,
+      this.activeCamera,
+      deltaTime,
+      this.globalBindGroup,
+    );
   }
 
   /**
@@ -130,7 +134,8 @@ export class WebGPUProcessor extends Processor {
     if (!this.scene) return;
 
     // Query all renderable objects
-    const renderables = this.scene.query()
+    const renderables = this.scene
+      .query()
       .withComponent(TransformComponent)
       .withComponent(MeshRendererComponent)
       .execute();
@@ -144,8 +149,8 @@ export class WebGPUProcessor extends Processor {
       meshRenderer?.updateForRender(0);
       if (!meshRenderer?.isRenderable()) continue;
 
-      const materialId = meshRenderer.material?.id || 'default';
-      const meshId = meshRenderer.mesh?.id || 'default';
+      const materialId = meshRenderer.material?.id || "default";
+      const meshId = meshRenderer.mesh?.id || "default";
       const batchKey = `${materialId}_${meshId}`;
 
       if (!batchGroups.has(batchKey)) {
@@ -164,7 +169,11 @@ export class WebGPUProcessor extends Processor {
         if (transform) {
           const modelMatrix = transform.getWorldMatrix();
           const color = this.getInstanceColor(meshRenderer.material!);
-          batch.instances.set(meshRenderer.actor!.id, { modelMatrix, color, transformVersion: transform.version });
+          batch.instances.set(meshRenderer.actor!.id, {
+            modelMatrix,
+            color,
+            transformVersion: transform.version,
+          });
         }
       }
 
@@ -172,20 +181,22 @@ export class WebGPUProcessor extends Processor {
       return batch;
     });
 
-    console.log(`📦 Created ${this.cachedBatches.length} instanced render batches for ${renderables.length} objects`);
+    console.log(
+      `📦 Created ${this.cachedBatches.length} instanced render batches for ${renderables.length} objects`,
+    );
   }
 
   /**
    * Convert material color uniform to Float32Array
    */
   private getInstanceColor(material: MaterialResource): Float32Array {
-    const colorUniform = material.getUniform('color');
+    const colorUniform = material.getUniform("color");
 
     if (colorUniform instanceof Float32Array) {
       return colorUniform;
     } else if (Array.isArray(colorUniform)) {
       return new Float32Array(colorUniform);
-    } else if (typeof colorUniform === 'number') {
+    } else if (typeof colorUniform === "number") {
       return new Float32Array([colorUniform, colorUniform, colorUniform, 1.0]);
     } else {
       return new Float32Array([1.0, 1.0, 1.0, 1.0]); // Default white
@@ -195,7 +206,10 @@ export class WebGPUProcessor extends Processor {
   /**
    * Create an instanced render batch
    */
-  private createInstancedBatch(material: MaterialResource, mesh: MeshResource): InstancedRenderBatch {
+  private createInstancedBatch(
+    material: MaterialResource,
+    mesh: MeshResource,
+  ): InstancedRenderBatch {
     const maxInstances = 1000;
     const device = this.renderer.getDevice()!;
 
@@ -204,7 +218,7 @@ export class WebGPUProcessor extends Processor {
     const instanceBuffer = device.createBuffer({
       size: bufferSize,
       usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-      label: `InstanceBuffer_${material.name}_${mesh.id}`
+      label: `InstanceBuffer_${material.name}_${mesh.id}`,
     });
 
     return {
@@ -217,11 +231,9 @@ export class WebGPUProcessor extends Processor {
       pipeline: undefined,
       bindGroup: undefined,
       isDirty: true,
-      maxInstances
+      maxInstances,
     };
   }
-
-
 
   /**
    * Update the active camera from scene
@@ -320,13 +332,7 @@ export class WebGPUProcessor extends Processor {
       // Upload only the used portion
       const usedBytes = batch.instances.size * 80;
       if (usedBytes > 0) {
-        device.queue.writeBuffer(
-          batch.instanceBuffer,
-          0,
-          batch.instanceData.buffer,
-          0,
-          usedBytes
-        );
+        device.queue.writeBuffer(batch.instanceBuffer, 0, batch.instanceData.buffer, 0, usedBytes);
         // console.log(`📤 Uploaded ${batch.instances.size} instances for ${batch.material.name}`);
       }
 
@@ -361,7 +367,7 @@ export class WebGPUProcessor extends Processor {
       this.globalUniformBuffer = device.createBuffer({
         size: 64, // 16 floats * 4 bytes
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-        label: 'GlobalUniforms'
+        label: "GlobalUniforms",
       });
       device.queue.writeBuffer(this.globalUniformBuffer, 0, globalData.buffer);
 
@@ -406,19 +412,23 @@ export class WebGPUProcessor extends Processor {
     }
 
     if (!bindGroupLayout) {
-      console.warn(`⚠️ No pipeline available to get bind group layout (checked ${this.cachedBatches.length} batches, found pipeline: ${foundPipeline})`);
+      console.warn(
+        `⚠️ No pipeline available to get bind group layout (checked ${this.cachedBatches.length} batches, found pipeline: ${foundPipeline})`,
+      );
       return;
     }
 
     try {
       // Create bind group using pipeline's layout
       this.globalBindGroup = device.createBindGroup({
-        label: 'GlobalBindGroup',
+        label: "GlobalBindGroup",
         layout: bindGroupLayout,
-        entries: [{
-          binding: 0,
-          resource: { buffer: this.globalUniformBuffer }
-        }]
+        entries: [
+          {
+            binding: 0,
+            resource: { buffer: this.globalUniformBuffer },
+          },
+        ],
       });
       // console.log("✅ Global bind group created successfully");
     } catch (error) {
@@ -486,7 +496,7 @@ export class WebGPUProcessor extends Processor {
     }
 
     // Cleanup instanced resources
-    this.cachedBatches.forEach(batch => {
+    this.cachedBatches.forEach((batch) => {
       if (batch.instanceBuffer) {
         batch.instanceBuffer.destroy();
       }
@@ -521,6 +531,4 @@ export class WebGPUProcessor extends Processor {
     // Schedule next frame
     this.animationFrameId = requestAnimationFrame(() => this.renderLoop());
   }
-
-
 }

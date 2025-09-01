@@ -1,4 +1,4 @@
-import { Event } from '@vertex-link/acs';
+import { Event } from "@vertex-link/acs";
 
 /**
  * Resource events
@@ -6,7 +6,7 @@ import { Event } from '@vertex-link/acs';
 export class ResourceReadyEvent extends Event<{
   meshRenderer: any; // Using any to avoid circular import
 }> {
-  static readonly eventType = 'engine.resource.ready';
+  static readonly eventType = "engine.resource.ready";
 }
 
 /**
@@ -19,13 +19,13 @@ export class KeyDownEvent extends Event<{
   shiftKey: boolean;
   altKey: boolean;
 }> {
-  static readonly eventType = 'engine.input.keydown';
+  static readonly eventType = "engine.input.keydown";
 }
 
 export class KeyUpEvent extends Event<{
   key: string;
 }> {
-  static readonly eventType = 'engine.input.keyup';
+  static readonly eventType = "engine.input.keyup";
 }
 
 export class MouseClickEvent extends Event<{
@@ -35,7 +35,7 @@ export class MouseClickEvent extends Event<{
   screenX: number;
   screenY: number;
 }> {
-  static readonly eventType = 'engine.input.mouseclick';
+  static readonly eventType = "engine.input.mouseclick";
 }
 
 export class MouseMoveEvent extends Event<{
@@ -44,5 +44,5 @@ export class MouseMoveEvent extends Event<{
   deltaX: number;
   deltaY: number;
 }> {
-  static readonly eventType = 'engine.input.mousemove';
+  static readonly eventType = "engine.input.mousemove";
 }

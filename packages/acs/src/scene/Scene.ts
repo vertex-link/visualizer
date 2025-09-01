@@ -1,14 +1,11 @@
-import Actor from '../Actor';
-import { ComponentClass } from '../component/Component';
-import { ComponentTypeRegistry } from '../component/ComponentRegistry';
-import { QueryBuilder } from './QueryBuilder';
-import { IQueryDataProvider } from './QueryCondition';
-import {
-  IEventBus,
-  EventBus, getEventBus,
-} from '../events/EventBus';
+import type Actor from "../Actor";
+import type { ComponentClass } from "../component/Component";
+import { ComponentTypeRegistry } from "../component/ComponentRegistry";
 import { EntityCreatedEvent, EntityDestroyedEvent } from "../events/CoreEvents";
 import { emitToQuery } from "../events/EmitToQuery";
+import { EventBus, type IEventBus, getEventBus } from "../events/EventBus";
+import { QueryBuilder } from "./QueryBuilder";
+import type { IQueryDataProvider } from "./QueryCondition";
 
 /**
  * Core Scene class - manages actors and provides efficient queries
@@ -30,7 +27,7 @@ export class Scene implements IQueryDataProvider {
    * @param name Scene name
    * @param eventBus Optional shared event bus. If not provided, creates its own.
    */
-  constructor(name: string = 'Scene', eventBus: IEventBus = getEventBus()) {
+  constructor(name = "Scene", eventBus: IEventBus = getEventBus()) {
     this.name = name;
     this.eventBus = eventBus;
   }
@@ -47,10 +44,12 @@ export class Scene implements IQueryDataProvider {
     this.indexActor(actor);
 
     // Emit core framework event
-    this.eventBus.emit(new EntityCreatedEvent({
-      entity: actor,
-      scene: this
-    }));
+    this.eventBus.emit(
+      new EntityCreatedEvent({
+        entity: actor,
+        scene: this,
+      }),
+    );
   }
 
   /**
@@ -63,10 +62,12 @@ export class Scene implements IQueryDataProvider {
     this.deindexActor(actor);
 
     // Emit core framework event
-    this.eventBus.emit(new EntityDestroyedEvent({
-      entity: actor,
-      scene: this
-    }));
+    this.eventBus.emit(
+      new EntityDestroyedEvent({
+        entity: actor,
+        scene: this,
+      }),
+    );
 
     return true;
   }
@@ -85,7 +86,7 @@ export class Scene implements IQueryDataProvider {
    * Get actors by label
    */
   getActorsByLabel(label: string): Actor[] {
-    return Array.from(this.actors).filter(actor => actor.label === label);
+    return Array.from(this.actors).filter((actor) => actor.label === label);
   }
 
   /**
@@ -124,7 +125,7 @@ export class Scene implements IQueryDataProvider {
     for (const tag of tags) {
       const taggedActors = this.tagIndex.get(tag);
       if (taggedActors) {
-        taggedActors.forEach(actor => result.add(actor));
+        taggedActors.forEach((actor) => result.add(actor));
       }
     }
     return result;
@@ -239,11 +240,13 @@ export class Scene implements IQueryDataProvider {
    */
   clear(): void {
     // Emit destroyed events for all actors
-    this.actors.forEach(actor => {
-      this.eventBus.emit(new EntityDestroyedEvent({
-        entity: actor,
-        scene: this
-      }));
+    this.actors.forEach((actor) => {
+      this.eventBus.emit(
+        new EntityDestroyedEvent({
+          entity: actor,
+          scene: this,
+        }),
+      );
     });
 
     this.actors.clear();
@@ -268,7 +271,7 @@ export class Scene implements IQueryDataProvider {
 export class SceneQueryBuilder<T extends Actor = Actor> extends QueryBuilder<T> {
   constructor(
     private scene: Scene,
-    private eventBus: IEventBus
+    private eventBus: IEventBus,
   ) {
     super();
   }

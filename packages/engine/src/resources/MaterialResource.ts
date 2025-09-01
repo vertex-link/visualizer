@@ -1,8 +1,8 @@
 import { ProcessorRegistry, Resource, ResourceStatus } from "@vertex-link/acs";
-import { ShaderResource, ShaderStage } from "./ShaderResource";
-import { VertexLayout } from "../rendering/interfaces/IPipeline";
+import type { WebGPUProcessor } from "../processors/WebGPUProcessor";
+import type { VertexLayout } from "../rendering/interfaces/IPipeline";
 import { WebGPUPipeline } from "./../webgpu/WebGPUPipeline";
-import { WebGPUProcessor } from "../processors/WebGPUProcessor";
+import { type ShaderResource, ShaderStage } from "./ShaderResource";
 
 /**
  * Uniform data types supported by materials.
@@ -13,7 +13,7 @@ export type UniformValue = number | number[] | Float32Array | Int32Array | Uint3
  * Uniform descriptor for material properties.
  */
 export interface UniformDescriptor {
-  type: 'float' | 'vec2' | 'vec3' | 'vec4' | 'mat4' | 'int' | 'uint';
+  type: "float" | "vec2" | "vec3" | "vec4" | "mat4" | "int" | "uint";
   size: number; // Size in bytes
   value: UniformValue;
 }
@@ -26,10 +26,10 @@ export interface MaterialDescriptor {
   uniforms?: Record<string, UniformDescriptor>;
   vertexLayout?: VertexLayout;
   renderState?: {
-    cullMode?: 'none' | 'front' | 'back';
+    cullMode?: "none" | "front" | "back";
     depthWrite?: boolean;
     depthTest?: boolean;
-    blendMode?: 'none' | 'alpha' | 'additive';
+    blendMode?: "none" | "alpha" | "additive";
     wireframe?: boolean;
   };
 }
@@ -43,8 +43,8 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
   private pipeline: WebGPUPipeline | null = null;
   private uniformBuffer: ArrayBuffer | null = null;
   private uniformData: Map<string, UniformDescriptor> = new Map();
-  public isCompiled: boolean = false;
-  private preferredFormat: GPUTextureFormat = 'bgra8unorm';
+  public isCompiled = false;
+  private preferredFormat: GPUTextureFormat = "bgra8unorm";
 
   constructor(name: string, materialData: MaterialDescriptor) {
     super(name, materialData);
@@ -68,11 +68,15 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
   }
 
   async compile(): Promise<void> {
-    console.log(`🔧 MaterialResource "${this.name}" (ID: ${this.id}) starting compilation. isCompiled: ${this.isCompiled}`);
+    console.log(
+      `🔧 MaterialResource "${this.name}" (ID: ${this.id}) starting compilation. isCompiled: ${this.isCompiled}`,
+    );
 
     const device = this.getDevice();
     if (!device) {
-      throw new Error(`MaterialResource "${this.name}": WebGPU device is not available on globalThis for compilation.`);
+      throw new Error(
+        `MaterialResource "${this.name}": WebGPU device is not available on globalThis for compilation.`,
+      );
     }
     this.device = device;
     const shader = this.payload.shader;
@@ -82,7 +86,9 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
 
     try {
       this.pipeline = await this.createPipeline(device);
-      console.log(`✅ MaterialResource "${this.name}" (ID: ${this.id}) compiled successfully. isCompiled: ${this.isCompiled}`);
+      console.log(
+        `✅ MaterialResource "${this.name}" (ID: ${this.id}) compiled successfully. isCompiled: ${this.isCompiled}`,
+      );
     } catch (error) {
       console.error(`❌ Failed to compile MaterialResource "${this.name}":`, error);
       throw error;
@@ -161,18 +167,17 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
     }
 
     const pipelineDescriptor = {
-      vertexShader: shader.vertexSource || '',
-      fragmentShader: shader.fragmentSource || '',
+      vertexShader: shader.vertexSource || "",
+      fragmentShader: shader.fragmentSource || "",
       vertexLayout: this.payload.vertexLayout || {
         stride: 12,
-        attributes: [{ location: 0, format: 'float32x3', offset: 0 }]
+        attributes: [{ location: 0, format: "float32x3", offset: 0 }],
       },
-      label: `${this.name}_pipeline`
+      label: `${this.name}_pipeline`,
     };
 
     return new WebGPUPipeline(device, pipelineDescriptor, this.preferredFormat);
   }
-
 
   /**
    * Update uniform buffer with proper WebGPU alignment
@@ -221,24 +226,24 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
     const value = uniform.value;
 
     switch (uniform.type) {
-      case 'float':
+      case "float":
         view.setFloat32(offset, value as number, true);
         break;
 
-      case 'vec2':
+      case "vec2":
         const vec2 = value as number[];
         view.setFloat32(offset, vec2[0], true);
         view.setFloat32(offset + 4, vec2[1], true);
         break;
 
-      case 'vec3':
+      case "vec3":
         const vec3 = value as number[];
         view.setFloat32(offset, vec3[0], true);
         view.setFloat32(offset + 4, vec3[1], true);
         view.setFloat32(offset + 8, vec3[2], true);
         break;
 
-      case 'vec4':
+      case "vec4":
         const vec4 = value as number[];
         view.setFloat32(offset, vec4[0], true);
         view.setFloat32(offset + 4, vec4[1], true);
@@ -246,18 +251,18 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
         view.setFloat32(offset + 12, vec4[3], true);
         break;
 
-      case 'mat4':
+      case "mat4":
         const mat4 = value as Float32Array;
         for (let i = 0; i < 16; i++) {
           view.setFloat32(offset + i * 4, mat4[i], true);
         }
         break;
 
-      case 'int':
+      case "int":
         view.setInt32(offset, value as number, true);
         break;
 
-      case 'uint':
+      case "uint":
         view.setUint32(offset, value as number, true);
         break;
     }
@@ -268,16 +273,16 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
    */
   private getUniformAlignment(type: string): number {
     switch (type) {
-      case 'float':
-      case 'int':
-      case 'uint':
+      case "float":
+      case "int":
+      case "uint":
         return 4;
-      case 'vec2':
+      case "vec2":
         return 8;
-      case 'vec3':
-      case 'vec4':
+      case "vec3":
+      case "vec4":
         return 16;
-      case 'mat4':
+      case "mat4":
         return 16;
       default:
         return 4;
@@ -289,7 +294,7 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
       return this.device;
     }
 
-    const processor = ProcessorRegistry.get<WebGPUProcessor>('webgpu');
+    const processor = ProcessorRegistry.get<WebGPUProcessor>("webgpu");
     if (!this.device && processor) {
       this.device = processor.renderer.device;
       return this.device;
@@ -303,41 +308,36 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
   static createBasic(
     name: string,
     shader: ShaderResource,
-    color: number[] = [1.0, 0.5, 0.2, 1.0]
+    color: number[] = [1.0, 0.5, 0.2, 1.0],
   ): MaterialResource {
     // Identity matrices for initialization
-    const identity = new Float32Array([
-      1, 0, 0, 0,
-      0, 1, 0, 0,
-      0, 0, 1, 0,
-      0, 0, 0, 1
-    ]);
+    const identity = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
 
     const uniforms: Record<string, UniformDescriptor> = {
       viewProjection: {
-        type: 'mat4',
+        type: "mat4",
         size: 64,
-        value: new Float32Array(identity)
+        value: new Float32Array(identity),
       },
       model: {
-        type: 'mat4',
+        type: "mat4",
         size: 64,
-        value: new Float32Array(identity)
+        value: new Float32Array(identity),
       },
       color: {
-        type: 'vec4',
+        type: "vec4",
         size: 16,
-        value: new Float32Array(color)
-      }
+        value: new Float32Array(color),
+      },
     };
 
     const vertexLayout: VertexLayout = {
       stride: 32, // position(12) + normal(12) + uv(8)
       attributes: [
-        { location: 0, format: 'float32x3', offset: 0 },  // position
-        { location: 1, format: 'float32x3', offset: 12 }, // normal
-        { location: 2, format: 'float32x2', offset: 24 }  // uv
-      ]
+        { location: 0, format: "float32x3", offset: 0 }, // position
+        { location: 1, format: "float32x3", offset: 12 }, // normal
+        { location: 2, format: "float32x2", offset: 24 }, // uv
+      ],
     };
 
     const descriptor: MaterialDescriptor = {
@@ -345,11 +345,11 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
       uniforms,
       vertexLayout,
       renderState: {
-        cullMode: 'back',
+        cullMode: "back",
         depthWrite: true,
         depthTest: true,
-        blendMode: 'none'
-      }
+        blendMode: "none",
+      },
     };
 
     return new MaterialResource(name, descriptor);

@@ -1,5 +1,5 @@
-import { EventBus, IEventBus, Scene, ProcessorRegistry } from '@vertex-link/acs';
-import { WebGPUProcessor } from './processors/WebGPUProcessor';
+import { EventBus, type IEventBus, ProcessorRegistry, type Scene } from "@vertex-link/acs";
+import { WebGPUProcessor } from "./processors/WebGPUProcessor";
 
 export class EngineContext {
   public readonly eventBus: IEventBus;

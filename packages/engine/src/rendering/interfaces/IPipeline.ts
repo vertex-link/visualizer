@@ -1,6 +1,6 @@
 /**
-* Vertex attribute description.
-*/
+ * Vertex attribute description.
+ */
 export interface VertexAttribute {
   /** Shader location/binding */
   location: number;

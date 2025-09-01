@@ -11,6 +11,7 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "isolatedModules": true,
     "noEmit": true,
+    "baseUrl": ".",
 
     // Critical: These must be false for Stage 3 decorators
     "experimentalDecorators": false,
@@ -21,6 +22,7 @@
     "allowSyntheticDefaultImports": true,
 
     "paths": {
+      "@/*": ["./packages/documentation/src/*"],
       "@vertex-link/acs": ["./packages/acs/src/index.ts"],
       "@vertex-link/acs/*": ["./packages/acs/src/*"],
       "@vertex-link/engine": ["./packages/engine/src/index.ts"],

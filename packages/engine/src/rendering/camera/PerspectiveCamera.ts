@@ -1,8 +1,8 @@
-import { TransformComponent } from "../components/TransformComponent";
-import { CameraComponent, ProjectionType } from "./CameraComponent";
-import { Transform } from "../math/Transform";
-import type { Vec3 } from "../components/TransformComponent";
 import { Actor } from "@vertex-link/acs";
+import { TransformComponent } from "../components/TransformComponent";
+import type { Vec3 } from "../components/TransformComponent";
+import { Transform } from "../math/Transform";
+import { CameraComponent, ProjectionType } from "./CameraComponent";
 
 /**
  * Helper class for creating and managing perspective cameras.
@@ -13,11 +13,11 @@ export class PerspectiveCamera extends Actor {
   private transformComponent: TransformComponent;
 
   constructor(
-    name: string = "PerspectiveCamera",
-    fov: number = Math.PI / 4,  // 45 degrees
+    name = "PerspectiveCamera",
+    fov: number = Math.PI / 4, // 45 degrees
     aspect: number = 16 / 9,
-    near: number = 0.1,
-    far: number = 1000.0
+    near = 0.1,
+    far = 1000.0,
   ) {
     super(name);
 
@@ -26,7 +26,7 @@ export class PerspectiveCamera extends Actor {
     this.cameraComponent = this.addComponent(CameraComponent, {
       projectionType: ProjectionType.PERSPECTIVE,
       perspectiveConfig: { fov, aspect, near, far },
-      isActive: true
+      isActive: true,
     });
 
     // Set default position (camera looking down negative Z)
@@ -121,7 +121,7 @@ export class PerspectiveCamera extends Actor {
     this.transformComponent.setPosition(
       position[0] + forward[0] * distance,
       position[1] + forward[1] * distance,
-      position[2] + forward[2] * distance
+      position[2] + forward[2] * distance,
     );
   }
 
@@ -135,7 +135,7 @@ export class PerspectiveCamera extends Actor {
     this.transformComponent.setPosition(
       position[0] + right[0] * distance,
       position[1] + right[1] * distance,
-      position[2] + right[2] * distance
+      position[2] + right[2] * distance,
     );
   }
 
@@ -149,7 +149,7 @@ export class PerspectiveCamera extends Actor {
     this.transformComponent.setPosition(
       position[0] + up[0] * distance,
       position[1] + up[1] * distance,
-      position[2] + up[2] * distance
+      position[2] + up[2] * distance,
     );
   }
 
@@ -171,13 +171,16 @@ export class PerspectiveCamera extends Actor {
 
     // Apply deltas
     const newYaw = currentYaw + deltaYaw;
-    const newPitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, currentPitch + deltaPitch));
+    const newPitch = Math.max(
+      -Math.PI / 2 + 0.01,
+      Math.min(Math.PI / 2 - 0.01, currentPitch + deltaPitch),
+    );
 
     // Calculate new position
     const newPos: Vec3 = [
       target[0] + Math.sin(newYaw) * Math.cos(newPitch) * distance,
       target[1] + Math.sin(newPitch) * distance,
-      target[2] + Math.cos(newYaw) * Math.cos(newPitch) * distance
+      target[2] + Math.cos(newYaw) * Math.cos(newPitch) * distance,
     ];
 
     this.setPosition(newPos[0], newPos[1], newPos[2]);
@@ -215,7 +218,7 @@ export class PerspectiveCamera extends Actor {
   /**
    * Create a default perspective camera positioned to view the origin.
    */
-  static createDefault(name: string = "DefaultCamera"): PerspectiveCamera {
+  static createDefault(name = "DefaultCamera"): PerspectiveCamera {
     const camera = new PerspectiveCamera(name);
     camera.setPosition(0, 2, 5);
     camera.lookAt([0, 0, 0]);
@@ -225,7 +228,7 @@ export class PerspectiveCamera extends Actor {
   /**
    * Create a top-down orthographic-style camera (but still perspective).
    */
-  static createTopDown(name: string = "TopDownCamera", height: number = 10): PerspectiveCamera {
+  static createTopDown(name = "TopDownCamera", height = 10): PerspectiveCamera {
     const camera = new PerspectiveCamera(name);
     camera.setPosition(0, height, 0);
     camera.lookAt([0, 0, 0]);
@@ -235,7 +238,7 @@ export class PerspectiveCamera extends Actor {
   /**
    * Create a first-person style camera.
    */
-  static createFirstPerson(name: string = "FirstPersonCamera"): PerspectiveCamera {
+  static createFirstPerson(name = "FirstPersonCamera"): PerspectiveCamera {
     const camera = new PerspectiveCamera(name);
     camera.setPosition(0, 1.8, 0); // Eye height
     return camera;

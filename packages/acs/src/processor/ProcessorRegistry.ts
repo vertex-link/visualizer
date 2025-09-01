@@ -24,9 +24,11 @@ export class ProcessorRegistry {
     }
 
     if (this.processors.has(processor.name)) {
-      console.warn(`ProcessorRegistry: Processor with name '${processor.name}' already registered. It will be overwritten.`);
+      console.warn(
+        `ProcessorRegistry: Processor with name '${processor.name}' already registered. It will be overwritten.`,
+      );
     }
-    console.info('registered:', processor.name, processor);
+    console.info("registered:", processor.name, processor);
     this.processors.set(processor.name, processor);
   }
 

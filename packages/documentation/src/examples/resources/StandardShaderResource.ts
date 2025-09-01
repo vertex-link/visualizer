@@ -9,9 +9,9 @@ export class StandardShaderResource extends ShaderResource {
       vertexSource: basicShaderSource,
       fragmentSource: basicShaderSource,
       entryPoints: {
-        vertex: 'vs_main',
-        fragment: 'fs_main'
-      }
+        vertex: "vs_main",
+        fragment: "fs_main",
+      },
     };
 
     super("StandardShader", shaderData);

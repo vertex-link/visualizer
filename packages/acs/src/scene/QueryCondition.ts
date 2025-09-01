@@ -1,20 +1,20 @@
-import { ComponentClass } from '../component/Component';
+import type { ComponentClass } from "../component/Component";
 
 /**
  * Query condition types
  */
 export interface ComponentQueryCondition {
-  readonly type: 'component';
+  readonly type: "component";
   readonly components: ComponentClass[];
 }
 
 export interface TagQueryCondition {
-  readonly type: 'tag';
+  readonly type: "tag";
   readonly tags: string[];
 }
 
 export interface ExcludeTagQueryCondition {
-  readonly type: 'excludeTag';
+  readonly type: "excludeTag";
   readonly tags: string[];
 }
 

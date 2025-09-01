@@ -1,13 +1,21 @@
 <template>
-  <div class="p-3">
-    <RouterView />
-  </div>
+  <FeatureLayout />
 </template>
 
 <script setup lang="ts">
-import { RouterView } from 'vue-router'
+import FeatureLayout from "@/layouts/FeatureLayout.vue";
 </script>
 
 <style>
-/* Global styles are handled in style.css */
+/* Global reset and base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
 </style>

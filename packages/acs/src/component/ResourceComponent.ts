@@ -1,6 +1,6 @@
-import Actor from '../Actor';
-import Component from './Component';
-import { Resource } from '../resources/Resource';
+import type Actor from "../Actor";
+import type { Resource } from "../resources/Resource";
+import Component from "./Component";
 
 export class ResourceComponent extends Component {
   private resources = new Set<Resource>();

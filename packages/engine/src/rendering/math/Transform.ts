@@ -1,4 +1,4 @@
-import type { Vec3, Quat, Mat4 } from "../components/TransformComponent";
+import type { Mat4, Quat, Vec3 } from "../components/TransformComponent";
 
 /**
  * Math utilities for 3D transformations with complete implementation
@@ -8,12 +8,7 @@ export class Transform {
    * Create an identity matrix.
    */
   static identity(): Mat4 {
-    return new Float32Array([
-      1, 0, 0, 0,
-      0, 1, 0, 0,
-      0, 0, 1, 0,
-      0, 0, 0, 1
-    ]);
+    return new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
   }
 
   /**
@@ -39,8 +34,8 @@ export class Transform {
     // Corrected for WebGPU Z NDC [0, 1]
     // where view space Z is negative for objects in front of the camera,
     // and w_clip = -z_view
-    out[10] = far / (near - far);  // Note the denominator: near - far
-    out[11] = -1.0;                // To make w_clip = -z_view
+    out[10] = far / (near - far); // Note the denominator: near - far
+    out[11] = -1.0; // To make w_clip = -z_view
 
     out[12] = 0;
     out[13] = 0;
@@ -52,16 +47,35 @@ export class Transform {
   /**
    * Create an orthographic projection matrix
    */
-  static orthographic(left: number, right: number, bottom: number, top: number, near: number, far: number): Mat4 {
+  static orthographic(
+    left: number,
+    right: number,
+    bottom: number,
+    top: number,
+    near: number,
+    far: number,
+  ): Mat4 {
     const lr = 1 / (left - right);
     const bt = 1 / (bottom - top);
     const nf = 1 / (near - far);
 
     return new Float32Array([
-      -2 * lr, 0, 0, 0,
-      0, -2 * bt, 0, 0,
-      0, 0, 2 * nf, 0,
-      (left + right) * lr, (top + bottom) * bt, (far + near) * nf, 1
+      -2 * lr,
+      0,
+      0,
+      0,
+      0,
+      -2 * bt,
+      0,
+      0,
+      0,
+      0,
+      2 * nf,
+      0,
+      (left + right) * lr,
+      (top + bottom) * bt,
+      (far + near) * nf,
+      1,
     ]);
   }
 
@@ -78,10 +92,22 @@ export class Transform {
     const tz = -Transform.dot(zAxis, eye);
 
     return new Float32Array([
-      xAxis[0], xAxis[1], xAxis[2], 0,
-      yAxis[0], yAxis[1], yAxis[2], 0,
-      zAxis[0], zAxis[1], zAxis[2], 0,
-      tx, ty, tz, 1
+      xAxis[0],
+      xAxis[1],
+      xAxis[2],
+      0,
+      yAxis[0],
+      yAxis[1],
+      yAxis[2],
+      0,
+      zAxis[0],
+      zAxis[1],
+      zAxis[2],
+      0,
+      tx,
+      ty,
+      tz,
+      1,
     ]);
   }
 
@@ -91,15 +117,39 @@ export class Transform {
   static multiply(a: Mat4, b: Mat4): Mat4 {
     const result = new Float32Array(16);
 
-    const a00 = a[0], a10 = a[1], a20 = a[2], a30 = a[3];
-    const a01 = a[4], a11 = a[5], a21 = a[6], a31 = a[7];
-    const a02 = a[8], a12 = a[9], a22 = a[10], a32 = a[11];
-    const a03 = a[12], a13 = a[13], a23 = a[14], a33 = a[15];
+    const a00 = a[0],
+      a10 = a[1],
+      a20 = a[2],
+      a30 = a[3];
+    const a01 = a[4],
+      a11 = a[5],
+      a21 = a[6],
+      a31 = a[7];
+    const a02 = a[8],
+      a12 = a[9],
+      a22 = a[10],
+      a32 = a[11];
+    const a03 = a[12],
+      a13 = a[13],
+      a23 = a[14],
+      a33 = a[15];
 
-    const b00 = b[0], b10 = b[1], b20 = b[2], b30 = b[3];
-    const b01 = b[4], b11 = b[5], b21 = b[6], b31 = b[7];
-    const b02 = b[8], b12 = b[9], b22 = b[10], b32 = b[11];
-    const b03 = b[12], b13 = b[13], b23 = b[14], b33 = b[15];
+    const b00 = b[0],
+      b10 = b[1],
+      b20 = b[2],
+      b30 = b[3];
+    const b01 = b[4],
+      b11 = b[5],
+      b21 = b[6],
+      b31 = b[7];
+    const b02 = b[8],
+      b12 = b[9],
+      b22 = b[10],
+      b32 = b[11];
+    const b03 = b[12],
+      b13 = b[13],
+      b23 = b[14],
+      b33 = b[15];
 
     result[0] = a00 * b00 + a01 * b10 + a02 * b20 + a03 * b30;
     result[1] = a10 * b00 + a11 * b10 + a12 * b20 + a13 * b30;
@@ -130,10 +180,22 @@ export class Transform {
   static invert(m: Mat4): Mat4 {
     const out = new Float32Array(16);
 
-    const a00 = m[0], a01 = m[1], a02 = m[2], a03 = m[3];
-    const a10 = m[4], a11 = m[5], a12 = m[6], a13 = m[7];
-    const a20 = m[8], a21 = m[9], a22 = m[10], a23 = m[11];
-    const a30 = m[12], a31 = m[13], a32 = m[14], a33 = m[15];
+    const a00 = m[0],
+      a01 = m[1],
+      a02 = m[2],
+      a03 = m[3];
+    const a10 = m[4],
+      a11 = m[5],
+      a12 = m[6],
+      a13 = m[7];
+    const a20 = m[8],
+      a21 = m[9],
+      a22 = m[10],
+      a23 = m[11];
+    const a30 = m[12],
+      a31 = m[13],
+      a32 = m[14],
+      a33 = m[15];
 
     const b00 = a00 * a11 - a01 * a10;
     const b01 = a00 * a12 - a02 * a10;
@@ -197,7 +259,7 @@ export class Transform {
     return [
       (matrix[0] * point[0] + matrix[4] * point[1] + matrix[8] * point[2] + matrix[12]) / w,
       (matrix[1] * point[0] + matrix[5] * point[1] + matrix[9] * point[2] + matrix[13]) / w,
-      (matrix[2] * point[0] + matrix[6] * point[1] + matrix[10] * point[2] + matrix[14]) / w
+      (matrix[2] * point[0] + matrix[6] * point[1] + matrix[10] * point[2] + matrix[14]) / w,
     ];
   }
 
@@ -215,11 +277,7 @@ export class Transform {
   }
 
   static cross(a: Vec3, b: Vec3): Vec3 {
-    return [
-      a[1] * b[2] - a[2] * b[1],
-      a[2] * b[0] - a[0] * b[2],
-      a[0] * b[1] - a[1] * b[0]
-    ];
+    return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
   }
 
   static dot(a: Vec3, b: Vec3): number {
@@ -237,34 +295,31 @@ export class Transform {
   }
 
   static lerp(a: Vec3, b: Vec3, t: number): Vec3 {
-    return [
-      a[0] + (b[0] - a[0]) * t,
-      a[1] + (b[1] - a[1]) * t,
-      a[2] + (b[2] - a[2]) * t
-    ];
+    return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
   }
 
   // Quaternion operations
   static fromAxisAngle(axis: Vec3, angle: number): Quat {
     const halfAngle = angle * 0.5;
     const s = Math.sin(halfAngle);
-    return [
-      axis[0] * s,
-      axis[1] * s,
-      axis[2] * s,
-      Math.cos(halfAngle)
-    ];
+    return [axis[0] * s, axis[1] * s, axis[2] * s, Math.cos(halfAngle)];
   }
 
   static multiplyQuat(q1: Quat, q2: Quat): Quat {
-    const q1x = q1[0], q1y = q1[1], q1z = q1[2], q1w = q1[3];
-    const q2x = q2[0], q2y = q2[1], q2z = q2[2], q2w = q2[3];
+    const q1x = q1[0],
+      q1y = q1[1],
+      q1z = q1[2],
+      q1w = q1[3];
+    const q2x = q2[0],
+      q2y = q2[1],
+      q2z = q2[2],
+      q2w = q2[3];
 
     return [
       q1w * q2x + q1x * q2w + q1y * q2z - q1z * q2y,
       q1w * q2y - q1x * q2z + q1y * q2w + q1z * q2x,
       q1w * q2z + q1x * q2y - q1y * q2x + q1z * q2w,
-      q1w * q2w - q1x * q2x - q1y * q2y - q1z * q2z
+      q1w * q2w - q1x * q2x - q1y * q2y - q1z * q2z,
     ];
   }
 
@@ -281,15 +336,23 @@ export class Transform {
     const [qx, qy, qz, qw] = q;
     const [vx, vy, vz] = v;
 
-    const qx2 = qx * 2, qy2 = qy * 2, qz2 = qz * 2;
-    const wx2 = qw * qx2, wy2 = qw * qy2, wz2 = qw * qz2;
-    const xx2 = qx * qx2, xy2 = qx * qy2, xz2 = qx * qz2;
-    const yy2 = qy * qy2, yz2 = qy * qz2, zz2 = qz * qz2;
+    const qx2 = qx * 2,
+      qy2 = qy * 2,
+      qz2 = qz * 2;
+    const wx2 = qw * qx2,
+      wy2 = qw * qy2,
+      wz2 = qw * qz2;
+    const xx2 = qx * qx2,
+      xy2 = qx * qy2,
+      xz2 = qx * qz2;
+    const yy2 = qy * qy2,
+      yz2 = qy * qz2,
+      zz2 = qz * qz2;
 
     return [
       vx * (1 - yy2 - zz2) + vy * (xy2 - wz2) + vz * (xz2 + wy2),
       vx * (xy2 + wz2) + vy * (1 - xx2 - zz2) + vz * (yz2 - wx2),
-      vx * (xz2 - wy2) + vy * (yz2 + wx2) + vz * (1 - xx2 - yy2)
+      vx * (xz2 - wy2) + vy * (yz2 + wx2) + vz * (1 - xx2 - yy2),
     ];
   }
 
@@ -308,7 +371,7 @@ export class Transform {
         a[0] + (b[0] - a[0]) * t,
         a[1] + (b[1] - a[1]) * t,
         a[2] + (b[2] - a[2]) * t,
-        a[3] + (b[3] - a[3]) * t
+        a[3] + (b[3] - a[3]) * t,
       ]);
     }
 
@@ -322,16 +385,16 @@ export class Transform {
       a[0] * wa + b[0] * wb,
       a[1] * wa + b[1] * wb,
       a[2] * wa + b[2] * wb,
-      a[3] * wa + b[3] * wb
+      a[3] * wa + b[3] * wb,
     ];
   }
 
   // Angle conversions
   static toRadians(degrees: number): number {
-    return degrees * Math.PI / 180;
+    return (degrees * Math.PI) / 180;
   }
 
   static toDegrees(radians: number): number {
-    return radians * 180 / Math.PI;
+    return (radians * 180) / Math.PI;
   }
 }

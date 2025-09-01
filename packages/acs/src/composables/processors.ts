@@ -1,6 +1,6 @@
-import { useProcessor } from '../../../../src/composables/context';
-import type { IProcessable, Processor } from '../processor/Processor';
-import { ProcessorRegistry } from '../processor/ProcessorRegistry';
+import { useProcessor } from "../../../../src/composables/context";
+import type { IProcessable, Processor } from "../processor/Processor";
+import { ProcessorRegistry } from "../processor/ProcessorRegistry";
 
 export type UpdateTask = (deltaTime: number) => void;
 
@@ -13,7 +13,7 @@ export function useUpdate(
   processorName: string,
   fn: UpdateTask,
   context: any,
-  id?: string | symbol
+  id?: string | symbol,
 ): () => void {
   let processor: Processor | undefined;
 

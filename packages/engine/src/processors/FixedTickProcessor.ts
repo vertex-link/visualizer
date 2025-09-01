@@ -1,4 +1,3 @@
-
 import { Processor } from "@vertex-link/acs";
 
 /**
@@ -14,7 +13,8 @@ export class FixedTickProcessor extends Processor {
    * @param name The name for this processor.
    * @param targetUpdatesPerSecond The desired number of updates per second.
    */
-  constructor(name: string = "fixedTick", targetUpdatesPerSecond: number = 30) { // Default name
+  constructor(name = "fixedTick", targetUpdatesPerSecond = 30) {
+    // Default name
     super(name); // This name is used by @FixedTickUpdate
     if (targetUpdatesPerSecond <= 0) {
       throw new Error("FixedTickProcessor: targetUpdatesPerSecond must be positive.");

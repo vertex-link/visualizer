@@ -4,14 +4,15 @@ import { Processor } from "@vertex-link/acs";
  * A Processor that uses `requestAnimationFrame` for its loop, suitable for rendering tasks.
  */
 export class RenderProcessor extends Processor {
-  private lastTime: number = 0;
+  private lastTime = 0;
   private animationFrameId?: number;
 
   /**
    * @param name The name for this processor. Defaults to "render".
    * This name is used by the @RenderUpdate decorator to find this processor.
    */
-  constructor(name: string = "render") { // Ensure this name matches the decorator's target
+  constructor(name = "render") {
+    // Ensure this name matches the decorator's target
     super(name);
   }
 

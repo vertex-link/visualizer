@@ -24,14 +24,14 @@ export interface RenderPassContext {
  */
 export abstract class RenderPass {
   public name: string;
-  public enabled: boolean = true;
-  public priority: number = 0; // Lower numbers execute first
+  public enabled = true;
+  public priority = 0; // Lower numbers execute first
 
   // Dependencies and outputs
   public inputTargets: string[] = [];
   public outputTargets: string[] = [];
 
-  constructor(name: string, priority: number = 0) {
+  constructor(name: string, priority = 0) {
     this.name = name;
     this.priority = priority;
   }
@@ -90,7 +90,7 @@ export class RenderGraph {
    * Remove a render pass
    */
   removePass(name: string): boolean {
-    const index = this.passes.findIndex(pass => pass.name === name);
+    const index = this.passes.findIndex((pass) => pass.name === name);
     if (index >= 0) {
       const pass = this.passes[index];
       pass.dispose();
@@ -118,7 +118,13 @@ export class RenderGraph {
   /**
    * Execute all enabled render passes
    */
-  execute(renderer: any, batches: RenderBatch[], camera: any, deltaTime: number, globalBindGroup: GPUBindGroup | null = null): void {
+  execute(
+    renderer: any,
+    batches: RenderBatch[],
+    camera: any,
+    deltaTime: number,
+    globalBindGroup: GPUBindGroup | null = null,
+  ): void {
     if (!this.device) {
       console.warn("⚠️ RenderGraph: No device set, skipping execution");
       return;
@@ -129,7 +135,7 @@ export class RenderGraph {
       batches,
       camera,
       deltaTime,
-      globalBindGroup
+      globalBindGroup,
     };
 
     // Execute passes in priority order
@@ -155,7 +161,7 @@ export class RenderGraph {
    * Get pass by name
    */
   getPass(name: string): RenderPass | null {
-    return this.passes.find(pass => pass.name === name) || null;
+    return this.passes.find((pass) => pass.name === name) || null;
   }
 
   /**
@@ -165,7 +171,7 @@ export class RenderGraph {
     const pass = this.getPass(name);
     if (pass) {
       pass.enabled = enabled;
-      console.log(`${enabled ? '✅' : '❌'} ${name} pass ${enabled ? 'enabled' : 'disabled'}`);
+      console.log(`${enabled ? "✅" : "❌"} ${name} pass ${enabled ? "enabled" : "disabled"}`);
     }
   }
 
@@ -185,7 +191,7 @@ export class RenderGraph {
  * Forward rendering pass with improved pipeline handling
  */
 export class ForwardPass extends RenderPass {
-  constructor(priority: number = 10) {
+  constructor(priority = 10) {
     super("Forward", priority);
   }
 
@@ -214,7 +220,7 @@ export class ForwardPass extends RenderPass {
     try {
       // Set global uniforms once for all batches
       const globalUniformsSet = this.setGlobalUniforms(renderer, camera, context.globalBindGroup);
-      
+
       if (!globalUniformsSet) {
         console.log("⚠️ ForwardPass: Skipping render - global uniforms not ready");
         return; // Skip rendering if global bind group isn't available
@@ -224,7 +230,6 @@ export class ForwardPass extends RenderPass {
       for (const batch of batches) {
         this.renderInstancedBatch(renderer, batch);
       }
-
     } catch (error) {
       console.error("❌ ForwardPass: Rendering error:", error);
     } finally {
@@ -236,7 +241,11 @@ export class ForwardPass extends RenderPass {
   /**
    * Set global uniforms (view-projection matrix) once for all batches
    */
-  private setGlobalUniforms(renderer: any, camera: any, globalBindGroup: GPUBindGroup | null): boolean {
+  private setGlobalUniforms(
+    renderer: any,
+    camera: any,
+    globalBindGroup: GPUBindGroup | null,
+  ): boolean {
     if (globalBindGroup) {
       renderer.setBindGroup(0, globalBindGroup);
       return true;
@@ -307,7 +316,7 @@ export class ForwardPass extends RenderPass {
  * Post-process pass (placeholder)
  */
 export class PostProcessPass extends RenderPass {
-  constructor(priority: number = 100) {
+  constructor(priority = 100) {
     super("PostProcess", priority);
   }
 

@@ -1,14 +1,14 @@
 import { ProcessorRegistry, Resource } from "@vertex-link/acs";
 import { ServiceRegistry } from "@vertex-link/acs";
-import { WebGPUProcessor } from "../processors/WebGPUProcessor";
+import type { WebGPUProcessor } from "../processors/WebGPUProcessor";
 
 /**
  * Shader stage types supported by the engine.
  */
 export enum ShaderStage {
-  VERTEX = 'vertex',
-  FRAGMENT = 'fragment',
-  COMPUTE = 'compute'
+  VERTEX = "vertex",
+  FRAGMENT = "fragment",
+  COMPUTE = "compute",
 }
 
 /**
@@ -41,8 +41,8 @@ export interface CompiledShader {
  */
 export class ShaderResource extends Resource<ShaderDescriptor> {
   private compiledShaders: Map<ShaderStage, CompiledShader> = new Map();
-  public isCompiled: boolean = false;
-  public version: number = 1;
+  public isCompiled = false;
+  public version = 1;
 
   // Direct device reference instead of going through service
   private device: GPUDevice | null = null;
@@ -50,13 +50,13 @@ export class ShaderResource extends Resource<ShaderDescriptor> {
   constructor(name: string, shaderDescriptor: ShaderDescriptor, device?: GPUDevice) {
     super(name, shaderDescriptor);
     console.log(this.payload);
-    const processor = ProcessorRegistry.get<WebGPUProcessor>('webgpu');
+    const processor = ProcessorRegistry.get<WebGPUProcessor>("webgpu");
     if (!device && processor) {
       this.device = processor.renderer.device;
     } else if (device) {
       this.device = device;
     } else {
-      throw Error('Shader reosurce need the gpu device!')
+      throw Error("Shader reosurce need the gpu device!");
     }
 
     this.isCompiled = false; // Need to recompile
@@ -126,18 +126,18 @@ export class ShaderResource extends Resource<ShaderDescriptor> {
 
     switch (stage) {
       case ShaderStage.VERTEX:
-        return entryPoints?.vertex || 'vs_main';
+        return entryPoints?.vertex || "vs_main";
       case ShaderStage.FRAGMENT:
-        return entryPoints?.fragment || 'fs_main';
+        return entryPoints?.fragment || "fs_main";
       case ShaderStage.COMPUTE:
-        return entryPoints?.compute || 'cs_main';
+        return entryPoints?.compute || "cs_main";
       default:
-        return 'main';
+        return "main";
     }
   }
 
   protected async loadInternal(): Promise<ShaderDescriptor> {
-    console.log('load internal shader');
+    console.log("load internal shader");
     return this.payload;
   }
 
@@ -161,14 +161,14 @@ export class ShaderResource extends Resource<ShaderDescriptor> {
       return this.device;
     }
 
-    const processor = ProcessorRegistry.get<WebGPUProcessor>('webgpu');
+    const processor = ProcessorRegistry.get<WebGPUProcessor>("webgpu");
     if (!processor) {
       throw new Error("No GPU Device found. No webgpuProcessor");
     }
 
     // Wait for the renderer device to be available
     while (!processor.renderer.device) {
-      await new Promise(resolve => setTimeout(resolve, 10)); // Wait 10ms before checking again
+      await new Promise((resolve) => setTimeout(resolve, 10)); // Wait 10ms before checking again
     }
 
     this.device = processor.renderer.device;
@@ -197,7 +197,7 @@ export class ShaderResource extends Resource<ShaderDescriptor> {
         stage,
         module,
         entryPoint: this.getEntryPoint(stage),
-        source
+        source,
       });
     }
 
@@ -206,10 +206,14 @@ export class ShaderResource extends Resource<ShaderDescriptor> {
 
   private getSourceForStage(stage: ShaderStage): string {
     switch (stage) {
-      case ShaderStage.VERTEX: return this.payload.vertexSource!;
-      case ShaderStage.FRAGMENT: return this.payload.fragmentSource!;
-      case ShaderStage.COMPUTE: return this.payload.computeSource!;
-      default: throw new Error(`Unsupported shader stage: ${stage}`);
+      case ShaderStage.VERTEX:
+        return this.payload.vertexSource!;
+      case ShaderStage.FRAGMENT:
+        return this.payload.fragmentSource!;
+      case ShaderStage.COMPUTE:
+        return this.payload.computeSource!;
+      default:
+        throw new Error(`Unsupported shader stage: ${stage}`);
     }
   }
 
@@ -264,25 +268,25 @@ export class ShaderResource extends Resource<ShaderDescriptor> {
 
     // Basic WGSL validation
     if (!source.trim()) {
-      errors.push('Shader source is empty');
+      errors.push("Shader source is empty");
     }
 
     // Check for required entry points based on available stages
-    if (this.hasStage(ShaderStage.VERTEX) && !source.includes('@vertex')) {
-      errors.push('Vertex stage requires @vertex entry point');
+    if (this.hasStage(ShaderStage.VERTEX) && !source.includes("@vertex")) {
+      errors.push("Vertex stage requires @vertex entry point");
     }
 
-    if (this.hasStage(ShaderStage.FRAGMENT) && !source.includes('@fragment')) {
-      errors.push('Fragment stage requires @fragment entry point');
+    if (this.hasStage(ShaderStage.FRAGMENT) && !source.includes("@fragment")) {
+      errors.push("Fragment stage requires @fragment entry point");
     }
 
-    if (this.hasStage(ShaderStage.COMPUTE) && !source.includes('@compute')) {
-      errors.push('Compute stage requires @compute entry point');
+    if (this.hasStage(ShaderStage.COMPUTE) && !source.includes("@compute")) {
+      errors.push("Compute stage requires @compute entry point");
     }
 
     return {
       isValid: errors.length === 0,
-      errors
+      errors,
     };
   }
 
@@ -293,7 +297,7 @@ export class ShaderResource extends Resource<ShaderDescriptor> {
     // Placeholder for future streaming implementation
     if (sinceVersion < this.version) {
       return {
-        type: 'shader_delta',
+        type: "shader_delta",
         resourceId: this.id,
         fromVersion: sinceVersion,
         toVersion: this.version,

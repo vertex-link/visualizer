@@ -1,15 +1,33 @@
-import { createApp } from 'vue'
-import App from './App.vue'
-import router from './router'
-import './style.css'
+import { createApp } from "vue";
+import App from "./App.vue";
+import router from "./router";
 
-// PrimeVue setup
-import PrimeVue from 'primevue/config'
-import 'primeicons/primeicons.css'
-// PrimeVue uses unstyled by default in this setup; you can add @primevue/themes later.
+import Aura from "@primevue/themes/aura";
+// PrimeVue setup with Aura theme
+import PrimeVue from "primevue/config";
+import "primeicons/primeicons.css";
 
-const app = createApp(App)
+// Custom theme styles
+import "./styles/theme.css";
+import "./styles/variables.css";
 
-app.use(router as any)
-app.use(PrimeVue)
-app.mount('#app')
+const app = createApp(App);
+
+app.use(
+  PrimeVue as any,
+  {
+    theme: {
+      preset: Aura,
+      options: {
+        darkModeSelector: ".dark",
+        cssLayer: {
+          name: "primevue",
+          order: "reset, primevue, utilities",
+        },
+      },
+    },
+  } as any,
+);
+
+app.use(router as any);
+app.mount("#app");

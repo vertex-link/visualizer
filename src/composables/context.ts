@@ -30,12 +30,10 @@ export function runWithContext<T>(ctx: EngineLikeContext, fn: () => T): T {
 /** Get current context or throw if strict and none present. */
 export function getCurrentContext(strict: true): EngineLikeContext;
 export function getCurrentContext(strict?: boolean): EngineLikeContext | undefined;
-export function getCurrentContext(strict: boolean = true): EngineLikeContext | undefined {
+export function getCurrentContext(strict = true): EngineLikeContext | undefined {
   const current = ctxStack[ctxStack.length - 1];
   if (!current && strict) {
-    throw new Error(
-      "No current context. Ensure you're calling useX() inside runWithContext(...)."
-    );
+    throw new Error("No current context. Ensure you're calling useX() inside runWithContext(...).");
   }
   return current;
 }
@@ -50,31 +48,31 @@ function ensure<T>(value: T | undefined, name: string): T {
 // Composable-like helpers
 export function useActor<T = unknown>(): T {
   const ctx = getCurrentContext();
-  return ensure<T>(ctx?.actor as T, 'actor');
+  return ensure<T>(ctx?.actor as T, "actor");
 }
 
 export function useComponent<T = unknown>(): T {
   const ctx = getCurrentContext();
-  return ensure<T>(ctx?.component as T, 'component');
+  return ensure<T>(ctx?.component as T, "component");
 }
 
 export function useScene<T = unknown>(): T {
   const ctx = getCurrentContext();
-  return ensure<T>(ctx?.scene as T, 'scene');
+  return ensure<T>(ctx?.scene as T, "scene");
 }
 
 export function useEventBus<T = unknown>(): T {
   const ctx = getCurrentContext();
-  return ensure<T>(ctx?.eventBus as T, 'eventBus');
+  return ensure<T>(ctx?.eventBus as T, "eventBus");
 }
 
 export function useProcessor<T = unknown>(key: string | symbol): T {
   const ctx = getCurrentContext();
   const source = ctx?.processors;
   let value: unknown;
-  if (source && typeof (source as any).get === 'function') {
+  if (source && typeof (source as any).get === "function") {
     value = (source as Map<string | symbol, unknown>).get(key);
-  } else if (source && typeof source === 'object') {
+  } else if (source && typeof source === "object") {
     value = (source as Record<string | symbol, unknown>)[key as any];
   }
   return ensure<T>(value as T, `processor(${String(key)})`);
@@ -84,9 +82,9 @@ export function useService<T = unknown>(key: string | symbol): T {
   const ctx = getCurrentContext();
   const source = ctx?.services;
   let value: unknown;
-  if (source && typeof (source as any).get === 'function') {
+  if (source && typeof (source as any).get === "function") {
     value = (source as Map<string | symbol, unknown>).get(key);
-  } else if (source && typeof source === 'object') {
+  } else if (source && typeof source === "object") {
     value = (source as Record<string | symbol, unknown>)[key as any];
   }
   return ensure<T>(value as T, `service(${String(key)})`);

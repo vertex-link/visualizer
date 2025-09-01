@@ -1,7 +1,7 @@
-import { MeshResource, GeometryUtils } from "@vertex-link/engine";
+import { GeometryUtils, MeshResource } from "@vertex-link/engine";
 
 export class CubeMeshResource extends MeshResource {
-  constructor(size: number = 1.0) {
+  constructor(size = 1.0) {
     const cubeDescriptor = GeometryUtils.createBox(size, size, size);
     super("CubeMesh", cubeDescriptor);
   }

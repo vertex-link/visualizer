@@ -1,7 +1,7 @@
-import { Actor, Component, ResourceComponent } from "@vertex-link/acs";
+import { type Actor, Component, ResourceComponent } from "@vertex-link/acs";
 import { TransformComponent } from "../../rendering/components/TransformComponent";
-import { MeshResource } from "../../resources/MeshResource";
 import { MaterialResource } from "../../resources/MaterialResource";
+import { MeshResource } from "../../resources/MeshResource";
 
 /**
  * Simplified MeshRendererComponent - gets resources from ResourceComponent
@@ -9,10 +9,10 @@ import { MaterialResource } from "../../resources/MaterialResource";
  */
 export class MeshRendererComponent extends Component {
   /** Whether this renderer is currently enabled */
-  public enabled: boolean = true;
+  public enabled = true;
 
   /** Render layer/priority (for sorting) */
-  public layer: number = 0;
+  public layer = 0;
 
   // Cached components
   private transform?: TransformComponent;
@@ -75,7 +75,8 @@ export class MeshRendererComponent extends Component {
     const mesh = this.mesh;
     const material = this.material;
 
-    const result = this.enabled &&
+    const result =
+      this.enabled &&
       this.isVisible &&
       mesh !== undefined &&
       material !== undefined &&
@@ -96,7 +97,7 @@ export class MeshRendererComponent extends Component {
         meshCompiled: mesh?.isCompiled,
         materialCompiled: material?.isCompiled,
         materialId: material?.id,
-        materialName: material?.name
+        materialName: material?.name,
       });
     }
 
@@ -130,7 +131,9 @@ export class MeshRendererComponent extends Component {
     if (!this.transform) {
       this.transform = this.actor.getComponent(TransformComponent);
       if (!this.transform) {
-        throw new Error(`MeshRendererComponent on actor "${this.actor.label}" requires TransformComponent`);
+        throw new Error(
+          `MeshRendererComponent on actor "${this.actor.label}" requires TransformComponent`,
+        );
       }
     }
     return this.transform;
@@ -143,7 +146,7 @@ export class MeshRendererComponent extends Component {
     const material = this.material;
     const mesh = this.mesh;
 
-    if (!material || !mesh) return 'invalid';
+    if (!material || !mesh) return "invalid";
 
     return `${material.name}_${this.layer}_${this.getVertexLayoutHash()}`;
   }
@@ -189,7 +192,7 @@ export class MeshRendererComponent extends Component {
     const mesh = this.mesh;
     // This would be based on the mesh's vertex layout
     // For now, return a simple hash
-    return mesh?.name.slice(-8) || 'default';
+    return mesh?.name.slice(-8) || "default";
   }
 }
 
@@ -201,11 +204,11 @@ declare global {
 }
 
 if (!String.prototype.hashCode) {
-  String.prototype.hashCode = function(): number {
+  String.prototype.hashCode = function (): number {
     let hash = 0;
     for (let i = 0; i < this.length; i++) {
       const char = this.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32-bit integer
     }
     return hash;

@@ -4,13 +4,12 @@ const describe = (_name: any, _fn?: any) => {};
 const it = (_name: any, _fn?: any) => {};
 const expect = (_: any) => ({ toBe: (_v: any) => {}, toThrow: () => {}, toBeUndefined: () => {} });
 import {
+  deriveContext,
+  getCurrentContext,
   runWithContext,
   useActor,
   useComponent,
-  getCurrentContext,
-  deriveContext,
 } from "../src/composables/context";
-
 
 describe("composable-like context helpers", () => {
   it("throws when used outside of context", () => {

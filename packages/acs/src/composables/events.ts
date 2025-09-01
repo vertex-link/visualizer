@@ -1,6 +1,6 @@
-import { useEventBus } from '../../../../src/composables/context';
-import { Event, EventClass, EventHandler } from '../events/Event';
-import type { IEventBus } from '../events/Event';
+import { useEventBus } from "../../../../src/composables/context";
+import type { Event, EventClass, EventHandler } from "../events/Event";
+import type { IEventBus } from "../events/Event";
 
 /**
  * Subscribes a handler to an event class within the current context.
@@ -13,7 +13,7 @@ import type { IEventBus } from '../events/Event';
 export function useOnEvent<T extends Event>(
   eventClass: EventClass<T>,
   handler: EventHandler<T>,
-  context: any
+  context: any,
 ): () => void {
   const bus = useEventBus<IEventBus>();
   bus.on(eventClass, handler, context);
@@ -31,7 +31,7 @@ export function useOnEvent<T extends Event>(
 export function useOnceEvent<T extends Event>(
   eventClass: EventClass<T>,
   handler: EventHandler<T>,
-  context: any
+  context: any,
 ): () => void {
   const bus = useEventBus<IEventBus>();
   bus.once(eventClass, handler, context);

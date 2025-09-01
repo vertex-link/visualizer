@@ -37,136 +37,125 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { Actor, ProcessorRegistry, ResourceComponent, Scene } from "@vertex-link/acs";
 import {
-  Actor,
-  Scene,
-  ResourceComponent,
-  ProcessorRegistry
-} from '@vertex-link/acs'
-import {
-  WebGPUProcessor,
-  TransformComponent,
-  MeshRendererComponent,
   CameraComponent,
-  ProjectionType
-} from '@vertex-link/engine'
+  MeshRendererComponent,
+  ProjectionType,
+  TransformComponent,
+  WebGPUProcessor,
+} from "@vertex-link/engine";
+import { onMounted, onUnmounted, ref } from "vue";
 
+import { RotatingComponent } from "./RotatingComponent";
+import { BasicMaterialResource } from "./resources/BasicMaterialResource";
 // Import resources exactly like working example - STATIC IMPORTS
-import { CubeMeshResource } from './resources/CubeMeshResource'
-import { BasicMaterialResource } from './resources/BasicMaterialResource'
-import { RotatingComponent } from './RotatingComponent'
+import { CubeMeshResource } from "./resources/CubeMeshResource";
 
-const canvasRef = ref<HTMLCanvasElement>()
-const engineStarted = ref(false)
-const status = ref('initializing...')
+const canvasRef = ref<HTMLCanvasElement>();
+const engineStarted = ref(false);
+const status = ref("initializing...");
 
 // Demo controls
-const cubeCount = ref(1) // Just one cube like you wanted
-const rotationSpeed = ref(1.0)
+const cubeCount = ref(1); // Just one cube like you wanted
+const rotationSpeed = ref(1.0);
 
 // Demo state
-let processor: WebGPUProcessor | null = null
-let scene: Scene | null = null
-let cubes: Actor[] = []
+let processor: WebGPUProcessor | null = null;
+let scene: Scene | null = null;
+let cubes: Actor[] = [];
 
 const initEngine = async () => {
-  if (engineStarted.value || !canvasRef.value) return
+  if (engineStarted.value || !canvasRef.value) return;
 
   try {
-    status.value = 'Starting WebGPU...'
+    status.value = "Starting WebGPU...";
 
     // Initialize WebGPU processor (exactly like working example!)
-    processor = new WebGPUProcessor(canvasRef.value)
-    ProcessorRegistry.register(processor)
-    await processor.initialize()
+    processor = new WebGPUProcessor(canvasRef.value);
+    ProcessorRegistry.register(processor);
+    await processor.initialize();
 
-    console.log(processor)
+    console.log(processor);
 
-    status.value = 'Creating scene...'
+    status.value = "Creating scene...";
 
     // Create scene
-    scene = new Scene("RotatingCubesScene")
-    processor.setScene(scene)
+    scene = new Scene("RotatingCubesScene");
+    processor.setScene(scene);
 
-    status.value = 'creating cubes...'
+    status.value = "creating cubes...";
 
     // Create cubes using EXACT pattern from working documentation
-    await createCubes()
+    await createCubes();
 
     // Create camera
-    createCamera(canvasRef.value)
+    createCamera(canvasRef.value);
 
-    status.value = 'Starting render loop...'
+    status.value = "Starting render loop...";
 
     // Start rendering
-    processor.start()
+    processor.start();
 
-    engineStarted.value = true
-    status.value = 'Running'
+    engineStarted.value = true;
+    status.value = "Running";
 
-    console.log('✅ Rotating cubes demo started successfully')
-
+    console.log("✅ Rotating cubes demo started successfully");
   } catch (error) {
-    status.value = `error: ${error}`
-    console.error('❌ Failed to start demo:', error)
+    status.value = `error: ${error}`;
+    console.error("❌ Failed to start demo:", error);
   }
-}
+};
 
 /**
  * Create rotating cubes - EXACT COPY from working documentation!
  */
 async function createCubes() {
-  if (!scene) return
+  if (!scene) return;
 
-  cubes = []
+  cubes = [];
 
-  const cubeMeshResourceInstance = new CubeMeshResource(1.0)
+  const cubeMeshResourceInstance = new CubeMeshResource(1.0);
 
   for (let i = 0; i < cubeCount.value; i++) {
     // Create actor
-    const cubeActor = new Actor(`Cube${i}`)
+    const cubeActor = new Actor(`Cube${i}`);
 
     // Add transform - simple positioning for one cube
-    const transform = cubeActor.addComponent(TransformComponent)
-    transform.setPosition(0, 0, 0) // Center the single cube
+    const transform = cubeActor.addComponent(TransformComponent);
+    transform.setPosition(0, 0, 0); // Center the single cube
 
     // Add resources (auto-load, auto-compile!) - exactly like working example
-    const resources = cubeActor.addComponent(ResourceComponent)
-    resources.add(cubeMeshResourceInstance)
-    resources.add(new BasicMaterialResource([
-      Math.random(),
-      Math.random(),
-      Math.random(),
-      1.0
-    ]))
+    const resources = cubeActor.addComponent(ResourceComponent);
+    resources.add(cubeMeshResourceInstance);
+    resources.add(new BasicMaterialResource([Math.random(), Math.random(), Math.random(), 1.0]));
 
     // Add behavior and rendering - exactly like working example
-    cubeActor.addComponent(RotatingComponent)
-    const cubeRotation = cubeActor.getComponent(RotatingComponent)
-    if(cubeRotation) {
-      cubeRotation.speed = rotationSpeed.value * (0.5 + Math.random())
+    cubeActor.addComponent(RotatingComponent);
+    const cubeRotation = cubeActor.getComponent(RotatingComponent);
+    if (cubeRotation) {
+      cubeRotation.speed = rotationSpeed.value * (0.5 + Math.random());
     }
-    cubeActor.addComponent(MeshRendererComponent)
+    cubeActor.addComponent(MeshRendererComponent);
 
     // Add to scene
-    scene.addActor(cubeActor)
-    cubes.push(cubeActor)
+    scene.addActor(cubeActor);
+    cubes.push(cubeActor);
   }
 
-  console.log(`Created ${cubes.length} cubes with simplified resource system`)
+  console.log(`Created ${cubes.length} cubes with simplified resource system`);
 }
 
 /**
  * Create camera - exactly like working example
  */
 function createCamera(canvas: HTMLCanvasElement) {
-  if (!scene) return
+  if (!scene) return;
 
-  const camera = new Actor("Camera")
+  const camera = new Actor("Camera");
 
-  const cameraTransform = camera.addComponent(TransformComponent)
-  cameraTransform.setPosition(0, 0.5, 3)
+  const cameraTransform = camera.addComponent(TransformComponent);
+  cameraTransform.setPosition(0, 0.5, 3);
 
   camera.addComponent(CameraComponent, {
     projectionType: ProjectionType.PERSPECTIVE,
@@ -174,62 +163,62 @@ function createCamera(canvas: HTMLCanvasElement) {
       fov: Math.PI / 3,
       aspect: canvas.width / canvas.height,
       near: 0.1,
-      far: 100.0
+      far: 100.0,
     },
-    isActive: true
-  })
+    isActive: true,
+  });
 
-  scene.addActor(camera)
+  scene.addActor(camera);
 }
 
 // Window controls
 const handleTitleBarMouseDown = () => {
   if (window.electronAPI?.startDrag) {
-    window.electronAPI.startDrag()
+    window.electronAPI.startDrag();
   }
-}
+};
 
 const minimizeWindow = () => {
   if (window.electronAPI?.minimize) {
-    window.electronAPI.minimize()
+    window.electronAPI.minimize();
   }
-}
+};
 
 const closeWindow = () => {
   if (window.electronAPI?.close) {
-    window.electronAPI.close()
+    window.electronAPI.close();
   }
-}
+};
 
 // Cleanup
 onUnmounted(() => {
   if (processor) {
-    processor.stop?.()
+    processor.stop?.();
   }
   if (scene) {
-    scene.clear?.()
+    scene.clear?.();
   }
-})
+});
 
 // Auto-resize canvas
 onMounted(() => {
   const handleResize = () => {
     if (canvasRef.value) {
-      const rect = canvasRef.value.parentElement?.getBoundingClientRect()
+      const rect = canvasRef.value.parentElement?.getBoundingClientRect();
       if (rect) {
-        canvasRef.value.width = rect.width
-        canvasRef.value.height = rect.height
+        canvasRef.value.width = rect.width;
+        canvasRef.value.height = rect.height;
       }
     }
-  }
+  };
 
-  window.addEventListener('resize', handleResize)
-  handleResize()
+  window.addEventListener("resize", handleResize);
+  handleResize();
 
   onUnmounted(() => {
-    window.removeEventListener('resize', handleResize)
-  })
-})
+    window.removeEventListener("resize", handleResize);
+  });
+});
 </script>
 
 <style scoped>

@@ -4,5 +4,5 @@
  */
 export function generateUUID(): string {
   // TODO: Delete this and use only cypto... duh!
-  return crypto.randomUUID()
+  return crypto.randomUUID();
 }

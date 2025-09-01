@@ -1,8 +1,8 @@
 export enum ResourceStatus {
-  UNLOADED,
-  LOADING,
-  LOADED,
-  FAILED
+  UNLOADED = 0,
+  LOADING = 1,
+  LOADED = 2,
+  FAILED = 3,
 }
 
 export abstract class Resource<TData = unknown> {
@@ -10,7 +10,7 @@ export abstract class Resource<TData = unknown> {
   public readonly name: string;
   public status: ResourceStatus = ResourceStatus.UNLOADED;
   public payload: TData;
-  public isCompiled: boolean = false;
+  public isCompiled = false;
   public error: Error | null = null;
 
   private readyPromise: Promise<void>;
@@ -35,22 +35,31 @@ export abstract class Resource<TData = unknown> {
       this.payload = await this.loadInternal();
 
       // 2. After loading, attempt to compile if the method is implemented
-      if (typeof this.compile === 'function') {
-        console.log(`🔧 Resource "${this.name}" (ID: ${this.id}) calling compile(). isCompiled before: ${this.isCompiled}`);
+      if (typeof this.compile === "function") {
+        console.log(
+          `🔧 Resource "${this.name}" (ID: ${this.id}) calling compile(). isCompiled before: ${this.isCompiled}`,
+        );
         await this.compile();
-        console.log(`🔧 Resource "${this.name}" (ID: ${this.id}) compile() finished. Setting isCompiled = true`);
+        console.log(
+          `🔧 Resource "${this.name}" (ID: ${this.id}) compile() finished. Setting isCompiled = true`,
+        );
         this.isCompiled = true;
-        console.log(`🔧 Resource "${this.name}" (ID: ${this.id}) isCompiled now: ${this.isCompiled}`);
+        console.log(
+          `🔧 Resource "${this.name}" (ID: ${this.id}) isCompiled now: ${this.isCompiled}`,
+        );
       } else {
         // If there is no compile step, the resource is considered compiled by default.
-        console.log(`🔧 Resource "${this.name}" (ID: ${this.id}) no compile method. Setting isCompiled = true`);
+        console.log(
+          `🔧 Resource "${this.name}" (ID: ${this.id}) no compile method. Setting isCompiled = true`,
+        );
         this.isCompiled = true;
-        console.log(`🔧 Resource "${this.name}" (ID: ${this.id}) isCompiled now: ${this.isCompiled}`);
+        console.log(
+          `🔧 Resource "${this.name}" (ID: ${this.id}) isCompiled now: ${this.isCompiled}`,
+        );
       }
 
       this.status = ResourceStatus.LOADED;
       console.debug(`✅ Resource "${this.name}" is ready.`);
-
     } catch (err) {
       this.status = ResourceStatus.FAILED;
       this.error = err as Error;

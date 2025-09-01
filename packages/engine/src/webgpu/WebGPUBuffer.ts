@@ -1,5 +1,5 @@
-import { BufferDescriptor, BufferUsage, IBuffer } from "../rendering/interfaces/IBuffer";
 import { generateUUID } from "@vertex-link/acs";
+import { type BufferDescriptor, BufferUsage, type IBuffer } from "../rendering/interfaces/IBuffer";
 
 /**
  * WebGPU implementation of the IBuffer interface.
@@ -14,7 +14,8 @@ export class WebGPUBuffer implements IBuffer {
   private gpuBuffer: GPUBuffer;
   private label: string;
 
-  constructor(device: GPUDevice, descriptor: BufferDescriptor, mappedAtCreation: boolean = false) { // Added mappedAtCreation
+  constructor(device: GPUDevice, descriptor: BufferDescriptor, mappedAtCreation = false) {
+    // Added mappedAtCreation
     this.id = generateUUID();
     this.size = descriptor.size;
     this.usage = descriptor.usage;
@@ -28,23 +29,25 @@ export class WebGPUBuffer implements IBuffer {
       size: descriptor.size,
       usage: gpuUsage,
       label: this.label,
-      mappedAtCreation: mappedAtCreation // Use the parameter
+      mappedAtCreation: mappedAtCreation, // Use the parameter
     });
   }
 
   /**
    * Update buffer data.
    */
-  setData(data: ArrayBuffer | ArrayBufferView, offset: number = 0): void {
+  setData(data: ArrayBuffer | ArrayBufferView, offset = 0): void {
     if (!this.gpuBuffer) {
-      throw new Error('Buffer has been destroyed');
+      throw new Error("Buffer has been destroyed");
     }
 
     // Convert ArrayBufferView to ArrayBuffer if needed
     const arrayBuffer = data instanceof ArrayBuffer ? data : data.buffer;
 
     if (offset + arrayBuffer.byteLength > this.size) {
-      throw new Error(`Data size (${arrayBuffer.byteLength}) + offset (${offset}) exceeds buffer size (${this.size})`);
+      throw new Error(
+        `Data size (${arrayBuffer.byteLength}) + offset (${offset}) exceeds buffer size (${this.size})`,
+      );
     }
 
     // Write data to GPU buffer
@@ -55,12 +58,12 @@ export class WebGPUBuffer implements IBuffer {
    * Get a portion of buffer data (if supported).
    * Note: This is primarily for debugging - reading GPU data is expensive.
    */
-  async getData(offset: number = 0, length?: number): Promise<ArrayBuffer> {
+  async getData(offset = 0, length?: number): Promise<ArrayBuffer> {
     if (!this.gpuBuffer) {
-      throw new Error('Buffer has been destroyed');
+      throw new Error("Buffer has been destroyed");
     }
 
-    const readLength = length ?? (this.size - offset);
+    const readLength = length ?? this.size - offset;
 
     if (offset + readLength > this.size) {
       throw new Error(`Read range exceeds buffer size`);
@@ -70,19 +73,15 @@ export class WebGPUBuffer implements IBuffer {
     const stagingBuffer = this.device.createBuffer({
       size: readLength,
       usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
-      label: `${this.label}_staging`
+      label: `${this.label}_staging`,
     });
 
     // Copy from GPU buffer to staging buffer
     const encoder = this.device.createCommandEncoder({
-      label: `${this.label}_read_encoder`
+      label: `${this.label}_read_encoder`,
     });
 
-    encoder.copyBufferToBuffer(
-      this.gpuBuffer, offset,
-      stagingBuffer, 0,
-      readLength
-    );
+    encoder.copyBufferToBuffer(this.gpuBuffer, offset, stagingBuffer, 0, readLength);
 
     this.device.queue.submit([encoder.finish()]);
 
@@ -102,7 +101,7 @@ export class WebGPUBuffer implements IBuffer {
    */
   getGPUBuffer(): GPUBuffer {
     if (!this.gpuBuffer) {
-      throw new Error('Buffer has been destroyed');
+      throw new Error("Buffer has been destroyed");
     }
     return this.gpuBuffer;
   }
@@ -154,7 +153,7 @@ export class WebGPUBuffer implements IBuffer {
     const buffer = new WebGPUBuffer(device, {
       size: data.byteLength,
       usage: BufferUsage.VERTEX,
-      label: label || 'Vertex Buffer'
+      label: label || "Vertex Buffer",
     });
 
     buffer.setData(data);
@@ -168,7 +167,7 @@ export class WebGPUBuffer implements IBuffer {
     const buffer = new WebGPUBuffer(device, {
       size: data.byteLength,
       usage: BufferUsage.INDEX,
-      label: label || 'Index Buffer'
+      label: label || "Index Buffer",
     });
 
     buffer.setData(data);
@@ -182,7 +181,7 @@ export class WebGPUBuffer implements IBuffer {
     const buffer = new WebGPUBuffer(device, {
       size: data.byteLength,
       usage: BufferUsage.UNIFORM,
-      label: label || 'Uniform Buffer'
+      label: label || "Uniform Buffer",
     });
 
     buffer.setData(data);

@@ -1,8 +1,8 @@
+import { join } from "path";
 // src/main/main.ts
-import { app, BrowserWindow, ipcMain } from 'electron'
-import { join } from 'path'
+import { BrowserWindow, app, ipcMain } from "electron";
 
-let mainWindow: BrowserWindow
+let mainWindow: BrowserWindow;
 
 const createWindow = (): void => {
   mainWindow = new BrowserWindow({
@@ -13,56 +13,54 @@ const createWindow = (): void => {
     alwaysOnTop: false,
     // show: false,
     autoHideMenuBar: true,
-    titleBarStyle: 'hidden',         // Hide title bar
+    titleBarStyle: "hidden", // Hide title bar
     webPreferences: {
-      preload: join(__dirname, '../preload/preload.js'),
+      preload: join(__dirname, "../preload/preload.js"),
       sandbox: false,
       nodeIntegration: false,
       contextIsolation: true,
       experimentalFeatures: true,
-    }
-  })
-  
+    },
+  });
 
-  mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
-  })
+  mainWindow.on("ready-to-show", () => {
+    mainWindow.show();
+  });
 
   // In development, load from Vite dev server
-  if (process.env.NODE_ENV === 'development') {
-    mainWindow.loadURL('http://localhost:5173')
-    mainWindow.webContents.openDevTools()
+  if (process.env.NODE_ENV === "development") {
+    mainWindow.loadURL("http://localhost:5173");
+    mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
   }
-}
+};
 
 // IPC handlers for window controls
-ipcMain.handle('window-minimize', () => {
+ipcMain.handle("window-minimize", () => {
   if (mainWindow) {
-    mainWindow.minimize()
+    mainWindow.minimize();
   }
-})
+});
 
-ipcMain.handle('window-close', () => {
+ipcMain.handle("window-close", () => {
   if (mainWindow) {
-    mainWindow.close()
+    mainWindow.close();
   }
-})
-
+});
 
 // Enable WebGPU command line flags
 app.commandLine.appendSwitch("enable-unsafe-webgpu");
 app.commandLine.appendSwitch("enable-features", "Vulkan,WebGPU");
 
 app.whenReady().then(() => {
-  createWindow()
+  createWindow();
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
-  })
-})
+  app.on("activate", () => {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  });
+});
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit()
-})
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") app.quit();
+});

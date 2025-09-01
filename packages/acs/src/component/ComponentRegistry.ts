@@ -1,4 +1,4 @@
-import { ComponentClass } from "./Component";
+import type { ComponentClass } from "./Component";
 
 export class ComponentTypeRegistry {
   private static typeToId = new Map<ComponentClass, number>();
