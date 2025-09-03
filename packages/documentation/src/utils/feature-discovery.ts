@@ -1,47 +1,51 @@
-import type { FeatureCategory, FeatureDefinition } from "@/types/features";
+import fm from "front-matter";
+import type { Category, Feature } from "@/types/features";
 
-// Auto-import all feature definitions
-const featureModules = (import.meta as any).glob("/src/features/**/definition.ts", { eager: true });
+export function discoverFeatures(): Category[] {
+  const categories: Record<string, Category> = {};
+  const modules = import.meta.glob("/src/features/**/*.{md,mdx}", {
+    query: "?raw",
+    eager: true,
+    import: "default",
+  });
 
-export function discoverFeatures(): FeatureCategory[] {
-  const features: FeatureDefinition[] = [];
+  for (const [path, rawContent] of Object.entries(modules)) {
+    const categoryName = path.split("/").slice(-2, -1)[0];
+    const categoryId = categoryName.toLowerCase().replace(/\s+/g, "-");
 
-  for (const [path, module] of Object.entries(featureModules)) {
-    const definition = (module as any).default as FeatureDefinition;
-    if (definition) {
-      features.push(definition);
+
+
+    if (!categories[categoryId]) {
+      categories[categoryId] = {
+        id: categoryId,
+        title: categoryName,
+        features: [],
+      };
+    }
+
+    // 1. Capture BOTH attributes and body
+    const { attributes, body } = fm(rawContent as string);
+    console.log(attributes, body);
+    const featureId = path
+      .split("/")
+      .pop()
+      ?.replace(/\.mdx?$/, "")
+      .toLowerCase()
+      .replace(/\s+/g, "-");
+
+    if (featureId) {
+      const feature: Feature = {
+        id: featureId,
+        title: (attributes as {title: string}).title || "Untitled",
+        category: categoryId,
+        route: `/features/${categoryId}/${featureId}`,
+        complexity: (attributes as {complexity: string}).complexity,
+        content: body,
+      };
+
+      categories[categoryId].features.push(feature);
     }
   }
 
-  // Group by category
-  const categories: FeatureCategory[] = [
-    {
-      id: "acs",
-      title: "ACS Features",
-      description: "Actor-Component-System core features",
-      icon: "pi-sitemap",
-      features: features.filter((f) => f.category === "acs"),
-    },
-    {
-      id: "engine",
-      title: "Engine Features",
-      description: "Rendering and engine-specific features",
-      icon: "pi-cog",
-      features: features.filter((f) => f.category === "engine"),
-    },
-    {
-      id: "examples",
-      title: "Examples",
-      description: "Complete application examples",
-      icon: "pi-play",
-      features: features.filter((f) => f.category === "examples"),
-    },
-  ];
-
-  return categories;
-}
-
-export function getFeatureById(id: string): FeatureDefinition | undefined {
-  const categories = discoverFeatures();
-  return categories.flatMap((c) => c.features).find((f) => f.id === id);
+  return Object.values(categories);
 }

@@ -8,10 +8,10 @@
           Vertex Link
         </h2>
       </div>
-      
+
       <Sidebar :categories="categories" :current-feature="currentFeatureId" />
     </aside>
-    
+
     <!-- Main content area -->
     <main class="main-content">
       <router-view />
@@ -21,12 +21,12 @@
 
 <script setup lang="ts">
 import Sidebar from "@/components/navigation/Sidebar.vue";
-import { discoverFeatures } from "@/utils/feature-discovery";
+import { useFeatures } from "@/composables/features";
 import { computed } from "vue";
 import { useRoute } from "vue-router";
 
 const route = useRoute();
-const categories = discoverFeatures();
+const { categories } = useFeatures();
 
 const currentFeatureId = computed(() => route.meta?.featureId as string);
 </script>

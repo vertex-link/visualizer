@@ -31,7 +31,6 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ["reflect-metadata"],
     exclude: ["@vertex-link/acs", "@vertex-link/engine"],
     esbuildOptions: {
       target: "ES2022",

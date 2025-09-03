@@ -9,7 +9,7 @@
         <i :class="`pi ${category.icon}`"></i>
         <span class="category-title">{{ category.title }}</span>
       </div>
-      
+
       <div class="feature-list">
         <router-link
           v-for="feature in category.features"
@@ -19,11 +19,6 @@
           :class="{ active: currentFeature === feature.id }"
         >
           <span class="feature-title">{{ feature.title }}</span>
-          <Tag 
-            :value="feature.complexity" 
-            :severity="getComplexitySeverity(feature.complexity)"
-            class="complexity-tag"
-          />
         </router-link>
       </div>
     </div>
@@ -31,28 +26,14 @@
 </template>
 
 <script setup lang="ts">
-import type { FeatureCategory } from "@/types/features";
-import Tag from "primevue/tag";
+import type { Category } from "@/types/features";
 
 interface Props {
-  categories: FeatureCategory[];
+  categories: Category[];
   currentFeature?: string;
 }
 
 defineProps<Props>();
-
-function getComplexitySeverity(complexity: string) {
-  switch (complexity) {
-    case "basic":
-      return "success";
-    case "intermediate":
-      return "warning";
-    case "advanced":
-      return "danger";
-    default:
-      return "info";
-  }
-}
 </script>
 
 <style scoped>
@@ -108,9 +89,5 @@ function getComplexitySeverity(complexity: string) {
 
 .feature-title {
   font-size: 0.875rem;
-}
-
-.complexity-tag {
-  font-size: 0.625rem;
 }
 </style>

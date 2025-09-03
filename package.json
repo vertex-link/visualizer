@@ -5,16 +5,16 @@
   "private": true,
   "devDependencies": {
     "@babel/plugin-transform-typescript": "^7.28.0",
-    "@biomejs/biome": "^1.9.4",
+    "@biomejs/biome": "^2.2.2",
     "@types/bun": "latest",
     "concurrently": "^9.2.1",
     "esbuild": "^0.25.9",
-    "vite": "^6.3.5",
+    "vite": "^7.1.4",
     "vite-plugin-zig": "^0.0.13"
   },
   "workspaces": ["packages/*"],
   "peerDependencies": {
-    "typescript": "^5.8.3"
+    "typescript": "^5.9.2"
   },
   "scripts": {
     "build": "bun run build:all-libs && bun run build:visualizer",

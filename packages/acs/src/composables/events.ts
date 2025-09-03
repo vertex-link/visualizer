@@ -1,6 +1,6 @@
-import { useEventBus } from "../../../../src/composables/context";
 import type { Event, EventClass, EventHandler } from "../events/Event";
 import type { IEventBus } from "../events/Event";
+import { useEventBus } from "./context";
 
 /**
  * Subscribes a handler to an event class within the current context.

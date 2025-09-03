@@ -1,6 +1,6 @@
-import { useProcessor } from "../../../../src/composables/context";
 import type { IProcessable, Processor } from "../processor/Processor";
 import { ProcessorRegistry } from "../processor/ProcessorRegistry";
+import { useProcessor } from "./context";
 
 export type UpdateTask = (deltaTime: number) => void;
 

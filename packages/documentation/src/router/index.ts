@@ -1,22 +1,23 @@
-import { discoverFeatures } from "@/utils/feature-discovery";
 import { createRouter, createWebHistory } from "vue-router";
 import type { RouteRecordRaw } from "vue-router";
+import { useFeatures } from "@/composables/features";
+import MarkdownRenderer from "@/components/MarkdownRenderer.vue";
 
-// Auto-generate routes from discovered features
 function generateFeatureRoutes(): RouteRecordRaw[] {
-  const categories = discoverFeatures();
+  const { categories } = useFeatures();
   const routes: RouteRecordRaw[] = [];
 
-  for (const category of categories) {
+  for (const category of categories.value) {
     for (const feature of category.features) {
       routes.push({
         path: feature.route,
         name: feature.id,
-        component: feature.component,
+        component: MarkdownRenderer,
         meta: {
           title: feature.title,
           category: feature.category,
           featureId: feature.id,
+          content: feature.content,
         },
       });
     }
@@ -28,7 +29,7 @@ function generateFeatureRoutes(): RouteRecordRaw[] {
 const routes: RouteRecordRaw[] = [
   {
     path: "/",
-    redirect: "/features/examples/actor-system", // Default to first ACS feature
+    redirect: "/features/examples/actor-system-demo", // Default to first ACS feature
   },
   ...generateFeatureRoutes(),
   {
