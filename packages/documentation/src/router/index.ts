@@ -1,11 +1,11 @@
-import { createRouter, createWebHistory } from "vue-router";
 import type { RouteRecordRaw } from "vue-router";
-import { useFeatures } from "@/composables/features";
+import { createRouter, createWebHistory } from "vue-router";
+import MarkdownRenderer from "@/components/MarkdownRenderer.vue";
 
 // Adjust the component import path as needed
 import FeatureContainer from "@/components/showcase/FeatureContainer.vue";
 import WelcomeComponent from "@/components/Welcome.vue";
-import MarkdownRenderer from "@/components/MarkdownRenderer.vue";
+import { useFeatures } from "@/composables/features";
 
 function generateFeatureRoutes(): RouteRecordRaw[] {
   const { categories } = useFeatures();
@@ -13,11 +13,13 @@ function generateFeatureRoutes(): RouteRecordRaw[] {
 
   for (const category of categories.value) {
     for (const feature of category.features) {
-      if (feature.type === 'example') {
+      // Ensure unique route names by including category
+      const routeName = `${category.id}-${feature.id}`;
+
+      if (feature.type === "complex") {
         routes.push({
           path: feature.route,
-          name: feature.id,
-          // Use your main feature container component here
+          name: routeName,
           component: FeatureContainer,
           meta: {
             title: feature.title,
@@ -25,18 +27,21 @@ function generateFeatureRoutes(): RouteRecordRaw[] {
             featureId: feature.id,
             content: feature.content,
             entryUrl: feature.entryUrl,
+            description: feature.description,
           },
         });
       } else {
         routes.push({
           path: feature.route,
-          name: feature.id,
+          name: routeName,
           component: MarkdownRenderer,
           props: {
             content: feature.content,
           },
           meta: {
             title: feature.title,
+            category: feature.category,
+            featureId: feature.id,
           },
         });
       }
@@ -49,30 +54,43 @@ function generateFeatureRoutes(): RouteRecordRaw[] {
 export function createDocumentationRouter() {
   const { categories } = useFeatures();
 
-  // 1. Determine a safe and dynamic redirect path
-  let defaultRedirectPath = '/welcome'; // Default to our new safe route
+  // Always use /welcome as safe fallback
+  const safeRedirectPath = "/welcome";
+
+  // Try to find a valid first feature route
+  let firstFeatureRoute = safeRedirectPath;
   if (categories.value.length > 0 && categories.value[0].features.length > 0) {
-    // If features exist, redirect to the very first one
-    defaultRedirectPath = categories.value[0].features[0].route;
+    firstFeatureRoute = categories.value[0].features[0].route;
   }
 
+  const featureRoutes = generateFeatureRoutes();
+
   const routes: RouteRecordRaw[] = [
-    // 2. Add the static, safe welcome route
+    // Safe welcome route
     {
-      path: '/welcome',
-      name: 'welcome',
+      path: "/welcome",
+      name: "welcome",
       component: WelcomeComponent,
+      meta: {
+        title: "Welcome",
+      },
     },
+    // Root redirect
     {
       path: "/",
-      redirect: defaultRedirectPath, // 3. Use the dynamic redirect path
+      redirect: firstFeatureRoute,
     },
-    ...generateFeatureRoutes(),
-    // 4. Point the catch-all to the safe path, NOT back to "/"
-    {
-      path: "/:pathMatch(.*)*",
-      redirect: defaultRedirectPath,
-    },
+    // All feature routes
+    ...featureRoutes,
+    // Catch-all - only add if we have valid routes
+    ...(featureRoutes.length > 0
+      ? [
+          {
+            path: "/:pathMatch(.*)*",
+            redirect: safeRedirectPath,
+          },
+        ]
+      : []),
   ];
 
   const router = createRouter({
@@ -84,6 +102,12 @@ export function createDocumentationRouter() {
     const title = to.meta?.title as string;
     document.title = title ? `${title} | Vertex Link Features` : "Vertex Link Features";
     next();
+  });
+
+  // Add error handling
+  router.onError((error) => {
+    console.error("Router error:", error);
+    router.push("/welcome");
   });
 
   return router;

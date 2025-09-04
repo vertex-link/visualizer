@@ -1,10 +1,10 @@
 import * as fs from "node:fs";
-// @ts-ignore
 import * as path from "node:path";
 import vue from "@vitejs/plugin-vue";
-import { defineConfig } from "vite";
-import zig from "vite-plugin-zig";
 import { globSync } from "glob";
+import { defineConfig } from "vite";
+// @ts-expect-error
+import zig from "vite-plugin-zig";
 
 // Custom plugin to handle WGSL shader files
 function wgslLoader() {
@@ -21,12 +21,15 @@ function wgslLoader() {
 
 const exampleEntryPoints = globSync("src/features/**/index.html", {
   cwd: __dirname,
-}).reduce((acc, file) => {
-  // Create a logical name for the entry point
-  const name = path.dirname(file).split("/").slice(2).join("/");
-  acc[name] = path.resolve(__dirname, file);
-  return acc;
-}, {} as Record<string, string>);
+}).reduce(
+  (acc, file) => {
+    // Create a logical name for the entry point
+    const name = path.dirname(file).split("/").slice(2).join("/");
+    acc[name] = path.resolve(__dirname, file);
+    return acc;
+  },
+  {} as Record<string, string>,
+);
 
 export default defineConfig({
   plugins: [vue(), zig(), wgslLoader()],

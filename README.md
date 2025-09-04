@@ -35,39 +35,38 @@ Components now handle dependencies explicitly through getter methods and manual 
 
 ```typescript
 class MyComponent extends Component {
-  private _transform?: TransformComponent;
-  private _resources?: ResourceComponent;
-  
-  constructor(actor: Actor) {
-    super(actor);
-  }
+    private _transform?: TransformComponent;
+    private _resources?: ResourceComponent;
 
-  get transform(): TransformComponent {
-    if (this._transform) {
-      return this._transform;
+    constructor(actor: Actor) {
+        super(actor);
     }
 
-    this._transform = this.actor.getComponent(TransformComponent);
-    if (!this._transform) {
-      throw new Error('TransformComponent not found');
-    }
-    return this._transform;
-  }
-  
-  get resources(): ResourceComponent {
-    if (this._resources) {
-      return this._resources;
+    get transform(): TransformComponent {
+        if (this._transform) {
+            return this._transform;
+        }
+
+        this._transform = this.actor.getComponent(TransformComponent);
+        if (!this._transform) {
+            throw new Error('TransformComponent not found');
+        }
+        return this._transform;
     }
 
-    this._resources = this.actor.getComponent(ResourceComponent);
-    if (!this._resources) {
-      throw new Error('ResourceComponent not found');
+    get resources(): ResourceComponent {
+        if (this._resources) {
+            return this._resources;
+        }
+
+        this._resources = this.actor.getComponent(ResourceComponent);
+        if (!this._resources) {
+            throw new Error('ResourceComponent not found');
+        }
+        return this._resources;
     }
-    return this._resources;
-  }
 }
 ```
-
 
 ## Actor Lifecycle
 
@@ -75,35 +74,25 @@ Actors provide lifecycle hooks for proper component initialization:
 
 ```typescript
 class CustomActor extends Actor {
-  resources?: ResourceComponent;
+    resources?: ResourceComponent;
 
-  constructor() {
-    super('customactor');
-  }
+    constructor() {
+        super('customactor');
+    }
 
-  protected onBeforeInitialize(): void {
-    // Add components here - before dependency resolution
-    this.addComponent(ResourceComponent);
-    this.addComponent(TransformComponent);
-    this.addComponent(MyCustomComponent);
-  }
+    protected onBeforeInitialize(): void {
+        // Add components here - before dependency resolution
+        this.addComponent(ResourceComponent);
+        this.addComponent(TransformComponent);
+        this.addComponent(MyCustomComponent);
+    }
 
-  protected onInitialize(): void {
-    // Access components after they're all added and initialized
-    this.resources = this.getComponent(ResourceComponent);
-  }
+    protected onInitialize(): void {
+        // Access components after they're all added and initialized
+        this.resources = this.getComponent(ResourceComponent);
+    }
 }
 ```
-
-
-## Dive Deeper
-
-For comprehensive information, please refer to the full **Vertex Link Visualizer Documentation**.This documentation includes:
-
--   Detailed Architectural Overview
--   Getting Started Guide & Project Setup
--   Complete API Documentation for `@vertex-link/acs` and `@vertex-link/engine`
--   Information on Upcoming Features (like Component-Driven Resources and Buffer Streaming)
 
 ## Development Setup
 
@@ -111,7 +100,7 @@ This project uses [Bun](https://bun.sh/) as the primary JavaScript runtime, pack
 
 ### Prerequisites
 
--   Install [Bun](https://bun.sh/docs/installation).
+-   Install [Bun](https://bun.sh/docs/installation) **OR** use the provided Docker container.
 -   A modern browser with WebGPU support (for running the visualizer examples).
 
 ### Local Setup & Running
@@ -119,9 +108,8 @@ This project uses [Bun](https://bun.sh/) as the primary JavaScript runtime, pack
 1.  **Clone the repository:**
 ```shell script
 git clone git@github.com:vertex-link/visualizer.git
-    cd visualizer
+cd visualizer
 ```
-
 
 2.  **Install Dependencies:**
     Bun automatically installs dependencies when you run scripts if they are not already present. Or, you can explicitly install them:
@@ -147,15 +135,39 @@ bun run dev
     The `@vertex-link/documentation` package uses Vite, which is configured to resolve `@vertex-link/acs` and `@vertex-link/engine` to their source `index.ts` files, enabling hot-reloading across packages.
 
 4.  **Accessing the Examples:**
-    Open your browser and navigate to the URL provided by the Vite development server (usually `http://localhost:8000`). The `index.html` in the `documentation` package serves as the entry point for examples.
+    Open your browser and navigate to the URL provided by the Vite development server (usually `http://localhost:8000`). The documentation system automatically discovers and presents all available documentation and examples.
+
+### Docker Development (Alternative)
+
+If you prefer not to install Bun locally, you can use the provided Docker environment:
+
+```shell script
+docker-compose up bun_dev
+```
+
+This starts a Bun container with the project mounted at `/app` and port 8000 exposed. You can then:
+
+1. **Execute into the container:**
+```shell script
+docker exec -it vertex-link-bun-dev bash
+```
+
+2. **Run development commands inside the container:**
+```shell script
+cd /app
+bun install
+bun run dev
+```
+
+All the same Bun commands work inside the container, and changes are reflected on your local filesystem due to volume mounting.
 
 ### Building Packages
 
 -   **Build a specific library:**
 ```shell script
 bun run --cwd ./packages/acs build
-    # or
-    bun run --cwd ./packages/engine build
+# or
+bun run --cwd ./packages/engine build
 ```
 
     These scripts use `bun build` to compile the TypeScript source to ESM format in the `dist` directory of each package, including sourcemaps.
@@ -164,8 +176,6 @@ bun run --cwd ./packages/acs build
 ```shell script
 bun run build:all-libs
 ```
-
-
 
 -   **Build the documentation/visualizer examples:**
 ```shell script
@@ -192,166 +202,18 @@ bun run typecheck
 
     This runs `tsc --noEmit -p ./tsconfig.json` using the root `tsconfig.json`, which should cover all workspace packages due to project references or includes if configured appropriately. The root `tsconfig.json` extends `tsconfig.base.json`.
 
-### Docker (Optional)
+## Documentation and Examples
 
-A `docker-compose.yml` is provided for a Bun development environment.
-To use it:
-```shell script
-docker-compose up bun_dev
-```
+The project includes an interactive documentation system that automatically discovers and organizes documentation and examples based on file structure. Simply create `.md` files or interactive examples in `packages/documentation/src/docs/` and they'll appear in the navigation automatically.
 
-This will mount the current directory into `/app` in the container and expose port 8000. You can then run the Bun commands from within the container's shell.
+For detailed information on the framework architecture, API documentation, and interactive examples, run the development server and navigate to `http://localhost:8000`.
 
-## Getting Started (Quick Look)
+## Dive Deeper
 
-A brief example of creating an actor and adding components:
+For comprehensive information, please refer to the **Vertex Link Visualizer Documentation** served at `http://localhost:8000` during development. This documentation includes:
 
-```typescript
-// --- In your main application setup ---
-
-// Initialize the engine context
-const engineContext = new EngineContext(canvas);
-await engineContext.initialize();
-
-// Create a scene and set it on the context
-const scene = new Scene("MyScene");
-engineContext.setScene(scene);
-
-// Create an Actor
-const myActor = new Actor("MyCube");
-scene.addActor(myActor);
-
-// Add components explicitly
-const transform = myActor.addComponent(TransformComponent);
-transform.setPosition(0, 0, 0);
-
-const meshRenderer = myActor.addComponent(MeshRendererComponent, {
-    mesh: myMeshResource,
-    material: myMaterialResource
-});
-
-// Add custom behavior components
-const rotator = myActor.addComponent(RotatingComponent);
-rotator.speed = 1.0;
-
-// Create camera
-const cameraActor = new Actor("MainCamera");
-const cameraTransform = cameraActor.addComponent(TransformComponent);
-cameraTransform.setPosition(0, 1.5, 8);
-
-cameraActor.addComponent(CameraComponent, {
-    projectionType: ProjectionType.PERSPECTIVE,
-    perspectiveConfig: {
-        fov: Math.PI / 3,
-        aspect: canvas.width / canvas.height,
-        near: 0.1,
-        far: 100.0,
-    },
-    isActive: true,
-});
-
-scene.addActor(cameraActor);
-
-// Start the engine
-engineContext.start();
-```
-
-
-## Resource Management Pattern
-
-Resources are created and managed through handles with explicit compilation:
-
-```typescript
-// Create shader handle
-const shaderHandle = createShaderHandle(
-    resourceManager,
-    "StandardShader",
-    vertexShaderSource,
-    fragmentShaderSource,
-);
-
-// Get and compile the resource
-const standardShader = await shaderHandle.get();
-standardShader.setDevice(device);
-await standardShader.compile();
-
-// Create mesh and material similarly
-const meshHandle = createMeshHandle(resourceManager, "CubeMesh", meshDescriptor);
-const mesh = await meshHandle.get();
-mesh.setDevice(device);
-await mesh.compile();
-
-const materialHandle = createMaterialHandle(
-    resourceManager,
-    "CubeMaterial",
-    shaderHandle,
-    uniforms,
-    vertexLayout,
-);
-const material = await materialHandle.get();
-material.setDevice(device, preferredFormat);
-await material.compile();
-```
-
-
-## Development Plan Highlights
-
--   **Simplified Architecture**: Removing decorator complexity for better maintainability and debugging.
--   **Component-Driven Resources**: Simplifying how resources are accessed and managed by actors.
--   **Streamlined Material System**: More flexible and instance-based material properties.
--   **Declarative Scene Setup API**: Reducing boilerplate for scene creation.
--   **Advanced Hierarchy System**: Robust parent-child relationships for actors.
--   **Buffer Streaming**: A key long-term goal for efficient handling of large-scale scenes and data.
-
-We encourage you to explore the code, examples, and the full documentation to understand the capabilities and future direction of Vertex Link.
-
-
-
-## Composable-like helpers (decorator replacement)
-
-You can replace update/event decorators with thin, context-aware functions inspired by Vue composables. This keeps the OOP style (classes, methods) while avoiding decorators and global singletons.
-
-Helper location: src/composables/context.ts
-- runWithContext(ctx, fn): enter a context for the synchronous duration of fn.
-- getCurrentContext(strict?): fetch current context (throw if strict and missing).
-- useActor/useComponent/useScene/useEventBus/useProcessor/useService: read from the current context.
-- deriveContext(partial): shallow-merge a new context from the current.
-- withContext(ctx, fn): convenience alias for class methods.
-
-Example: OOP component using helpers
-
-import { withContext, useActor, useEventBus } from "./src/composables/context";
-
-class MyComponent {
-  constructor(public actor: any, public bus: any) {}
-
-  update() {
-    return withContext({ component: this, actor: this.actor, eventBus: this.bus }, () => {
-      const actor = useActor<{ name: string }>();
-      const bus = useEventBus<{ emit: (e: string) => void }>();
-      // ... your update logic here
-      bus.emit(`updated:${actor.name}`);
-    });
-  }
-}
-
-Procedural usage:
-
-import { runWithContext, useProcessor } from "./src/composables/context";
-
-runWithContext({ scene, processors: new Map([["webgpu", webgpuProcessor]]) }, () => {
-  const p = useProcessor<any>("webgpu");
-  // ... use the processor
-});
-
-Notes:
-- The helpers are synchronous-scope only. If you jump async (e.g., setTimeout/await), re-enter a context around the async callback or pass dependencies explicitly.
-- This is an incremental migration path: you can start by wrapping selected methods with withContext and gradually remove decorators.
-- The helpers are engine-agnostic. You control what goes into the context (actor, component, eventBus, processors/services), keeping boundaries clear.
-
-Additional ACS composables:
-- packages/acs/src/composables/processors.ts: useUpdate(processorName, fn, context[, id]) to register per-frame/fixed-tick work without decorators.
-- packages/acs/src/composables/events.ts: useOnEvent/useOnceEvent to subscribe to events on the current context's event bus. Both return disposer functions.
-
-Decorator status:
-- Decorator-based hooks are removed/disabled. tsconfig.base.json sets experimentalDecorators=false and emitDecoratorMetadata=false. Prefer the explicit composable APIs above.
+-   Detailed Architectural Overview
+-   Getting Started Guide & Project Setup
+-   Complete API Documentation for `@vertex-link/acs` and `@vertex-link/engine`
+-   Interactive Examples and Demos
+-   Information on Upcoming Features (like Component-Driven Resources and Buffer Streaming)
