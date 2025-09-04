@@ -3,46 +3,60 @@ import type { Category, Feature } from "@/types/features";
 
 export function discoverFeatures(): Category[] {
   const categories: Record<string, Category> = {};
-  const modules = import.meta.glob("/src/features/**/*.{md,mdx}", {
+  const rootDir = "/src/docs";
+  const modules = import.meta.glob("/src/docs/**/*.{md,mdx}", {
     query: "?raw",
     eager: true,
     import: "default",
   });
 
   for (const [path, rawContent] of Object.entries(modules)) {
-    const categoryName = path.split("/").slice(-2, -1)[0];
+    console.log(path);
+
+    const pathParts = path.split("/");
+    const categoryName = pathParts.slice(-3, -2)[0];
+    const featureId = pathParts.slice(-2, -1)[0];
     const categoryId = categoryName.toLowerCase().replace(/\s+/g, "-");
 
-
-
     if (!categories[categoryId]) {
-      categories[categoryId] = {
-        id: categoryId,
-        title: categoryName,
-        features: [],
-      };
+      categories[categoryId] = { id: categoryId, title: categoryName, features: [] };
     }
 
-    // 1. Capture BOTH attributes and body
     const { attributes, body } = fm(rawContent as string);
-    console.log(attributes, body);
-    const featureId = path
-      .split("/")
-      .pop()
-      ?.replace(/\.mdx?$/, "")
-      .toLowerCase()
-      .replace(/\s+/g, "-");
+    const typedAttributes = attributes as any; // Cast to any for simplicity here
 
     if (featureId) {
-      const feature: Feature = {
-        id: featureId,
-        title: (attributes as {title: string}).title || "Untitled",
-        category: categoryId,
-        route: `/features/${categoryId}/${featureId}`,
-        complexity: (attributes as {complexity: string}).complexity,
-        content: body,
-      };
+      let feature: Feature;
+      console.log(categoryId, featureId);
 
+      // Check if it's an interactive example or a standalone doc page
+      if (typedAttributes.entry) {
+        // It's an EXAMPLE
+        feature = {
+          type: "example",
+          id: featureId,
+          title: typedAttributes.title || "Untitled",
+          category: categoryId,
+          route: `/features/${categoryId}/${featureId}`,
+          entryUrl: path.replace(/[^/]+$/, typedAttributes.entry),
+          complexity: typedAttributes.complexity,
+          content: body,
+          description: typedAttributes.description || "",
+          parameters: typedAttributes.parameters || [],
+        };
+      } else {
+        // It's a STANDALONE DOC
+        const markdownFileName = pathParts[pathParts.length - 1];
+        const featureId = markdownFileName.replace(/\.mdx?$/, "");
+        feature = {
+          type: "doc",
+          id: featureId,
+          title: typedAttributes.title || "Untitled",
+          category: categoryId,
+          route: `/features/${categoryId}/${featureId}`,
+          content: body,
+        };
+      }
       categories[categoryId].features.push(feature);
     }
   }

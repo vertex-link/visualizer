@@ -3,8 +3,8 @@
     <!-- Feature header -->
     <header class="feature-header">
       <div class="header-content">
-        <h1 class="feature-title">{{ title }}</h1>
-        <p class="feature-description">{{ description }}</p>
+        <h1 class="feature-title">{{ route.meta.title }}</h1>
+        <p class="feature-description">{{ route.meta.description }}</p>
       </div>
       <div class="header-actions">
         <Button
@@ -21,7 +21,7 @@
     <div class="feature-content">
       <!-- Demo canvas area -->
       <div class="demo-area">
-        <slot name="demo" />
+        <iframe :src="iframeUrl" class="demo-iframe" frameborder="0"></iframe>
       </div>
       
       <!-- Right panel with controls and docs -->
@@ -45,7 +45,7 @@
             <i class="pi pi-book"></i>
             Documentation
           </h3>
-          <DocumentationPanel :content="documentation" />
+          <DocumentationPanel :content="route.meta.content as string" />
         </div>
       </div>
     </div>
@@ -53,20 +53,15 @@
 </template>
 
 <script setup lang="ts">
-import type { ParameterDefinition } from "@/types/features";
 import Button from "primevue/button";
-import { reactive } from "vue";
+import {computed, reactive} from "vue";
 import DocumentationPanel from "./DocumentationPanel.vue";
 import ParameterPanel from "./ParameterPanel.vue";
 
-interface Props {
-  title: string;
-  description: string;
-  parameters: ParameterDefinition[];
-  documentation: string;
-}
+import { useRoute } from 'vue-router';
 
-const props = defineProps<Props>();
+
+const route = useRoute();
 
 const emit = defineEmits<{
   "parameter-change": [key: string, value: any];
@@ -74,8 +69,12 @@ const emit = defineEmits<{
 
 // Initialize parameter values with defaults
 const parameterValues = reactive<Record<string, any>>({});
-for (const param of props.parameters) {
-  parameterValues[param.key] = param.defaultValue;
+
+console.log(route.meta);
+
+for (const [key, value] of Object.entries(route.meta)) {
+  console.log(key, value);
+  parameterValues[key] = value;
 }
 
 function updateParameter(key: string, value: any) {
@@ -83,13 +82,15 @@ function updateParameter(key: string, value: any) {
   emit("parameter-change", key, value);
 }
 
+const iframeUrl = computed(() => route.meta.entryUrl as string);
+
 function resetParameters() {
-  for (const param of props.parameters) {
-    parameterValues[param.key] = param.defaultValue;
+  for (const [key, val] of Object.entries(route.meta)) {
+    parameterValues[key] = val;
   }
   // Emit all parameter resets
-  for (const param of props.parameters) {
-    emit("parameter-change", param.key, param.defaultValue);
+  for (const [key, val] of Object.entries(route.meta)) {
+    emit("parameter-change", key, val);
   }
 }
 </script>

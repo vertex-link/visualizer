@@ -1,6 +1,5 @@
 ---
 title: Actor System Demo
-complexity: basic
 ---
 
 # Actor System Demo

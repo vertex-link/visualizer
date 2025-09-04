@@ -3,8 +3,13 @@ export interface Feature {
   title: string;
   category: string;
   route: string;
-  complexity?: string;
   content: string;
+  type: 'example' | 'doc';
+
+  complexity?: string;
+  description?: string;
+  parameters?: any[];
+  entryUrl?: string;
 }
 
 export interface Category {

@@ -1,6 +1,5 @@
 ---
 title: Zig Compute Demo
-complexity: advanced
 ---
 
 # Zig Compute Demo
