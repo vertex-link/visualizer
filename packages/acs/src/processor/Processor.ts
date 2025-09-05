@@ -35,7 +35,7 @@ export interface IProcessable {
 export abstract class Processor {
   public readonly name: string;
   protected tasks: Map<string | symbol, IProcessable> = new Map();
-  protected _isRunning: boolean = false;
+  protected _isRunning = false;
 
   /**
    * @param name A unique name for this processor (e.g., "render", "physics").
@@ -53,12 +53,18 @@ export abstract class Processor {
    * @param processable The processable unit to add.
    */
   public addTask(processable: IProcessable): void {
-    if (!processable || typeof processable.id === 'undefined' || typeof processable.update !== 'function') {
+    if (
+      !processable ||
+      typeof processable.id === "undefined" ||
+      typeof processable.update !== "function"
+    ) {
       console.error(`Processor '${this.name}': Attempted to add invalid processable.`, processable);
       return;
     }
     if (this.tasks.has(processable.id)) {
-      console.warn(`Processor '${this.name}': Task with id '${String(processable.id)}' already exists. Overwriting.`);
+      console.warn(
+        `Processor '${this.name}': Task with id '${String(processable.id)}' already exists. Overwriting.`,
+      );
     }
     this.tasks.set(processable.id, processable);
   }
@@ -69,7 +75,7 @@ export abstract class Processor {
    * @returns True if a task was found and removed, false otherwise.
    */
   public removeTask(taskId: string | symbol): boolean {
-    if (typeof taskId === 'undefined') {
+    if (typeof taskId === "undefined") {
       console.warn(`Processor '${this.name}': Attempted to remove task with undefined ID.`);
       return false;
     }

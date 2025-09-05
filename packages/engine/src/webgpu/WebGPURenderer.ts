@@ -1,6 +1,6 @@
-import { WebGPUBuffer } from "./WebGPUBuffer";
 import { generateUUID } from "@vertex-link/acs";
-import { BufferDescriptor, BufferUsage } from "./../rendering/interfaces/IBuffer";
+import { type BufferDescriptor, BufferUsage } from "./../rendering/interfaces/IBuffer";
+import { WebGPUBuffer } from "./WebGPUBuffer";
 
 /**
  * Simplified WebGPU Renderer - Just handles device setup and basic operations
@@ -10,7 +10,7 @@ export class WebGPURenderer {
   private canvas: HTMLCanvasElement | null = null;
   private adapter: GPUAdapter | null = null;
   private context: GPUCanvasContext | null = null;
-  private format: GPUTextureFormat = 'bgra8unorm';
+  private format: GPUTextureFormat = "bgra8unorm";
   private depthTexture: GPUTexture | null = null;
 
   private currentEncoder: GPUCommandEncoder | null = null;
@@ -26,34 +26,34 @@ export class WebGPURenderer {
     this.canvas = canvas;
 
     if (!navigator.gpu) {
-      throw new Error('WebGPU is not supported in this browser');
+      throw new Error("WebGPU is not supported in this browser");
     }
 
     this.adapter = await navigator.gpu.requestAdapter();
     if (!this.adapter) {
-      throw new Error('Failed to get WebGPU adapter');
+      throw new Error("Failed to get WebGPU adapter");
     }
 
     //@ts-ignore
     this.device = await this.adapter.requestDevice();
     if (!this.device) {
-      throw new Error('Failed to get WebGPU device');
+      throw new Error("Failed to get WebGPU device");
     }
 
-    this.context = canvas.getContext('webgpu');
+    this.context = canvas.getContext("webgpu");
     if (!this.context) {
-      throw new Error('Failed to get WebGPU canvas context');
+      throw new Error("Failed to get WebGPU canvas context");
     }
 
     this.format = navigator.gpu.getPreferredCanvasFormat();
     this.context.configure({
       device: this.device,
       format: this.format,
-      alphaMode: 'premultiplied', // Keep this for proper alpha blending
+      alphaMode: "premultiplied", // Keep this for proper alpha blending
     });
 
     this.createDepthTexture();
-    console.log('✅ WebGPU renderer initialized');
+    console.log("✅ WebGPU renderer initialized");
   }
 
   /**
@@ -68,9 +68,9 @@ export class WebGPURenderer {
 
     this.depthTexture = this.device.createTexture({
       size: [this.canvas.width, this.canvas.height],
-      format: 'depth24plus',
+      format: "depth24plus",
       usage: GPUTextureUsage.RENDER_ATTACHMENT,
-      label: 'Depth Texture',
+      label: "Depth Texture",
     });
   }
 
@@ -79,35 +79,41 @@ export class WebGPURenderer {
    */
   beginFrame(): boolean {
     if (!this.device || !this.context || !this.depthTexture) {
-      console.error('❌ WebGPU renderer not initialized');
+      console.error("❌ WebGPU renderer not initialized");
       return false;
     }
 
     // Recreate depth texture if canvas size changed
-    if (this.canvas && (this.canvas.width !== this.depthTexture.width || this.canvas.height !== this.depthTexture.height)) {
+    if (
+      this.canvas &&
+      (this.canvas.width !== this.depthTexture.width ||
+        this.canvas.height !== this.depthTexture.height)
+    ) {
       this.createDepthTexture();
     }
 
     this.currentEncoder = this.device.createCommandEncoder({
-      label: `Frame ${generateUUID()}`
+      label: `Frame ${generateUUID()}`,
     });
 
     const textureView = this.context.getCurrentTexture().createView();
     const depthTextureView = this.depthTexture.createView();
 
     this.currentRenderPass = this.currentEncoder.beginRenderPass({
-      label: 'Main Render Pass',
-      colorAttachments: [{
-        view: textureView,
-        clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 0.0 }, // Made transparent!
-        loadOp: 'clear',
-        storeOp: 'store',
-      }],
+      label: "Main Render Pass",
+      colorAttachments: [
+        {
+          view: textureView,
+          clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 0.0 }, // Made transparent!
+          loadOp: "clear",
+          storeOp: "store",
+        },
+      ],
       depthStencilAttachment: {
         view: depthTextureView,
         depthClearValue: 1.0,
-        depthLoadOp: 'clear',
-        depthStoreOp: 'store',
+        depthLoadOp: "clear",
+        depthStoreOp: "store",
       },
     });
 
@@ -119,7 +125,7 @@ export class WebGPURenderer {
    */
   endFrame(): void {
     if (!this.device || !this.currentEncoder || !this.currentRenderPass) {
-      console.error('❌ No active frame to end');
+      console.error("❌ No active frame to end");
       return;
     }
 
@@ -131,7 +137,7 @@ export class WebGPURenderer {
     this.currentEncoder = null;
 
     // NEW: Destroy collected buffers after submission
-    this._buffersToDestroy.forEach(buffer => buffer.destroy());
+    this._buffersToDestroy.forEach((buffer) => buffer.destroy());
     this._buffersToDestroy = []; // Clear for next frame
   }
 
@@ -158,7 +164,7 @@ export class WebGPURenderer {
   /**
    * Set index buffer (utility for render passes)
    */
-  setIndexBuffer(buffer: GPUBuffer, format: GPUIndexFormat = 'uint16'): void {
+  setIndexBuffer(buffer: GPUBuffer, format: GPUIndexFormat = "uint16"): void {
     if (this.currentRenderPass) {
       this.currentRenderPass.setIndexBuffer(buffer, format);
     }
@@ -184,14 +190,14 @@ export class WebGPURenderer {
     return this.device.createBuffer({
       size: Math.max(size, 16), // Ensure minimum alignment
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-      label: label || 'Persistent Uniform Buffer'
+      label: label || "Persistent Uniform Buffer",
     });
   }
 
   /**
    * Draw primitives
    */
-  draw(vertexCount: number, instanceCount: number = 1): void {
+  draw(vertexCount: number, instanceCount = 1): void {
     if (this.currentRenderPass) {
       this.currentRenderPass.draw(vertexCount, instanceCount);
     }
@@ -200,7 +206,7 @@ export class WebGPURenderer {
   /**
    * Draw indexed primitives
    */
-  drawIndexed(indexCount: number, instanceCount: number = 1): void {
+  drawIndexed(indexCount: number, instanceCount = 1): void {
     if (this.currentRenderPass) {
       this.currentRenderPass.drawIndexed(indexCount, instanceCount);
     }
@@ -249,7 +255,7 @@ export class WebGPURenderer {
     if (this.depthTexture) this.depthTexture.destroy();
 
     // Destroy any remaining buffers
-    this._buffersToDestroy.forEach(buffer => buffer.destroy());
+    this._buffersToDestroy.forEach((buffer) => buffer.destroy());
     this._buffersToDestroy = [];
 
     this.canvas = null;
@@ -262,7 +268,7 @@ export class WebGPURenderer {
     this.currentRenderPass = null;
     this.depthTexture = null;
 
-    console.log('🗑️ WebGPU renderer disposed');
+    console.log("🗑️ WebGPU renderer disposed");
   }
 
   // === Private Helper Methods ===

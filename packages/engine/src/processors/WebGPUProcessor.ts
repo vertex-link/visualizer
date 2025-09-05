@@ -1,30 +1,23 @@
-import { createProcessorUpdateDecorator, Processor, Scene } from "@vertex-link/acs";
-import { MeshRendererComponent } from "../rendering/components/MeshRendererComponent";
-import { WebGPURenderer } from "../webgpu/WebGPURenderer";
+import { type IEventBus, Processor, type Scene } from "@vertex-link/acs";
+import { ResourceReadyEvent } from "../events";
 import { GPUResourcePool } from "../rendering/GPUResourcePool";
 import { RenderGraph } from "../rendering/RenderGraph";
 import { CameraComponent } from "../rendering/camera/CameraComponent";
+import { MeshRendererComponent } from "../rendering/components/MeshRendererComponent";
 import { TransformComponent } from "../rendering/components/TransformComponent";
-import { MaterialResource } from "../resources/MaterialResource";
-import { MeshResource } from "../resources/MeshResource";
-import { on, off, ResourceReadyEvent } from "@vertex-link/acs";
+import type { MaterialResource } from "../resources/MaterialResource";
+import type { MeshResource } from "../resources/MeshResource";
+import { WebGPURenderer } from "../webgpu/WebGPURenderer";
 
-/**
- * Decorator to hook into WebGPU rendering loop
- */
-export function WebGPUUpdate() {
-  return createProcessorUpdateDecorator("webgpu", "WebGPUUpdate");
-}
-
-
+// Phase 0: Decorator-based update hooks disabled. Keeping placeholder commented out for reference.
 
 /**
  * Instance data for a single object
  */
 interface InstanceData {
   modelMatrix: Float32Array; // 16 floats
-  color: Float32Array;       // 4 floats
-  transformVersion: number;  // Track transform changes
+  color: Float32Array; // 4 floats
+  transformVersion: number; // Track transform changes
 }
 
 /**
@@ -65,13 +58,15 @@ export class WebGPUProcessor extends Processor {
   // Frame timing
   private lastFrameTime = 0;
   private animationFrameId?: number;
+  private eventBus: IEventBus;
 
-  constructor(canvas: HTMLCanvasElement, name: string = "webgpu") {
+  constructor(canvas: HTMLCanvasElement, name = "webgpu", eventBus: IEventBus) {
     super(name);
     this.canvas = canvas;
     this.renderer = new WebGPURenderer();
     this.resourcePool = new GPUResourcePool();
     this.renderGraph = new RenderGraph();
+    this.eventBus = eventBus;
   }
 
   /**
@@ -87,9 +82,6 @@ export class WebGPUProcessor extends Processor {
     // Update camera aspect ratio based on canvas
     this.updateCameraAspectRatios();
 
-    // Listen for resources becoming ready
-    on(ResourceReadyEvent, this.handleResourceReady, this);
-
     console.log(this.renderer.device?.adapterInfo.vendor);
 
     console.log("✅ WebGPUProcessor initialized");
@@ -100,13 +92,6 @@ export class WebGPUProcessor extends Processor {
    */
   setScene(scene: Scene): void {
     this.scene = scene;
-    this.markDirty();
-  }
-
-  /**
-   * Mark render data as dirty (forces re-batching)
-   */
-  markDirty(): void {
     this.isDirty = true;
   }
 
@@ -118,25 +103,28 @@ export class WebGPUProcessor extends Processor {
       return;
     }
 
-    // 1. Update render batches if dirty
-    if (this.isDirty) {
-      this.updateRenderBatches();
-      this.updateActiveCamera();
-      this.isDirty = false;
-    }
+    // Run any explicitly registered per-frame tasks (e.g., RotatingComponent tickers)
+    super.executeTasks(deltaTime);
 
-    // 2. Check for transform updates and mark batches dirty
+    // Update render batches and camera after logic updates
+    this.updateRenderBatches();
+    this.updateActiveCamera();
+
+    // Check for transform updates and mark batches dirty
     this.checkTransformUpdates();
 
-    // 3. Upload instance data and create global uniforms
+    // Upload instance data and create global uniforms
     this.uploadInstanceData();
     this.updateGlobalUniforms();
 
-    // 4. Execute render graph with camera
-    this.renderGraph.execute(this.renderer, this.cachedBatches, this.activeCamera, deltaTime, this.globalBindGroup);
-
-    // 3. Call @WebGPUUpdate decorated methods (for custom render logic)
-    super.executeTasks(deltaTime);
+    // Execute render graph with camera
+    this.renderGraph.execute(
+      this.renderer,
+      this.cachedBatches,
+      this.activeCamera,
+      deltaTime,
+      this.globalBindGroup,
+    );
   }
 
   /**
@@ -146,7 +134,8 @@ export class WebGPUProcessor extends Processor {
     if (!this.scene) return;
 
     // Query all renderable objects
-    const renderables = this.scene.query()
+    const renderables = this.scene
+      .query()
       .withComponent(TransformComponent)
       .withComponent(MeshRendererComponent)
       .execute();
@@ -156,10 +145,12 @@ export class WebGPUProcessor extends Processor {
 
     for (const actor of renderables) {
       const meshRenderer = actor.getComponent(MeshRendererComponent);
+      // Trigger resource readiness (non-blocking)
+      meshRenderer?.updateForRender(0);
       if (!meshRenderer?.isRenderable()) continue;
 
-      const materialId = meshRenderer.material?.id || 'default';
-      const meshId = meshRenderer.mesh?.id || 'default';
+      const materialId = meshRenderer.material?.id || "default";
+      const meshId = meshRenderer.mesh?.id || "default";
       const batchKey = `${materialId}_${meshId}`;
 
       if (!batchGroups.has(batchKey)) {
@@ -171,35 +162,41 @@ export class WebGPUProcessor extends Processor {
     // Create instanced render batches
     this.cachedBatches = Array.from(batchGroups.entries()).map(([batchKey, meshRenderers]) => {
       const batch = this.createInstancedBatch(meshRenderers[0].material!, meshRenderers[0].mesh!);
-      
+
       // Add all instances to the batch
       for (const meshRenderer of meshRenderers) {
         const transform = meshRenderer.actor?.getComponent(TransformComponent);
         if (transform) {
           const modelMatrix = transform.getWorldMatrix();
           const color = this.getInstanceColor(meshRenderer.material!);
-          batch.instances.set(meshRenderer.actor!.id, { modelMatrix, color, transformVersion: transform.version });
+          batch.instances.set(meshRenderer.actor!.id, {
+            modelMatrix,
+            color,
+            transformVersion: transform.version,
+          });
         }
       }
-      
+
       batch.isDirty = true;
       return batch;
     });
 
-    console.log(`📦 Created ${this.cachedBatches.length} instanced render batches for ${renderables.length} objects`);
+    console.log(
+      `📦 Created ${this.cachedBatches.length} instanced render batches for ${renderables.length} objects`,
+    );
   }
 
   /**
    * Convert material color uniform to Float32Array
    */
   private getInstanceColor(material: MaterialResource): Float32Array {
-    const colorUniform = material.getUniform('color');
-    
+    const colorUniform = material.getUniform("color");
+
     if (colorUniform instanceof Float32Array) {
       return colorUniform;
     } else if (Array.isArray(colorUniform)) {
       return new Float32Array(colorUniform);
-    } else if (typeof colorUniform === 'number') {
+    } else if (typeof colorUniform === "number") {
       return new Float32Array([colorUniform, colorUniform, colorUniform, 1.0]);
     } else {
       return new Float32Array([1.0, 1.0, 1.0, 1.0]); // Default white
@@ -209,16 +206,19 @@ export class WebGPUProcessor extends Processor {
   /**
    * Create an instanced render batch
    */
-  private createInstancedBatch(material: MaterialResource, mesh: MeshResource): InstancedRenderBatch {
+  private createInstancedBatch(
+    material: MaterialResource,
+    mesh: MeshResource,
+  ): InstancedRenderBatch {
     const maxInstances = 1000;
     const device = this.renderer.getDevice()!;
-    
+
     // Create instance buffer
     const bufferSize = maxInstances * 80; // 80 bytes per instance (16 + 4 floats)
     const instanceBuffer = device.createBuffer({
       size: bufferSize,
       usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-      label: `InstanceBuffer_${material.name}_${mesh.id}`
+      label: `InstanceBuffer_${material.name}_${mesh.id}`,
     });
 
     return {
@@ -231,55 +231,9 @@ export class WebGPUProcessor extends Processor {
       pipeline: undefined,
       bindGroup: undefined,
       isDirty: true,
-      maxInstances
+      maxInstances,
     };
   }
-
-  /**
-   * Handle ResourceReadyEvent - add single object to render batches
-   */
-  private handleResourceReady = (event: ResourceReadyEvent): void => {
-    const meshRenderer = event.payload.meshRenderer as MeshRendererComponent;
-    
-    console.log(`📨 ResourceReadyEvent received for ${meshRenderer?.actor?.label}`);
-    
-    if (!meshRenderer?.isRenderable()) {
-      console.log(`📨 Skipping - not renderable`);
-      return;
-    }
-
-    const material = meshRenderer.material!;
-    const meshId = meshRenderer.mesh?.id || 'default';
-    const batchKey = `${material.id}_${meshId}`;
-
-    console.log(`📨 Adding to batches with material: ${material.name}, mesh: ${meshId}`);
-
-    // Find existing batch for this material+mesh combination
-    let batch = this.cachedBatches.find(b => b.material.id === material.id && b.meshId === meshId);
-    
-    if (batch) {
-      // Add to existing batch
-      const transform = meshRenderer.actor?.getComponent(TransformComponent);
-      if (transform) {
-        const modelMatrix = transform.getWorldMatrix();
-        const color = this.getInstanceColor(meshRenderer.material!);
-        batch.instances.set(meshRenderer.actor!.id, { modelMatrix, color, transformVersion: transform.version });
-        batch.isDirty = true;
-        // console.log(`📨 Added to existing batch. New batch size: ${batch.instances.size}`);
-      }
-    } else {
-      // Create new batch for this material+mesh combination
-      batch = this.createInstancedBatch(material, meshRenderer.mesh!);
-      const transform = meshRenderer.actor?.getComponent(TransformComponent);
-      if (transform) {
-        const modelMatrix = transform.getWorldMatrix();
-        const color = this.getInstanceColor(meshRenderer.material!);
-        batch.instances.set(meshRenderer.actor!.id, { modelMatrix, color, transformVersion: transform.version });
-      }
-      this.cachedBatches.push(batch);
-      // console.log(`📨 Created new instanced batch. Total batches: ${this.cachedBatches.length}`);
-    }
-  };
 
   /**
    * Update the active camera from scene
@@ -360,7 +314,7 @@ export class WebGPUProcessor extends Processor {
    */
   private uploadInstanceData(): void {
     const device = this.renderer.getDevice()!;
-    
+
     for (const batch of this.cachedBatches) {
       if (!batch.isDirty || !batch.instanceData || !batch.instanceBuffer) continue;
 
@@ -369,7 +323,7 @@ export class WebGPUProcessor extends Processor {
         // Pack model matrix (16 floats)
         batch.instanceData.set(instance.modelMatrix, offset);
         offset += 16;
-        
+
         // Pack color (4 floats)
         batch.instanceData.set(instance.color, offset);
         offset += 4;
@@ -378,16 +332,10 @@ export class WebGPUProcessor extends Processor {
       // Upload only the used portion
       const usedBytes = batch.instances.size * 80;
       if (usedBytes > 0) {
-        device.queue.writeBuffer(
-          batch.instanceBuffer, 
-          0, 
-          batch.instanceData.buffer, 
-          0, 
-          usedBytes
-        );
+        device.queue.writeBuffer(batch.instanceBuffer, 0, batch.instanceData.buffer, 0, usedBytes);
         // console.log(`📤 Uploaded ${batch.instances.size} instances for ${batch.material.name}`);
       }
-      
+
       batch.isDirty = false;
     }
   }
@@ -400,15 +348,15 @@ export class WebGPUProcessor extends Processor {
       console.warn("⚠️ No active camera for global uniforms");
       return;
     }
-    
+
     const device = this.renderer.getDevice()!;
     const globalData = new Float32Array(16);
     globalData.set(this.activeCamera.getViewProjectionMatrix());
-    
+
     // Create or update global uniform buffer
     if (this.globalUniformBuffer) {
       device.queue.writeBuffer(this.globalUniformBuffer, 0, globalData.buffer);
-      
+
       // Recreate bind group if we don't have one (materials might have loaded)
       if (!this.globalBindGroup) {
         // console.log("🔄 Attempting to create missing global bind group...");
@@ -419,14 +367,14 @@ export class WebGPUProcessor extends Processor {
       this.globalUniformBuffer = device.createBuffer({
         size: 64, // 16 floats * 4 bytes
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-        label: 'GlobalUniforms'
+        label: "GlobalUniforms",
       });
       device.queue.writeBuffer(this.globalUniformBuffer, 0, globalData.buffer);
-      
+
       // Create global bind group (will only work if we have pipelines)
       this.createGlobalBindGroup();
     }
-    
+
     // if (this.globalBindGroup) {
     //   console.log("✅ Global bind group ready");
     // } else {
@@ -442,15 +390,15 @@ export class WebGPUProcessor extends Processor {
       console.warn("⚠️ Cannot create bind group: no global uniform buffer");
       return;
     }
-    
+
     const device = this.renderer.getDevice()!;
-    
+
     // console.log(`🔍 Looking for pipeline in ${this.cachedBatches.length} batches...`);
-    
+
     // Get bind group layout from first available pipeline
     let bindGroupLayout: GPUBindGroupLayout | null = null;
     let foundPipeline = false;
-    
+
     for (const batch of this.cachedBatches) {
       const pipeline = batch.material.getPipeline();
       if (pipeline) {
@@ -462,21 +410,25 @@ export class WebGPUProcessor extends Processor {
         // console.log(`❌ No pipeline in material: ${batch.material.name}`);
       }
     }
-    
+
     if (!bindGroupLayout) {
-      console.warn(`⚠️ No pipeline available to get bind group layout (checked ${this.cachedBatches.length} batches, found pipeline: ${foundPipeline})`);
+      console.warn(
+        `⚠️ No pipeline available to get bind group layout (checked ${this.cachedBatches.length} batches, found pipeline: ${foundPipeline})`,
+      );
       return;
     }
-    
+
     try {
       // Create bind group using pipeline's layout
       this.globalBindGroup = device.createBindGroup({
-        label: 'GlobalBindGroup',
+        label: "GlobalBindGroup",
         layout: bindGroupLayout,
-        entries: [{
-          binding: 0,
-          resource: { buffer: this.globalUniformBuffer }
-        }]
+        entries: [
+          {
+            binding: 0,
+            resource: { buffer: this.globalUniformBuffer },
+          },
+        ],
       });
       // console.log("✅ Global bind group created successfully");
     } catch (error) {
@@ -544,7 +496,7 @@ export class WebGPUProcessor extends Processor {
     }
 
     // Cleanup instanced resources
-    this.cachedBatches.forEach(batch => {
+    this.cachedBatches.forEach((batch) => {
       if (batch.instanceBuffer) {
         batch.instanceBuffer.destroy();
       }
@@ -556,9 +508,6 @@ export class WebGPUProcessor extends Processor {
     // Cleanup resources
     this.resourcePool.dispose();
     this.renderer.dispose();
-
-    // Cleanup event listeners
-    off(ResourceReadyEvent, this.handleResourceReady);
 
     console.log("🛑 WebGPUProcessor stopped");
   }
@@ -581,18 +530,5 @@ export class WebGPUProcessor extends Processor {
 
     // Schedule next frame
     this.animationFrameId = requestAnimationFrame(() => this.renderLoop());
-  }
-
-  /**
-   * Handle canvas resize
-   */
-  public handleResize(): void {
-    if (!this.canvas) return;
-
-    // Update camera aspect ratios
-    this.updateCameraAspectRatios();
-
-    // Mark dirty to update render state
-    this.markDirty();
   }
 }

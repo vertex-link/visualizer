@@ -1,11 +1,11 @@
 <template>
-  <BaseLayout />
+  <FeatureLayout />
 </template>
 
 <script setup lang="ts">
-import BaseLayout from './components/layout/BaseLayout.vue'
+import FeatureLayout from "@/layouts/FeatureLayout.vue";
 </script>
 
 <style>
-/* Global styles are handled in style.css */
+
 </style>

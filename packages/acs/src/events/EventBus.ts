@@ -1,9 +1,9 @@
-import { IService } from '../Service';
-import { Event, EventClass, EventHandler } from './Event';
+import type { IService } from "../Service";
+import type { Event, EventClass, EventHandler } from "./Event";
 
 // ==================== Event Bus Interface ====================
 
-export const IEventBusKey = Symbol.for('IEventBus');
+export const IEventBusKey = Symbol.for("IEventBus");
 
 export interface IEventBus extends IService {
   emit<T extends Event>(event: T): void;
@@ -23,17 +23,13 @@ export class EventBus implements IEventBus {
 
   emit<T extends Event>(event: T): void {
     const customEvent = new CustomEvent(event.type, {
-      detail: event
+      detail: event,
     });
 
     this.eventTarget.dispatchEvent(customEvent);
   }
 
-  on<T extends Event>(
-    eventClass: EventClass<T>,
-    handler: EventHandler<T>,
-    context?: any
-  ): void {
+  on<T extends Event>(eventClass: EventClass<T>, handler: EventHandler<T>, context?: any): void {
     const eventType = eventClass.eventType;
 
     const wrappedHandler: EventListener = (evt: globalThis.Event) => {
@@ -58,10 +54,7 @@ export class EventBus implements IEventBus {
     this.eventTarget.addEventListener(eventType, wrappedHandler);
   }
 
-  off<T extends Event>(
-    eventClass: EventClass<T>,
-    handler: EventHandler<T>
-  ): void {
+  off<T extends Event>(eventClass: EventClass<T>, handler: EventHandler<T>): void {
     const cleanup = this.handlerCleanup.get(handler);
     if (cleanup) {
       cleanup();
@@ -69,11 +62,7 @@ export class EventBus implements IEventBus {
     }
   }
 
-  once<T extends Event>(
-    eventClass: EventClass<T>,
-    handler: EventHandler<T>,
-    context?: any
-  ): void {
+  once<T extends Event>(eventClass: EventClass<T>, handler: EventHandler<T>, context?: any): void {
     const onceHandler = (event: T) => {
       handler(event);
       this.off(eventClass, onceHandler);
@@ -84,7 +73,7 @@ export class EventBus implements IEventBus {
   cleanupContext(context: any): void {
     const handlers = this.contextHandlers.get(context);
     if (handlers) {
-      handlers.forEach(handler => {
+      handlers.forEach((handler) => {
         const cleanup = this.handlerCleanup.get(handler);
         if (cleanup) {
           cleanup();
@@ -96,7 +85,7 @@ export class EventBus implements IEventBus {
   }
 
   clear(): void {
-    this.handlerCleanup.forEach(cleanup => cleanup());
+    this.handlerCleanup.forEach((cleanup) => cleanup());
     this.handlerCleanup.clear();
     this.contextHandlers = new WeakMap();
   }
@@ -140,7 +129,7 @@ export function emit<T extends Event>(event: T): void {
 export function on<T extends Event>(
   eventClass: EventClass<T>,
   handler: EventHandler<T>,
-  context?: any
+  context?: any,
 ): void {
   getEventBus().on(eventClass, handler, context);
 }
@@ -148,10 +137,7 @@ export function on<T extends Event>(
 /**
  * Remove event listener from default event bus
  */
-export function off<T extends Event>(
-  eventClass: EventClass<T>,
-  handler: EventHandler<T>
-): void {
+export function off<T extends Event>(eventClass: EventClass<T>, handler: EventHandler<T>): void {
   getEventBus().off(eventClass, handler);
 }
 
@@ -161,7 +147,7 @@ export function off<T extends Event>(
 export function once<T extends Event>(
   eventClass: EventClass<T>,
   handler: EventHandler<T>,
-  context?: any
+  context?: any,
 ): void {
   getEventBus().once(eventClass, handler, context);
 }

@@ -7,20 +7,14 @@
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "skipLibCheck": true,
-    "types": ["@webgpu/types"],
+    "types": ["@webgpu/types", "vite/client"],
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "isolatedModules": true,
     "noEmit": true,
-
-    // Critical: These must be false for Stage 3 decorators
-    "experimentalDecorators": false,
-    "emitDecoratorMetadata": false,
-
-    // Add these for better decorator support
-    "useDefineForClassFields": true,
-    "allowSyntheticDefaultImports": true,
+    "baseUrl": ".",
 
     "paths": {
+      "@/*": ["./packages/documentation/src/*"],
       "@vertex-link/acs": ["./packages/acs/src/index.ts"],
       "@vertex-link/acs/*": ["./packages/acs/src/*"],
       "@vertex-link/engine": ["./packages/engine/src/index.ts"],

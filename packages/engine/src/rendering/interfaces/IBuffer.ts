@@ -1,11 +1,11 @@
 /**
-* Supported buffer usage types.
-*/
+ * Supported buffer usage types.
+ */
 export enum BufferUsage {
   VERTEX = "vertex",
   INDEX = "index",
   UNIFORM = "uniform",
-  STORAGE = "storage"
+  STORAGE = "storage",
 }
 
 /**

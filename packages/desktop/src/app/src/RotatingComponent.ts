@@ -1,11 +1,10 @@
-import { Component, Update } from "@vertex-link/acs";
-import { Transform, TransformComponent, Vec3 } from "@vertex-link/engine";
-
+import { Component } from "@vertex-link/acs";
+import type { Vec3 } from "@vertex-link/engine";
+import { Transform, TransformComponent } from "@vertex-link/engine";
 
 export class RotatingComponent extends Component {
-
   private transform!: TransformComponent;
-  public speed: number = 0.5; // Radians per second
+  public speed = 0.5; // Radians per second
 
   getTransform(): TransformComponent {
     if (!this.transform) {
@@ -14,17 +13,15 @@ export class RotatingComponent extends Component {
     return this.transform;
   }
 
-  @Update('webgpu')
-  update(deltaTime: number): void {
+  tick(deltaTime: number): void {
     if (!this.getTransform()) {
-      console.log("transform not found returning");
-      return
-    };
+      return;
+    }
 
     const deltaAngle = this.speed * deltaTime;
 
     // Define the axis of rotation (e.g., world Y-axis)
-    const rotationAxis: Vec3 = [0, 1, 0]; // Or [1,0,0] for X, [0,0,1] for Z
+    const rotationAxis: Vec3 = [0, 1, 0];
 
     // Create a quaternion for the incremental rotation
     const deltaRotation = Transform.fromAxisAngle(rotationAxis, deltaAngle);
@@ -32,10 +29,9 @@ export class RotatingComponent extends Component {
     // Apply the rotation: newRotation = deltaRotation * currentRotation
     this.transform.rotation = Transform.multiplyQuat(deltaRotation, this.transform.rotation);
 
-    // It's good practice to re-normalize the quaternion after repeated multiplications
-    // to prevent floating-point drift.
+    // Re-normalize
     this.transform.rotation = Transform.normalizeQuat(this.transform.rotation);
 
-    this.transform.markDirty(); // Important: signal that the world matrix needs recalculation
+    this.transform.markDirty();
   }
 }

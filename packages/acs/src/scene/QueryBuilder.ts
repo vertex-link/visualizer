@@ -1,5 +1,5 @@
-import { ComponentClass } from '../component/Component';
-import { QueryCondition, IQueryDataProvider } from './QueryCondition';
+import type { ComponentClass } from "../component/Component";
+import type { IQueryDataProvider, QueryCondition } from "./QueryCondition";
 
 /**
  * Core QueryBuilder - handles building and executing queries
@@ -13,7 +13,7 @@ export class QueryBuilder<T = any> {
    * Filter by components - actors must have ALL specified components
    */
   withComponent(...components: ComponentClass[]): this {
-    this.conditions.push({ type: 'component', components });
+    this.conditions.push({ type: "component", components });
     return this;
   }
 
@@ -21,7 +21,7 @@ export class QueryBuilder<T = any> {
    * Filter by tags - actors must have ANY of the specified tags
    */
   withTag(...tags: string[]): this {
-    this.conditions.push({ type: 'tag', tags });
+    this.conditions.push({ type: "tag", tags });
     return this;
   }
 
@@ -29,7 +29,7 @@ export class QueryBuilder<T = any> {
    * Exclude actors with any of the specified tags
    */
   withoutTag(...tags: string[]): this {
-    this.conditions.push({ type: 'excludeTag', tags });
+    this.conditions.push({ type: "excludeTag", tags });
     return this;
   }
 
@@ -63,7 +63,7 @@ export class QueryBuilder<T = any> {
         candidates = new Set(conditionResults);
       } else {
         // Intersection
-        candidates = new Set([...candidates].filter(actor => conditionResults.has(actor)));
+        candidates = new Set([...candidates].filter((actor) => conditionResults.has(actor)));
       }
 
       // Early exit if no matches
@@ -91,11 +91,11 @@ export class QueryBuilder<T = any> {
    */
   protected evaluateCondition(condition: QueryCondition, dataProvider: IQueryDataProvider): Set<T> {
     switch (condition.type) {
-      case 'component':
+      case "component":
         return dataProvider.getActorsWithAllComponents(condition.components) as Set<T>;
-      case 'tag':
+      case "tag":
         return dataProvider.getActorsWithAnyTag(condition.tags) as Set<T>;
-      case 'excludeTag':
+      case "excludeTag":
         return dataProvider.getActorsWithoutTags(condition.tags) as Set<T>;
       default:
         return new Set();

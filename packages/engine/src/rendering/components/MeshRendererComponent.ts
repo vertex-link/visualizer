@@ -1,10 +1,7 @@
-import { Actor, Component, ResourceComponent, ProcessorRegistry, Update } from "@vertex-link/acs";
+import { type Actor, Component, ResourceComponent } from "@vertex-link/acs";
 import { TransformComponent } from "../../rendering/components/TransformComponent";
-import { WebGPUProcessor, WebGPUUpdate } from "../../processors/WebGPUProcessor";
-import { MeshResource } from "../../resources/MeshResource";
 import { MaterialResource } from "../../resources/MaterialResource";
-import { emit } from "@vertex-link/acs";
-import { ResourceReadyEvent } from "@vertex-link/acs";
+import { MeshResource } from "../../resources/MeshResource";
 
 /**
  * Simplified MeshRendererComponent - gets resources from ResourceComponent
@@ -12,10 +9,10 @@ import { ResourceReadyEvent } from "@vertex-link/acs";
  */
 export class MeshRendererComponent extends Component {
   /** Whether this renderer is currently enabled */
-  public enabled: boolean = true;
+  public enabled = true;
 
   /** Render layer/priority (for sorting) */
-  public layer: number = 0;
+  public layer = 0;
 
   // Cached components
   private transform?: TransformComponent;
@@ -53,10 +50,8 @@ export class MeshRendererComponent extends Component {
   }
 
   /**
-   * WebGPU processor integration - called every frame by WebGPUProcessor
-   * This method is called during the render batching phase
+   * Called by WebGPUProcessor during render batching (no decorators in Phase 0)
    */
-  @WebGPUUpdate()
   updateForRender(deltaTime: number): void {
     // Always ensure resources are compiled first
     this.ensureResourcesCompiled();
@@ -80,7 +75,8 @@ export class MeshRendererComponent extends Component {
     const mesh = this.mesh;
     const material = this.material;
 
-    const result = this.enabled &&
+    const result =
+      this.enabled &&
       this.isVisible &&
       mesh !== undefined &&
       material !== undefined &&
@@ -101,7 +97,7 @@ export class MeshRendererComponent extends Component {
         meshCompiled: mesh?.isCompiled,
         materialCompiled: material?.isCompiled,
         materialId: material?.id,
-        materialName: material?.name
+        materialName: material?.name,
       });
     }
 
@@ -112,7 +108,6 @@ export class MeshRendererComponent extends Component {
    * Ensure GPU resources are ready (loaded and compiled)
    */
   private async ensureResourcesCompiled(): Promise<void> {
-    const wasRenderable = this.isRenderable();
     try {
       const mesh = this.mesh;
       const material = this.material;
@@ -123,13 +118,6 @@ export class MeshRendererComponent extends Component {
 
       if (material) {
         await material.whenReady();
-      }
-
-      const nowRenderable = this.isRenderable();
-
-      // Emit event if we just became renderable
-      if (!wasRenderable && nowRenderable) {
-        emit(new ResourceReadyEvent({ meshRenderer: this }));
       }
     } catch (error) {
       console.error(`❌ Failed to ensure resources ready for ${this.actor.label}:`, error);
@@ -143,7 +131,9 @@ export class MeshRendererComponent extends Component {
     if (!this.transform) {
       this.transform = this.actor.getComponent(TransformComponent);
       if (!this.transform) {
-        throw new Error(`MeshRendererComponent on actor "${this.actor.label}" requires TransformComponent`);
+        throw new Error(
+          `MeshRendererComponent on actor "${this.actor.label}" requires TransformComponent`,
+        );
       }
     }
     return this.transform;
@@ -156,7 +146,7 @@ export class MeshRendererComponent extends Component {
     const material = this.material;
     const mesh = this.mesh;
 
-    if (!material || !mesh) return 'invalid';
+    if (!material || !mesh) return "invalid";
 
     return `${material.name}_${this.layer}_${this.getVertexLayoutHash()}`;
   }
@@ -167,7 +157,7 @@ export class MeshRendererComponent extends Component {
   setVisible(visible: boolean): void {
     if (this.isVisible !== visible) {
       this.isVisible = visible;
-      this.markDirty();
+      // Marking dirty is handled by the processor when visibility changes
     }
   }
 
@@ -191,20 +181,8 @@ export class MeshRendererComponent extends Component {
    * Cleanup when component is removed
    */
   public dispose(): void {
-    // Let the processor know this component is gone
-    this.markDirty();
+    // The processor will automatically handle the removal of this component
     super.dispose();
-  }
-
-  /**
-   * Mark render data as dirty (forces processor to re-batch)
-   */
-  private markDirty(): void {
-    // Find WebGPUProcessor and mark it dirty
-    const processor = ProcessorRegistry.get("webgpu") as WebGPUProcessor;
-    if (processor) {
-      processor.markDirty();
-    }
   }
 
   /**
@@ -214,7 +192,7 @@ export class MeshRendererComponent extends Component {
     const mesh = this.mesh;
     // This would be based on the mesh's vertex layout
     // For now, return a simple hash
-    return mesh?.name.slice(-8) || 'default';
+    return mesh?.name.slice(-8) || "default";
   }
 }
 
@@ -226,11 +204,11 @@ declare global {
 }
 
 if (!String.prototype.hashCode) {
-  String.prototype.hashCode = function(): number {
+  String.prototype.hashCode = function (): number {
     let hash = 0;
     for (let i = 0; i < this.length; i++) {
       const char = this.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32-bit integer
     }
     return hash;

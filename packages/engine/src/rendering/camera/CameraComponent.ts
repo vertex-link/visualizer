@@ -1,10 +1,14 @@
-import { Actor, Component } from "@vertex-link/acs";
-import { Mat4, TransformComponent, Vec3 } from "../../rendering/components/TransformComponent";
+import { type Actor, Component } from "@vertex-link/acs";
+import {
+  type Mat4,
+  TransformComponent,
+  type Vec3,
+} from "../../rendering/components/TransformComponent";
 import { Transform } from "../../rendering/math/Transform";
 
 export enum ProjectionType {
-  PERSPECTIVE,
-  ORTHOGRAPHIC,
+  PERSPECTIVE = 0,
+  ORTHOGRAPHIC = 1,
 }
 
 export interface PerspectiveConfig {
@@ -32,12 +36,11 @@ export interface CameraConfig {
 }
 
 export class CameraComponent extends Component {
-
   public projectionType: ProjectionType;
   public perspectiveConfig: PerspectiveConfig;
   public orthographicConfig: OrthographicConfig;
-  public isActive: boolean = true;
-  public layerMask: number = 0xFFFFFFFF;
+  public isActive = true;
+  public layerMask = 0xffffffff;
 
   private transform!: TransformComponent;
 
@@ -45,9 +48,9 @@ export class CameraComponent extends Component {
   private _projectionMatrix: Mat4 = Transform.identity();
   private _viewProjectionMatrix: Mat4 = Transform.identity();
 
-  private _isViewDirty: boolean = true;
-  private _isProjectionDirty: boolean = true;
-  private _lastTransformVersion: number = -1;
+  private _isViewDirty = true;
+  private _isProjectionDirty = true;
+  private _lastTransformVersion = -1;
 
   constructor(actor: Actor, config: CameraConfig) {
     super(actor);
@@ -61,7 +64,12 @@ export class CameraComponent extends Component {
     };
 
     this.orthographicConfig = config.orthographicConfig || {
-      left: -1, right: 1, bottom: -1, top: 1, near: 0.1, far: 1000.0
+      left: -1,
+      right: 1,
+      bottom: -1,
+      top: 1,
+      near: 0.1,
+      far: 1000.0,
     };
 
     if (config.isActive !== undefined) this.isActive = config.isActive;
@@ -192,9 +200,14 @@ export class CameraComponent extends Component {
     return Transform.transformQuat([0, 1, 0], transform.rotation);
   }
 
-  public screenToWorldRay(mouseX: number, mouseY: number, screenWidth: number, screenHeight: number): {
+  public screenToWorldRay(
+    mouseX: number,
+    mouseY: number,
+    screenWidth: number,
+    screenHeight: number,
+  ): {
     origin: Vec3;
-    direction: Vec3
+    direction: Vec3;
   } {
     const transform = this.getTransform();
     if (!transform) {

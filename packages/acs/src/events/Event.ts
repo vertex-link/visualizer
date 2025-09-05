@@ -1,6 +1,6 @@
 // src/core/events/Event.ts
-import Actor from '../Actor';
-import Component from '../component/Component';
+import type Actor from "../Actor";
+import type Component from "../component/Component";
 
 // ==================== Base Event Classes ====================
 
@@ -46,7 +46,7 @@ export type EventHandler<T extends Event> = (event: T) => void;
  * Event class constructor type that enforces static eventType
  */
 export interface EventClass<T extends Event = Event> {
-  new(...args: any[]): T;
+  new (...args: any[]): T;
   readonly eventType: string;
 }
 
@@ -68,17 +68,13 @@ export class EventBus implements IEventBus {
 
   emit<T extends Event>(event: T): void {
     const customEvent = new CustomEvent(event.type, {
-      detail: event
+      detail: event,
     });
 
     this.eventTarget.dispatchEvent(customEvent);
   }
 
-  on<T extends Event>(
-    eventClass: EventClass<T>,
-    handler: EventHandler<T>,
-    context?: any
-  ): void {
+  on<T extends Event>(eventClass: EventClass<T>, handler: EventHandler<T>, context?: any): void {
     const eventType = eventClass.eventType;
 
     const wrappedHandler: EventListener = (evt: globalThis.Event) => {
@@ -106,10 +102,7 @@ export class EventBus implements IEventBus {
     }
   }
 
-  off<T extends Event>(
-    _: EventClass<T>,
-    handler: EventHandler<T>
-  ): void {
+  off<T extends Event>(_: EventClass<T>, handler: EventHandler<T>): void {
     const cleanup = this.handlerCleanup.get(handler);
     if (cleanup) {
       cleanup();
@@ -117,11 +110,7 @@ export class EventBus implements IEventBus {
     }
   }
 
-  once<T extends Event>(
-    eventClass: EventClass<T>,
-    handler: EventHandler<T>,
-    context?: any
-  ): void {
+  once<T extends Event>(eventClass: EventClass<T>, handler: EventHandler<T>, context?: any): void {
     const wrappedHandler: EventHandler<T> = (event) => {
       handler(event);
       this.off(eventClass, wrappedHandler);
@@ -132,7 +121,7 @@ export class EventBus implements IEventBus {
   cleanupContext(context: any): void {
     const handlers = this.contextHandlers.get(context);
     if (handlers) {
-      handlers.forEach(handler => {
+      handlers.forEach((handler) => {
         const cleanup = this.handlerCleanup.get(handler);
         if (cleanup) {
           cleanup();
@@ -144,7 +133,7 @@ export class EventBus implements IEventBus {
   }
 
   clear(): void {
-    this.handlerCleanup.forEach(cleanup => cleanup());
+    this.handlerCleanup.forEach((cleanup) => cleanup());
     this.handlerCleanup.clear();
     this.contextHandlers = new WeakMap();
   }
@@ -173,14 +162,11 @@ export function emit<T extends Event>(event: T): void {
 export function on<T extends Event>(
   eventClass: EventClass<T>,
   handler: EventHandler<T>,
-  context?: any
+  context?: any,
 ): void {
   getEventBus().on(eventClass, handler, context);
 }
 
-export function off<T extends Event>(
-  eventClass: EventClass<T>,
-  handler: EventHandler<T>
-): void {
+export function off<T extends Event>(eventClass: EventClass<T>, handler: EventHandler<T>): void {
   getEventBus().off(eventClass, handler);
 }

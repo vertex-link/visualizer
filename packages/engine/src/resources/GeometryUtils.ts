@@ -1,16 +1,15 @@
-
-import { MeshDescriptor, VertexAttribute } from './MeshResource';
+import type { MeshDescriptor, VertexAttribute } from "./MeshResource";
 
 export class GeometryUtils {
   /**
    * Create a box geometry with position, normal, and UV coordinates
    */
   static createBox(
-    width: number = 1.0,
-    height: number = 1.0,
-    depth: number = 1.0,
-    includeNormals: boolean = true,
-    includeUVs: boolean = true
+    width = 1.0,
+    height = 1.0,
+    depth = 1.0,
+    includeNormals = true,
+    includeUVs = true,
   ): MeshDescriptor {
     const w = width * 0.5;
     const h = height * 0.5;
@@ -19,80 +18,162 @@ export class GeometryUtils {
     // Define vertices with position, normal, and UV data
     const positions = [
       // Front face
-      -w, -h, d,  // 0
-      w, -h, d,  // 1
-      w, h, d,  // 2
-      -w, h, d,  // 3
+      -w,
+      -h,
+      d, // 0
+      w,
+      -h,
+      d, // 1
+      w,
+      h,
+      d, // 2
+      -w,
+      h,
+      d, // 3
 
       // Back face
-      -w, -h, -d,  // 4
-      -w, h, -d,  // 5
-      w, h, -d,  // 6
-      w, -h, -d,  // 7
+      -w,
+      -h,
+      -d, // 4
+      -w,
+      h,
+      -d, // 5
+      w,
+      h,
+      -d, // 6
+      w,
+      -h,
+      -d, // 7
 
       // Top face
-      -w, h, -d,  // 8
-      -w, h, d,  // 9
-      w, h, d,  // 10
-      w, h, -d,  // 11
+      -w,
+      h,
+      -d, // 8
+      -w,
+      h,
+      d, // 9
+      w,
+      h,
+      d, // 10
+      w,
+      h,
+      -d, // 11
 
       // Bottom face
-      -w, -h, -d,  // 12
-      w, -h, -d,  // 13
-      w, -h, d,  // 14
-      -w, -h, d,  // 15
+      -w,
+      -h,
+      -d, // 12
+      w,
+      -h,
+      -d, // 13
+      w,
+      -h,
+      d, // 14
+      -w,
+      -h,
+      d, // 15
 
       // Right face
-      w, -h, -d,  // 16
-      w, h, -d,  // 17
-      w, h, d,  // 18
-      w, -h, d,  // 19
+      w,
+      -h,
+      -d, // 16
+      w,
+      h,
+      -d, // 17
+      w,
+      h,
+      d, // 18
+      w,
+      -h,
+      d, // 19
 
       // Left face
-      -w, -h, -d,  // 20
-      -w, -h, d,  // 21
-      -w, h, d,  // 22
-      -w, h, -d,  // 23
+      -w,
+      -h,
+      -d, // 20
+      -w,
+      -h,
+      d, // 21
+      -w,
+      h,
+      d, // 22
+      -w,
+      h,
+      -d, // 23
     ];
 
-    const normals = includeNormals ? [
-      // Front face
-      0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1,
-      // Back face
-      0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1,
-      // Top face
-      0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0,
-      // Bottom face
-      0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0,
-      // Right face
-      1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0,
-      // Left face
-      -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0,
-    ] : [];
+    const normals = includeNormals
+      ? [
+          // Front face
+          0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1,
+          // Back face
+          0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1,
+          // Top face
+          0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0,
+          // Bottom face
+          0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0,
+          // Right face
+          1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0,
+          // Left face
+          -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0,
+        ]
+      : [];
 
-    const uvs = includeUVs ? [
-      // Front face
-      0, 0, 1, 0, 1, 1, 0, 1,
-      // Back face
-      1, 0, 1, 1, 0, 1, 0, 0,
-      // Top face
-      0, 1, 0, 0, 1, 0, 1, 1,
-      // Bottom face
-      1, 1, 0, 1, 0, 0, 1, 0,
-      // Right face
-      1, 0, 1, 1, 0, 1, 0, 0,
-      // Left face
-      0, 0, 1, 0, 1, 1, 0, 1,
-    ] : [];
+    const uvs = includeUVs
+      ? [
+          // Front face
+          0, 0, 1, 0, 1, 1, 0, 1,
+          // Back face
+          1, 0, 1, 1, 0, 1, 0, 0,
+          // Top face
+          0, 1, 0, 0, 1, 0, 1, 1,
+          // Bottom face
+          1, 1, 0, 1, 0, 0, 1, 0,
+          // Right face
+          1, 0, 1, 1, 0, 1, 0, 0,
+          // Left face
+          0, 0, 1, 0, 1, 1, 0, 1,
+        ]
+      : [];
 
     // Indices for triangles
     const indices = [
-      0, 1, 2, 0, 2, 3,    // front
-      4, 5, 6, 4, 6, 7,    // back
-      8, 9, 10, 8, 10, 11,    // top
-      12, 13, 14, 12, 14, 15,   // bottom
-      16, 17, 18, 16, 18, 19,   // right
-      20, 21, 22, 20, 22, 23    // left
+      0,
+      1,
+      2,
+      0,
+      2,
+      3, // front
+      4,
+      5,
+      6,
+      4,
+      6,
+      7, // back
+      8,
+      9,
+      10,
+      8,
+      10,
+      11, // top
+      12,
+      13,
+      14,
+      12,
+      14,
+      15, // bottom
+      16,
+      17,
+      18,
+      16,
+      18,
+      19, // right
+      20,
+      21,
+      22,
+      20,
+      22,
+      23, // left
     ];
 
     // Interleave vertex data
@@ -120,20 +201,20 @@ export class GeometryUtils {
 
     // Position attribute
     attributes.push({
-      name: 'position',
+      name: "position",
       size: 3,
-      type: 'float32',
-      offset: offset
+      type: "float32",
+      offset: offset,
     });
     offset += 3 * 4; // 3 floats * 4 bytes
 
     // Normal attribute
     if (includeNormals) {
       attributes.push({
-        name: 'normal',
+        name: "normal",
         size: 3,
-        type: 'float32',
-        offset: offset
+        type: "float32",
+        offset: offset,
       });
       offset += 3 * 4;
     }
@@ -141,10 +222,10 @@ export class GeometryUtils {
     // UV attribute
     if (includeUVs) {
       attributes.push({
-        name: 'uv',
+        name: "uv",
         size: 2,
-        type: 'float32',
-        offset: offset
+        type: "float32",
+        offset: offset,
       });
       offset += 2 * 4;
     }
@@ -156,7 +237,7 @@ export class GeometryUtils {
       indices: new Uint16Array(indices),
       vertexAttributes: attributes,
       vertexStride: vertexStride,
-      primitiveTopology: 'triangle-list'
+      primitiveTopology: "triangle-list",
     };
   }
 
@@ -164,28 +245,32 @@ export class GeometryUtils {
    * Create a plane geometry
    */
   static createPlane(
-    width: number = 1.0,
-    height: number = 1.0,
-    includeNormals: boolean = true,
-    includeUVs: boolean = true
+    width = 1.0,
+    height = 1.0,
+    includeNormals = true,
+    includeUVs = true,
   ): MeshDescriptor {
     const w = width * 0.5;
     const h = height * 0.5;
 
     const positions = [
-      -w, -h, 0,  // bottom-left
-      w, -h, 0,  // bottom-right
-      w, h, 0,  // top-right
-      -w, h, 0   // top-left
+      -w,
+      -h,
+      0, // bottom-left
+      w,
+      -h,
+      0, // bottom-right
+      w,
+      h,
+      0, // top-right
+      -w,
+      h,
+      0, // top-left
     ];
 
-    const normals = includeNormals ? [
-      0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1
-    ] : [];
+    const normals = includeNormals ? [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1] : [];
 
-    const uvs = includeUVs ? [
-      0, 0, 1, 0, 1, 1, 0, 1
-    ] : [];
+    const uvs = includeUVs ? [0, 0, 1, 0, 1, 1, 0, 1] : [];
 
     const indices = [0, 1, 2, 0, 2, 3];
 
@@ -213,29 +298,29 @@ export class GeometryUtils {
     let offset = 0;
 
     attributes.push({
-      name: 'position',
+      name: "position",
       size: 3,
-      type: 'float32',
-      offset: offset
+      type: "float32",
+      offset: offset,
     });
     offset += 3 * 4;
 
     if (includeNormals) {
       attributes.push({
-        name: 'normal',
+        name: "normal",
         size: 3,
-        type: 'float32',
-        offset: offset
+        type: "float32",
+        offset: offset,
       });
       offset += 3 * 4;
     }
 
     if (includeUVs) {
       attributes.push({
-        name: 'uv',
+        name: "uv",
         size: 2,
-        type: 'float32',
-        offset: offset
+        type: "float32",
+        offset: offset,
       });
       offset += 2 * 4;
     }
@@ -245,7 +330,7 @@ export class GeometryUtils {
       indices: new Uint16Array(indices),
       vertexAttributes: attributes,
       vertexStride: offset,
-      primitiveTopology: 'triangle-list'
+      primitiveTopology: "triangle-list",
     };
   }
 
@@ -253,10 +338,10 @@ export class GeometryUtils {
    * Create a sphere geometry (simplified)
    */
   static createSphere(
-    radius: number = 0.5,
-    segments: number = 16,
-    includeNormals: boolean = true,
-    includeUVs: boolean = true
+    radius = 0.5,
+    segments = 16,
+    includeNormals = true,
+    includeUVs = true,
   ): MeshDescriptor {
     const positions: number[] = [];
     const normals: number[] = [];
@@ -265,12 +350,12 @@ export class GeometryUtils {
 
     // Generate vertices
     for (let lat = 0; lat <= segments; lat++) {
-      const theta = lat * Math.PI / segments;
+      const theta = (lat * Math.PI) / segments;
       const sinTheta = Math.sin(theta);
       const cosTheta = Math.cos(theta);
 
       for (let lon = 0; lon <= segments; lon++) {
-        const phi = lon * 2 * Math.PI / segments;
+        const phi = (lon * 2 * Math.PI) / segments;
         const sinPhi = Math.sin(phi);
         const cosPhi = Math.cos(phi);
 
@@ -285,8 +370,8 @@ export class GeometryUtils {
         }
 
         if (includeUVs) {
-          const u = 1 - (lon / segments);
-          const v = 1 - (lat / segments);
+          const u = 1 - lon / segments;
+          const v = 1 - lat / segments;
           uvs.push(u, v);
         }
       }
@@ -295,7 +380,7 @@ export class GeometryUtils {
     // Generate indices
     for (let lat = 0; lat < segments; lat++) {
       for (let lon = 0; lon < segments; lon++) {
-        const first = (lat * (segments + 1)) + lon;
+        const first = lat * (segments + 1) + lon;
         const second = first + segments + 1;
 
         indices.push(first, second, first + 1);
@@ -327,29 +412,29 @@ export class GeometryUtils {
     let offset = 0;
 
     attributes.push({
-      name: 'position',
+      name: "position",
       size: 3,
-      type: 'float32',
-      offset: offset
+      type: "float32",
+      offset: offset,
     });
     offset += 3 * 4;
 
     if (includeNormals) {
       attributes.push({
-        name: 'normal',
+        name: "normal",
         size: 3,
-        type: 'float32',
-        offset: offset
+        type: "float32",
+        offset: offset,
       });
       offset += 3 * 4;
     }
 
     if (includeUVs) {
       attributes.push({
-        name: 'uv',
+        name: "uv",
         size: 2,
-        type: 'float32',
-        offset: offset
+        type: "float32",
+        offset: offset,
       });
       offset += 2 * 4;
     }
@@ -359,7 +444,7 @@ export class GeometryUtils {
       indices: new Uint16Array(indices),
       vertexAttributes: attributes,
       vertexStride: offset,
-      primitiveTopology: 'triangle-list'
+      primitiveTopology: "triangle-list",
     };
   }
 }

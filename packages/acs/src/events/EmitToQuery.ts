@@ -1,6 +1,6 @@
-import { QueryBuilder } from '../scene/QueryBuilder';
-import { IQueryDataProvider } from '../scene/QueryCondition';
-import { IEventBus } from './EventBus.js';
+import type { QueryBuilder } from "../scene/QueryBuilder";
+import type { IQueryDataProvider } from "../scene/QueryCondition";
+import type { IEventBus } from "./EventBus.js";
 
 /**
  * Emit event to all actors matching a query
@@ -10,16 +10,16 @@ export function emitToQuery<T extends Event>(
   eventBus: IEventBus,
   query: QueryBuilder,
   dataProvider: IQueryDataProvider,
-  event: T
+  event: T,
 ): void {
   const targets = query.execute(dataProvider);
 
   // Emit individual events for each target
-  targets.forEach(target => {
+  targets.forEach((target) => {
     // Clone the event to avoid mutation issues
     const targetedEvent = Object.create(
       Object.getPrototypeOf(event),
-      Object.getOwnPropertyDescriptors(event)
+      Object.getOwnPropertyDescriptors(event),
     );
     targetedEvent.target = target;
 

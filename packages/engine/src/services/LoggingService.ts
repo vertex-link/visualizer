@@ -1,6 +1,6 @@
 // Define a unique key for the LoggingService
 
-import { IService } from "@vertex-link/acs";
+import type { IService } from "@vertex-link/acs";
 
 export const ILoggingServiceKey = Symbol.for("ILoggingService");
 
@@ -11,11 +11,11 @@ export const ILoggingServiceKey = Symbol.for("ILoggingService");
 export enum LogLevel {
   TRACE = 0, // Very detailed, for diagnosing specific parts of code.
   DEBUG = 1, // Information useful for debugging during development.
-  INFO = 2,  // General information about application flow.
-  WARN = 3,  // Indicates a potential problem or an unexpected situation.
+  INFO = 2, // General information about application flow.
+  WARN = 3, // Indicates a potential problem or an unexpected situation.
   ERROR = 4, // An error occurred, but the application can potentially recover.
   FATAL = 5, // A critical error causing the application to terminate or become unstable.
-  NONE = 6,  // Special level to disable all logging.
+  NONE = 6, // Special level to disable all logging.
 }
 
 /**
@@ -58,14 +58,18 @@ export class ConsoleLoggingService implements ILoggingService {
     return level >= this.currentLogLevel;
   }
 
-  private formatMessage(level: LogLevel, message: string | Error, ...optionalParams: unknown[]): unknown[] {
+  private formatMessage(
+    level: LogLevel,
+    message: string | Error,
+    ...optionalParams: unknown[]
+  ): unknown[] {
     const timestamp = new Date().toISOString();
     const levelString = LogLevel[level].padEnd(5); // TRACE, DEBUG, INFO , WARN , ERROR, FATAL
 
     const prefix = `[${timestamp}] [${levelString}]`;
 
     if (message instanceof Error) {
-      return [prefix, message.message, ...optionalParams, '\nStack:', message.stack];
+      return [prefix, message.message, ...optionalParams, "\nStack:", message.stack];
     }
     return [prefix, message, ...optionalParams];
   }

@@ -69,16 +69,16 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
     return vec4f(input.color.rgb * lighting, input.color.a);
 }
 
-`
+`;
 export class StandardShaderResource extends ShaderResource {
   constructor() {
     const shaderData = {
       vertexSource: basicShaderSource,
       fragmentSource: basicShaderSource,
       entryPoints: {
-        vertex: 'vs_main',
-        fragment: 'fs_main'
-      }
+        vertex: "vs_main",
+        fragment: "fs_main",
+      },
     };
 
     super("StandardShader", shaderData);

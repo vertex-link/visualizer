@@ -1,5 +1,5 @@
 // Type aliases for 3D math (simple arrays for now)
-import { Actor, Component } from "@vertex-link/acs";
+import { type Actor, Component } from "@vertex-link/acs";
 
 export type Vec3 = [number, number, number];
 export type Quat = [number, number, number, number]; // [x, y, z, w]
@@ -21,12 +21,15 @@ export class TransformComponent extends Component {
 
   // Cached matrix (computed on-demand)
   private _worldMatrix: Mat4 | null = null;
-  private _isDirty: boolean = true;
+  private _isDirty = true;
 
   // Version tracking for change detection
-  public version: number = 0;
+  public version = 0;
 
-  constructor(actor: Actor, initialTransform?: Partial<{ position: Vec3, rotation: Quat, scale: Vec3 }>) {
+  constructor(
+    actor: Actor,
+    initialTransform?: Partial<{ position: Vec3; rotation: Quat; scale: Vec3 }>,
+  ) {
     super(actor);
 
     if (initialTransform?.position) {
@@ -163,7 +166,7 @@ export class TransformComponent extends Component {
     const sinp = 2 * (w * y - z * x);
     let pitch;
     if (Math.abs(sinp) >= 1) {
-      pitch = Math.PI / 2 * Math.sign(sinp); // Use 90 degrees if out of range
+      pitch = (Math.PI / 2) * Math.sign(sinp); // Use 90 degrees if out of range
     } else {
       pitch = Math.asin(sinp);
     }

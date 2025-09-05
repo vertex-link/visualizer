@@ -85,7 +85,7 @@ export class GPUResourcePool {
       resource: buffer,
       refCount: 1,
       lastUsed: performance.now(),
-      size: descriptor.size
+      size: descriptor.size,
     });
 
     console.log(`📦 Created buffer: ${key} (${descriptor.size} bytes)`);
@@ -117,7 +117,7 @@ export class GPUResourcePool {
     this.pipelineCache.set(key, {
       resource: pipeline,
       refCount: 1,
-      lastUsed: performance.now()
+      lastUsed: performance.now(),
     });
 
     console.log(`🔧 Created pipeline: ${key}`);
@@ -127,7 +127,11 @@ export class GPUResourcePool {
   /**
    * Get or create a bind group with automatic caching
    */
-  getOrCreateBindGroup(layout: GPUBindGroupLayout, entries: GPUBindGroupEntry[], label?: string): GPUBindGroup {
+  getOrCreateBindGroup(
+    layout: GPUBindGroupLayout,
+    entries: GPUBindGroupEntry[],
+    label?: string,
+  ): GPUBindGroup {
     if (!this.device) {
       throw new Error("GPUResourcePool not initialized");
     }
@@ -147,14 +151,14 @@ export class GPUResourcePool {
     const bindGroup = this.device.createBindGroup({
       layout,
       entries,
-      label: label || `BindGroup_${key}`
+      label: label || `BindGroup_${key}`,
     });
 
     // Cache it
     this.bindGroupCache.set(key, {
       resource: bindGroup,
       refCount: 1,
-      lastUsed: performance.now()
+      lastUsed: performance.now(),
     });
 
     return bindGroup;
@@ -163,11 +167,15 @@ export class GPUResourcePool {
   /**
    * Create a bind group for uniform data (common case)
    */
-  createUniformBindGroup(layout: GPUBindGroupLayout, uniformBuffer: GPUBuffer, label?: string): GPUBindGroup {
+  createUniformBindGroup(
+    layout: GPUBindGroupLayout,
+    uniformBuffer: GPUBuffer,
+    label?: string,
+  ): GPUBindGroup {
     return this.getOrCreateBindGroup(
       layout,
       [{ binding: 0, resource: { buffer: uniformBuffer } }],
-      label
+      label,
     );
   }
 
@@ -206,14 +214,16 @@ export class GPUResourcePool {
    * Get cache statistics
    */
   getStats(): { buffers: number; pipelines: number; bindGroups: number; totalMemory: number } {
-    const totalMemory = Array.from(this.bufferCache.values())
-      .reduce((sum, entry) => sum + (entry.size || 0), 0);
+    const totalMemory = Array.from(this.bufferCache.values()).reduce(
+      (sum, entry) => sum + (entry.size || 0),
+      0,
+    );
 
     return {
       buffers: this.bufferCache.size,
       pipelines: this.pipelineCache.size,
       bindGroups: this.bindGroupCache.size,
-      totalMemory
+      totalMemory,
     };
   }
 
@@ -226,7 +236,7 @@ export class GPUResourcePool {
 
     // Clean buffers
     for (const [key, entry] of this.bufferCache.entries()) {
-      if (entry.refCount <= 0 && (now - entry.lastUsed) > this.maxIdleTime) {
+      if (entry.refCount <= 0 && now - entry.lastUsed > this.maxIdleTime) {
         entry.resource.destroy();
         this.bufferCache.delete(key);
         cleaned++;
@@ -235,7 +245,7 @@ export class GPUResourcePool {
 
     // Clean pipelines (they don't need explicit cleanup in WebGPU)
     for (const [key, entry] of this.pipelineCache.entries()) {
-      if (entry.refCount <= 0 && (now - entry.lastUsed) > this.maxIdleTime) {
+      if (entry.refCount <= 0 && now - entry.lastUsed > this.maxIdleTime) {
         this.pipelineCache.delete(key);
         cleaned++;
       }
@@ -243,7 +253,7 @@ export class GPUResourcePool {
 
     // Clean bind groups
     for (const [key, entry] of this.bindGroupCache.entries()) {
-      if (entry.refCount <= 0 && (now - entry.lastUsed) > this.maxIdleTime) {
+      if (entry.refCount <= 0 && now - entry.lastUsed > this.maxIdleTime) {
         this.bindGroupCache.delete(key);
         cleaned++;
       }
@@ -270,7 +280,7 @@ export class GPUResourcePool {
 
     // Stop cleanup timer
     if (this.cleanupTimer) {
-      clearInterval(this.cleanupTimer);
+      window.clearInterval(this.cleanupTimer as number);
       this.cleanupTimer = null;
     }
 
@@ -283,14 +293,13 @@ export class GPUResourcePool {
     const buffer = this.device!.createBuffer({
       size: descriptor.size,
       usage: this.getGPUUsageFlags(descriptor.usage),
-      label: `Pool_${descriptor.usage}_${descriptor.size}`
+      label: `Pool_${descriptor.usage}_${descriptor.size}`,
     });
 
     // Upload data if provided
     if (descriptor.data) {
-      const arrayBuffer = descriptor.data instanceof ArrayBuffer
-        ? descriptor.data
-        : descriptor.data.buffer;
+      const arrayBuffer =
+        descriptor.data instanceof ArrayBuffer ? descriptor.data : descriptor.data.buffer;
       this.device!.queue.writeBuffer(buffer, 0, arrayBuffer);
     }
 
@@ -301,50 +310,52 @@ export class GPUResourcePool {
     // This is simplified - in reality you'd use your existing pipeline creation logic
     const vertexModule = this.device!.createShaderModule({
       code: descriptor.vertexShader,
-      label: "Vertex_" + descriptor.hash
+      label: "Vertex_" + descriptor.hash,
     });
 
     const fragmentModule = this.device!.createShaderModule({
       code: descriptor.fragmentShader,
-      label: "Fragment_" + descriptor.hash
+      label: "Fragment_" + descriptor.hash,
     });
 
     // Create simple pipeline (you'd expand this with your existing logic)
     return this.device!.createRenderPipeline({
-      layout: 'auto',
+      layout: "auto",
       vertex: {
         module: vertexModule,
-        entryPoint: 'vs_main'
+        entryPoint: "vs_main",
       },
       fragment: {
         module: fragmentModule,
-        entryPoint: 'fs_main',
-        targets: [{ format: 'bgra8unorm' }]
+        entryPoint: "fs_main",
+        targets: [{ format: "bgra8unorm" }],
       },
       primitive: {
-        topology: 'triangle-list'
+        topology: "triangle-list",
       },
-      label: "Pipeline_" + descriptor.hash
+      label: "Pipeline_" + descriptor.hash,
     });
   }
 
   private generateBufferKey(descriptor: PoolBufferDescriptor): string {
-    return descriptor.hash ||
-      `${descriptor.usage}_${descriptor.size}_${descriptor.dynamic ? 'dynamic' : 'static'}`;
+    return (
+      descriptor.hash ||
+      `${descriptor.usage}_${descriptor.size}_${descriptor.dynamic ? "dynamic" : "static"}`
+    );
   }
 
   private generateBindGroupKey(layout: GPUBindGroupLayout, entries: GPUBindGroupEntry[]): string {
     // Create a more robust key that includes layout identity and entry content
     const layoutId = (layout as any).__id || Math.random().toString(36); // Fallback for layout identity
     const entriesKey = entries
-      .map(entry => {
+      .map((entry) => {
         let resourceKey = `binding_${entry.binding}`;
 
-        if ('buffer' in entry.resource) {
-          resourceKey += `_buffer_${entry.resource.buffer.size || 'unknown'}`;
-        } else if ('texture' in entry.resource) {
+        if ("buffer" in entry.resource) {
+          resourceKey += `_buffer_${entry.resource.buffer.size || "unknown"}`;
+        } else if ("texture" in entry.resource) {
           resourceKey += `_texture`;
-        } else if ('sampler' in entry.resource) {
+        } else if ("sampler" in entry.resource) {
           resourceKey += `_sampler`;
         } else {
           resourceKey += `_resource_${entry.resource}`;
@@ -352,7 +363,7 @@ export class GPUResourcePool {
 
         return resourceKey;
       })
-      .join('_');
+      .join("_");
 
     return `${layoutId}_${entriesKey}`;
   }
@@ -373,7 +384,7 @@ export class GPUResourcePool {
   }
 
   private startCleanupTimer(): void {
-    this.cleanupTimer = setInterval(() => {
+    this.cleanupTimer = window.setInterval(() => {
       this.cleanup();
     }, 10000); // Cleanup every 10 seconds
   }
