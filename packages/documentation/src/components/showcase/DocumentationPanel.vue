@@ -8,7 +8,6 @@
 import hljs from "highlight.js";
 import { marked } from "marked";
 import { computed } from "vue";
-import "highlight.js/styles/github.css";
 
 interface Props {
   content: string;

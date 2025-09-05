@@ -1,37 +1,29 @@
 <template>
-  <div class="markdown-container" v-html="renderedMarkdown"></div>
+  <div v-html="markodown"></div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { marked } from 'marked';
+import { markedHighlight } from 'marked-highlight';
 import hljs from 'highlight.js';
-import 'highlight.js/styles/github-dark.css';
+// We'll use a modern, dark theme for code that complements the Aura theme.
+import 'highlight.js/styles/atom-one-dark.css';
 
-// Accept content as a prop
 const props = defineProps<{
   content: string;
 }>();
 
-marked.setOptions({
-  highlight: (code, lang) => {
+const markodown = ref<string>('')
+
+marked.use(markedHighlight({
+  highlight(code, lang) {
     const language = hljs.getLanguage(lang) ? lang : 'plaintext';
     return hljs.highlight(code, { language }).value;
-  },
-  gfm: true,
-});
+  }
+}));
 
-// Render the prop content
-const renderedMarkdown = computed(() => {
-  return marked.parse(props.content || '');
-});
+onMounted(async () => {
+  markodown.value = await marked.parse(props.content || '');
+})
 </script>
-
-<style scoped>
-.markdown-container {
-  padding: 2rem;
-  max-width: 800px;
-  margin: 0 auto;
-}
-/* You can add more markdown-specific styles here */
-</style>

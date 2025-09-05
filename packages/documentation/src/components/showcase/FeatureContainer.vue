@@ -1,171 +1,141 @@
 <template>
-  <div class="feature-container">
-    <!-- Feature header -->
-    <header class="feature-header">
-      <div class="header-content">
-        <h1 class="feature-title">{{ route.meta.title }}</h1>
-        <p class="feature-description">{{ route.meta.description }}</p>
-      </div>
-      <div class="header-actions">
+  <Panel class="feature-panel">
+    <template #header>
+      <div class="feature-header-content">
+        <div>
+          <h1 class="feature-title">{{ route.meta.title }}</h1>
+          <p class="feature-description">{{ route.meta.description }}</p>
+        </div>
         <Button
-          label="Reset Parameters"
+          label="Reset"
           icon="pi pi-refresh"
           severity="secondary"
-          size="small"
+          text
+          rounded
           @click="resetParameters"
         />
       </div>
-    </header>
-    
-    <!-- Main content area -->
-    <div class="feature-content">
-      <!-- Demo canvas area -->
-      <div class="demo-area">
-        <iframe :src="iframeUrl" class="demo-iframe" frameborder="0"></iframe>
-      </div>
-      
-      <!-- Right panel with controls and docs -->
-      <div class="side-panel">
-        <!-- Parameter controls -->
-        <div class="panel-section">
-          <h3 class="panel-title">
-            <i class="pi pi-sliders-h"></i>
-            Controls
-          </h3>
-          <ParameterPanel
-            :parameters="parameters"
-            :values="parameterValues"
-            @update="updateParameter"
-          />
-        </div>
-        
-        <!-- Documentation -->
-        <div class="panel-section">
-          <h3 class="panel-title">
-            <i class="pi pi-book"></i>
-            Documentation
-          </h3>
-          <DocumentationPanel :content="route.meta.content as string" />
-        </div>
-      </div>
-    </div>
-  </div>
+    </template>
+
+    <Splitter class="feature-splitter">
+      <SplitterPanel :min-size="40" class="flex items-center justify-center">
+        <iframe ref="iframeRef" :src="iframeUrl" class="demo-iframe" frameborder="0"></iframe>
+      </SplitterPanel>
+
+      <SplitterPanel :min-size="25" :size="30" class="side-panel-container">
+        <Accordion :multiple="true" :active-index="[0, 1]" class="w-full">
+          <AccordionTab>
+            <template #header>
+              <div class="panel-header">
+                <i class="pi pi-sliders-h"></i>
+                <span>Controls</span>
+              </div>
+            </template>
+            <ParameterPanel
+              :parameters="parameters"
+              :values="parameterValues"
+              @update="updateParameter"
+            />
+          </AccordionTab>
+          <AccordionTab>
+            <template #header>
+              <div class="panel-header">
+                <i class="pi pi-book"></i>
+                <span>Documentation</span>
+              </div>
+            </template>
+            <DocumentationPanel :content="route.meta.content as string" />
+          </AccordionTab>
+        </Accordion>
+      </SplitterPanel>
+    </Splitter>
+  </Panel>
 </template>
 
 <script setup lang="ts">
-import Button from "primevue/button";
-import {computed, reactive} from "vue";
+import { computed, reactive, onMounted, ref } from 'vue';
+import { useRoute } from 'vue-router';
+
+// PrimeVue Component Imports
+import Panel from 'primevue/panel';
+import Button from 'primevue/button';
+import Splitter from 'primevue/splitter';
+import SplitterPanel from 'primevue/splitterpanel';
+import Accordion from 'primevue/accordion';
+import AccordionTab from 'primevue/accordiontab';
+
+// Local Component Imports
 import DocumentationPanel from "./DocumentationPanel.vue";
 import ParameterPanel from "./ParameterPanel.vue";
 
-import { useRoute } from 'vue-router';
-
-
 const route = useRoute();
-
-const emit = defineEmits<{
-  "parameter-change": [key: string, value: any];
-}>();
-
-// Initialize parameter values with defaults
+const iframeRef = ref<HTMLIFrameElement | null>(null);
+const parameters = computed(() => (route.meta.parameters || []) as any[]);
 const parameterValues = reactive<Record<string, any>>({});
 
-console.log(route.meta);
-
-for (const [key, value] of Object.entries(route.meta)) {
-  console.log(key, value);
-  parameterValues[key] = value;
-}
-
-function updateParameter(key: string, value: any) {
-  parameterValues[key] = value;
-  emit("parameter-change", key, value);
-}
+// Function to initialize parameters from route meta
+const initializeParameters = () => {
+  parameters.value.forEach(p => {
+    if (p.key) {
+      parameterValues[p.key] = p.defaultValue;
+    }
+  });
+};
 
 const iframeUrl = computed(() => route.meta.entryUrl as string);
 
-function resetParameters() {
-  for (const [key, val] of Object.entries(route.meta)) {
-    parameterValues[key] = val;
-  }
-  // Emit all parameter resets
-  for (const [key, val] of Object.entries(route.meta)) {
-    emit("parameter-change", key, val);
+function updateParameter(key: string, value: any) {
+  parameterValues[key] = value;
+
+  if (iframeRef.value?.contentWindow) {
+    iframeRef.value.contentWindow.postMessage({ key, value }, '*');
   }
 }
+
+function resetParameters() {
+  initializeParameters();
+}
+
+// Initialize when the component is mounted
+onMounted(() => {
+  initializeParameters();
+});
 </script>
 
 <style scoped>
-.feature-container {
+/* Minimal, layout-only CSS. All colors, borders, fonts, etc.,
+  are handled by the PrimeVue theme.
+*/
+.feature-panel {
+  height: 100%;
   display: flex;
   flex-direction: column;
-  height: 100vh;
 }
 
-.feature-header {
+.feature-panel :deep(.p-panel-content-container) {
+    height: 100%;
+}
+
+.feature-panel :deep(.p-panel-content) {
+  padding: 0;
+  flex-grow: 1;
+  display: flex;
+  height: 100%;
+}
+
+.feature-header-content {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  padding: 1.5rem 2rem;
-  border-bottom: var(--p-border-width) solid var(--p-surface-200);
-  background-color: var(--p-surface-0);
-}
-
-.header-content h1 {
-  font-size: 1.875rem;
-  font-weight: 600;
-  color: var(--p-primary-800);
-  margin-bottom: 0.5rem;
-}
-
-.feature-description {
-  color: var(--p-primary-600);
-  font-size: 1rem;
-}
-
-.feature-content {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-}
-
-.demo-area {
-  flex: 1;
-  display: flex;
   align-items: center;
-  justify-content: center;
-  background-color: var(--p-surface-0);
-  position: relative;
+  width: 100%;
 }
 
-.side-panel {
-  width: 320px;
-  background-color: var(--p-surface-50);
-  border-left: var(--p-border-width) solid var(--p-surface-200);
+.demo-iframe {
+  width: 100%;
+  height: 100%;
+}
+
+.panel-header {
   display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-}
-
-.panel-section {
-  padding: 1.5rem;
-  border-bottom: var(--p-border-width) solid var(--p-surface-200);
-}
-
-.panel-section:last-child {
-  border-bottom: none;
-  flex: 1;
-}
-
-.panel-title {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--p-primary-600);
-  margin-bottom: 1rem;
 }
 </style>

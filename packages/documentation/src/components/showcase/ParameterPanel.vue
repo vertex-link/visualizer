@@ -11,7 +11,7 @@
           {{ param.description }}
         </span>
       </label>
-      
+
       <!-- Slider Parameter -->
       <Slider
         v-if="param.type === 'slider'"
@@ -22,7 +22,7 @@
         @update:model-value="updateValue(param.key, $event)"
         class="parameter-slider"
       />
-      
+
       <!-- Toggle Parameter -->
       <ToggleSwitch
         v-else-if="param.type === 'toggle'"
@@ -30,7 +30,7 @@
         @update:model-value="updateValue(param.key, $event)"
         class="parameter-toggle"
       />
-      
+
       <!-- Select Parameter -->
       <Select
         v-else-if="param.type === 'select'"
@@ -41,7 +41,7 @@
         @update:model-value="updateValue(param.key, $event)"
         class="parameter-select"
       />
-      
+
       <!-- Color Parameter -->
       <ColorPicker
         v-else-if="param.type === 'color'"
@@ -49,7 +49,23 @@
         @update:model-value="updateValue(param.key, $event)"
         class="parameter-color"
       />
-      
+
+      <!-- Text Parameter -->
+      <InputText
+        v-else-if="param.type === 'text'"
+        :model-value="values[param.key]"
+        @update:model-value="updateValue(param.key, $event)"
+        class="parameter-text"
+      />
+
+      <!-- Number Parameter -->
+      <InputNumber
+        v-else-if="param.type === 'number'"
+        :model-value="values[param.key]"
+        @update:model-value="updateValue(param.key, $event)"
+        class="parameter-number"
+      />
+
       <!-- Current value display -->
       <div class="parameter-value">
         <code>{{ formatValue(values[param.key]) }}</code>
@@ -61,6 +77,8 @@
 <script setup lang="ts">
 import type { ParameterDefinition } from "@/types/features";
 import ColorPicker from "primevue/colorpicker";
+import InputNumber from "primevue/inputnumber";
+import InputText from "primevue/inputtext";
 import Select from "primevue/select";
 import Slider from "primevue/slider";
 import ToggleSwitch from "primevue/toggleswitch";
@@ -105,9 +123,6 @@ function formatValue(value: any): string {
 }
 
 .parameter-label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--p-primary-700);
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -129,9 +144,10 @@ function formatValue(value: any): string {
 }
 
 .parameter-slider,
-.parameter-toggle,
 .parameter-select,
-.parameter-color {
+.parameter-color,
+.parameter-text,
+.parameter-number {
   width: 100%;
 }
 </style>

@@ -28,6 +28,7 @@ function generateFeatureRoutes(): RouteRecordRaw[] {
             content: feature.content,
             entryUrl: feature.entryUrl,
             description: feature.description,
+            parameters: feature.parameters,
           },
         });
       } else {

@@ -1,50 +1,54 @@
-import { ComputeResource } from "./resources/ComputeResource";
-
 export { default as Actor } from "./Actor"; //
-export type { ServiceKey } from "./Service"; //
-export { type IService, ServiceRegistry } from "./Service"; //
-
+export type { ComponentClass, ComponentConstructorParameters } from "./component/Component"; //
 // Component System
 export { default as Component } from "./component/Component"; //
-export type { ComponentClass, ComponentConstructorParameters } from "./component/Component"; //
 export { ComponentTypeRegistry } from "./component/ComponentRegistry"; //
 export { ResourceComponent } from "./component/ResourceComponent";
+export {
+  deriveContext,
+  getCurrentContext,
+  runWithContext,
+  useActor,
+  useComponent,
+  useEventBus,
+  useProcessor,
+  useScene,
+  useService,
+  withContext,
+} from "./composables/context";
+export { useOnceEvent, useOnEvent } from "./composables/events";
 
-// Event System
-
+export { useUpdate } from "./composables/processors";
+export * from "./events/CoreEvents"; //
+export { emitToQuery } from "./events/EmitToQuery"; //
+export type { EventClass, EventHandler, EventPayload } from "./events/Event"; //
 export {
   Event,
   EventBus,
-  type IEventBus,
-  getEventBus,
-  initializeEventBus,
   emit,
-  on,
+  getEventBus,
+  type IEventBus,
+  initializeEventBus,
   off,
+  on,
 } from "./events/Event"; //
-export type { EventPayload, EventHandler, EventClass } from "./events/Event"; //
-export * from "./events/CoreEvents"; //
-export { emitToQuery } from "./events/EmitToQuery"; //
-
+export type { IProcessable, ProcessorTickCallback } from "./processor/Processor"; //
 // Processor System
 export { Processor } from "./processor/Processor"; //
-export type { ProcessorTickCallback, IProcessable } from "./processor/Processor"; //
 export { ProcessorRegistry } from "./processor/ProcessorRegistry"; //
-
-// Scene System
-export { Scene, SceneQueryBuilder } from "./scene/Scene"; //
+export { ComputeResource } from "./resources/ComputeResource";
+export { Resource, ResourceStatus } from "./resources/Resource";
+export type { ServiceKey } from "./Service"; //
+export { type IService, ServiceRegistry } from "./Service"; //
 export { QueryBuilder } from "./scene/QueryBuilder"; //
-export type { QueryCondition, IQueryDataProvider } from "./scene/QueryCondition"; //
 export type {
   ComponentQueryCondition,
-  TagQueryCondition,
   ExcludeTagQueryCondition,
+  IQueryDataProvider,
+  QueryCondition,
+  TagQueryCondition,
 } from "./scene/QueryCondition"; //
-
+// Scene System
+export { Scene, SceneQueryBuilder } from "./scene/Scene"; //
 // Utilities (if considered part of core)
 export { generateUUID } from "./utils/uuid"; //
-
-export { Resource, ResourceStatus } from "./resources/Resource";
-export { ComputeResource } from "./resources/ComputeResource";
-// Resources
-// export {Resource}

@@ -15,6 +15,7 @@ export class RotatingComponent extends Component {
 
   tick(deltaTime: number): void {
     if (!this.getTransform()) {
+      console.log("transform not found returning");
       return;
     }
 

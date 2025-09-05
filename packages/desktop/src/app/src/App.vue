@@ -37,7 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import { Actor, ProcessorRegistry, ResourceComponent, Scene } from "@vertex-link/acs";
+import { Actor, EventBus, ProcessorRegistry, ResourceComponent, Scene } from "@vertex-link/acs";
 import {
   CameraComponent,
   MeshRendererComponent,
@@ -49,7 +49,6 @@ import { onMounted, onUnmounted, ref } from "vue";
 
 import { RotatingComponent } from "./RotatingComponent";
 import { BasicMaterialResource } from "./resources/BasicMaterialResource";
-// Import resources exactly like working example - STATIC IMPORTS
 import { CubeMeshResource } from "./resources/CubeMeshResource";
 
 const canvasRef = ref<HTMLCanvasElement>();
@@ -72,7 +71,8 @@ const initEngine = async () => {
     status.value = "Starting WebGPU...";
 
     // Initialize WebGPU processor (exactly like working example!)
-    processor = new WebGPUProcessor(canvasRef.value);
+    const eventBus = new EventBus();
+    processor = new WebGPUProcessor(canvasRef.value, "desktop-renderer", eventBus);
     ProcessorRegistry.register(processor);
     await processor.initialize();
 
