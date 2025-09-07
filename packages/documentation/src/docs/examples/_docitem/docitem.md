@@ -1,5 +1,5 @@
 ---
-title: Actor System Demo
+title:
 entry: ./docitem.html
 description: This is a test component for all supported parameter types.
 parameters:

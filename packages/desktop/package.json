@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@vertex-link/acs": "workspace:*",
-    "@vertex-link/engine": "workspace:*"
+    "@vertex-link/engine": "workspace:*",
+    "@webgpu/types": "^0.1.64"
   }
 }
