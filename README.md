@@ -14,7 +14,6 @@ Vertex Link emphasizes a decoupled, component-based architecture. It provides a 
 -   **Scenes**: Manage collections of Actors and provide querying capabilities.
 -   **Actors**: Represent entities, acting as containers for Components.
 -   **Components**: Encapsulate data and behavior for Actors.
--   **Services**: Provide shared, cross-cutting functionalities.
 -   **Processors**: Manage distinct update loops (e.g., rendering, game logic).
 -   **Events**: Facilitate type-safe, decoupled communication via an EventBus.
 

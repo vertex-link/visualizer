@@ -3,7 +3,7 @@ import type { ComponentClass } from "../component/Component";
 import { ComponentTypeRegistry } from "../component/ComponentRegistry";
 import { EntityCreatedEvent, EntityDestroyedEvent } from "../events/CoreEvents";
 import { emitToQuery } from "../events/EmitToQuery";
-import { EventBus, type IEventBus, getEventBus } from "../events/EventBus";
+import { getEventBus, type IEventBus } from "../events/EventBus";
 import { QueryBuilder } from "./QueryBuilder";
 import type { IQueryDataProvider } from "./QueryCondition";
 
@@ -125,7 +125,9 @@ export class Scene implements IQueryDataProvider {
     for (const tag of tags) {
       const taggedActors = this.tagIndex.get(tag);
       if (taggedActors) {
-        taggedActors.forEach((actor) => result.add(actor));
+        taggedActors.forEach((actor) => {
+          result.add(actor);
+        });
       }
     }
     return result;

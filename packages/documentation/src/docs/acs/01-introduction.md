@@ -22,10 +22,7 @@ This approach has several key benefits:
 
 The architecture revolves around three main concepts:
 
-1.  **Actors**: Simple containers that represent objects in your scene (e.g., a player, a camera, a UI element). They don't have any logic themselves; they are just holders for Components.
-
+1.  **Actors**: Simple containers that represent objects in your scene (e.g., a player, a camera, a UI element). They can have logic themselves to orchestrate thier data and behavior, or they can be simple containers for data (e.g., a `TransformActor`, `HealthActor`, `MeshRendererActor`).
 2.  **Components**: The building blocks of your application. Each Component is a small, focused piece of data (e.g., `TransformComponent`, `HealthComponent`, `MeshRendererComponent`).
-
-3.  **Services**: Global systems that provide functionality across the entire application, not tied to a specific Actor (e.g., `InputService`, `PhysicsService`, `LoggingService`).
 
 In the upcoming sections, we'll dive deeper into each of these concepts and show you how to use them to build amazing things.

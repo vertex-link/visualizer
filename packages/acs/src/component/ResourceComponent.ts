@@ -24,7 +24,7 @@ export class ResourceComponent extends Component {
   /**
    * Get first resource of specific type
    */
-  get<T extends Resource>(type: new (...args: any[]) => T): T | undefined {
+  get<T extends Resource>(type: new (...args: unknown[]) => T): T | undefined {
     for (const resource of this.resources) {
       if (resource instanceof type) {
         return resource as T;
@@ -36,7 +36,7 @@ export class ResourceComponent extends Component {
   /**
    * Get all resources of specific type
    */
-  getAll<T extends Resource>(type: new (...args: any[]) => T): T[] {
+  getAll<T extends Resource>(type: new (...args: unknown[]) => T): T[] {
     const results: T[] = [];
     for (const resource of this.resources) {
       if (resource instanceof type) {

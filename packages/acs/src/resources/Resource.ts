@@ -82,7 +82,9 @@ export abstract class Resource<TData = unknown> {
   /**
    * Subclasses implement this to define how their data is loaded.
    */
-  protected abstract loadInternal(): Promise<TData>;
+  protected async loadInternal(): Promise<TData> {
+    return this.payload;
+  }
 
   /**
    * If implemented by a subclass, this method is responsible for compiling

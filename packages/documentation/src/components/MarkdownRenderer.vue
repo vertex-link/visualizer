@@ -1,6 +1,11 @@
 <template>
   <div class="markdown-body" v-html="markodown"></div>
 </template>
+<style scoped>
+.markdown-body {
+    padding-bottom: 3rem;
+}
+</style>
 
 <script setup lang="ts">
 import { marked } from "marked";

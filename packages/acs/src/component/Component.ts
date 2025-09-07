@@ -1,9 +1,5 @@
 import Actor from "../Actor";
-import {
-  ComponentAddedEvent,
-  ComponentInitializedEvent,
-  ComponentRemovedEvent,
-} from "../events/CoreEvents";
+import { ComponentRemovedEvent } from "../events/CoreEvents";
 import { emit } from "../events/Event";
 import { generateUUID } from "./../utils/uuid";
 

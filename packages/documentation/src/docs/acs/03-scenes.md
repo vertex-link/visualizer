@@ -9,12 +9,16 @@ A `Scene` is a container for `Actors`. It represents a world, a level, or any lo
 
 ## Creating a Scene
 
-Creating a new Scene is straightforward:
+Creating a new Scene is straightforward. The constructor can take an optional name and an optional shared `IEventBus`.
 
 ```typescript
 import { Scene } from '@vertex-link/acs';
 
+// Create a scene with a specific name
 const myScene = new Scene('Level 1');
+
+// Create a scene with a default name ("Scene")
+const anotherScene = new Scene();
 ```
 
 ## Managing Actors
@@ -33,27 +37,59 @@ When an Actor is added to a Scene, it becomes part of the Scene's managed collec
 
 ## Querying the Scene
 
-The true power of the Scene lies in its ability to efficiently query for Actors based on the Components they possess. This is the foundation of how systems (Processors) find the data they need to operate on.
-
-To create a query, you use the `query()` method, which returns a `QueryBuilder`:
+The true power of the Scene lies in its ability to efficiently query for Actors. This is the foundation of how systems (Processors) find the data they need to operate on. You start a query from a `Scene` instance:
 
 ```typescript
-import { Scene } from '@vertex-link/acs';
-import { TransformComponent, MeshRendererComponent } from '@vertex-link/engine';
-
-// Find all actors that have both a TransformComponent and a MeshRendererComponent
-const renderableActors = myScene
-  .query()
-  .withComponent(TransformComponent)
-  .withComponent(MeshRendererComponent)
-  .execute();
-
-for (const actor of renderableActors) {
-  // Do something with the actor...
-}
+const query = myScene.query();
 ```
 
-This querying mechanism is highly optimized and is the preferred way to access collections of Actors.
+This gives you a `SceneQueryBuilder` instance, which you can use to build up your query conditions.
+
+### Filtering by Component
+
+The most common way to query is by an Actor's Components. The `withComponent` method allows you to find actors that have one or more specific components.
+
+```typescript
+import { TransformComponent, PhysicsComponent } from '@vertex-link/engine';
+
+// Find all actors with a TransformComponent
+const actorsWithTransform = myScene.query()
+  .withComponent(TransformComponent)
+  .execute();
+
+// Find all actors that have BOTH a TransformComponent AND a PhysicsComponent
+const physicsActors = myScene.query()
+  .withComponent(TransformComponent, PhysicsComponent)
+  .execute();
+```
+
+### Advanced Querying
+
+The `QueryBuilder` offers more than just component filtering. You can chain methods to create more specific queries:
+
+-   **Filter by Tags**: Use `.withTag('Player')` or `.withoutTag('EditorOnly')` to filter by tags.
+-   **Limit Results**: Use `.limit(10)` to get only the first 10 results.
+-   **Sort Results**: Use `.orderBy((a, b) => a.id.localeCompare(b.id))` to sort the results.
+
+```typescript
+// Find the first 10 actors tagged 'Enemy' that are not 'Stunned'
+const activeEnemies = myScene.query()
+  .withTag('Enemy')
+  .withoutTag('Stunned')
+  .limit(10)
+  .execute();
+```
+
+### Executing the Query
+
+Once you have specified your conditions, call the `execute()` method to run the query and get an array of matching `Actors`.
+
+The query system is highly optimized. The `Scene` maintains internal indices of components and tags, so finding matching actors is very fast.
+
+### Best Practices
+
+-   **Be Specific**: The more specific your query, the faster it will be. Filtering by components is the most efficient way to narrow down your search.
+-   **Reuse Queries**: If you run the same query every frame (e.g., in a Processor), create the `QueryBuilder` once and reuse it to avoid re-allocating memory.
 
 ## Multiple Scenes
 

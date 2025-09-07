@@ -1,11 +1,10 @@
-import type { IService } from "../Service";
 import type { Event, EventClass, EventHandler } from "./Event";
 
 // ==================== Event Bus Interface ====================
 
 export const IEventBusKey = Symbol.for("IEventBus");
 
-export interface IEventBus extends IService {
+export interface IEventBus {
   emit<T extends Event>(event: T): void;
   on<T extends Event>(eventClass: EventClass<T>, handler: EventHandler<T>, context?: any): void;
   off<T extends Event>(eventClass: EventClass<T>, handler: EventHandler<T>): void;

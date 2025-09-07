@@ -6,6 +6,19 @@
 export type ProcessorTickCallback = (deltaTime: number, ...args: any[]) => void;
 
 /**
+ * Defines how a processor should handle its execution loop.
+ * The ticker function is responsible for managing when and how tasks are executed.
+ *
+ * @param executeTasks - Callback to execute all registered tasks
+ * @param isRunning - Function to check if processor should continue running
+ * @returns Cleanup function to stop the ticker (optional)
+ */
+export type ProcessorTicker = (
+  executeTasks: (deltaTime: number, ...args: any[]) => void,
+  isRunning: () => boolean,
+) => (() => void) | void;
+
+/**
  * Represents a unit of work to be executed by a Processor.
  * It includes the function to call, its 'this' context, and a unique ID.
  */
@@ -36,15 +49,84 @@ export abstract class Processor {
   public readonly name: string;
   protected tasks: Map<string | symbol, IProcessable> = new Map();
   protected _isRunning = false;
+  protected ticker?: ProcessorTicker;
+  private tickerCleanup?: (() => void) | void;
 
   /**
    * @param name A unique name for this processor (e.g., "render", "physics").
+   * @param ticker Optional ticker function that determines execution behavior.
    */
-  constructor(name: string) {
+  constructor(name: string, ticker?: ProcessorTicker) {
     if (!name || name.trim() === "") {
       throw new Error("Processor name cannot be empty.");
     }
     this.name = name;
+    this.ticker = ticker;
+  }
+
+  /**
+   * Sets or updates the ticker function for this processor.
+   * @param ticker The ticker function to use for execution control.
+   */
+  public setTicker(ticker: ProcessorTicker): void {
+    this.ticker = ticker;
+    // If running, restart with new ticker
+    if (this._isRunning) {
+      this.stop();
+      this.start();
+    }
+  }
+
+  /**
+   * Starts the processor's loop using the configured ticker.
+   */
+  public start(): void {
+    if (this._isRunning) {
+      return;
+    }
+    this._isRunning = true;
+
+    if (this.ticker) {
+      // Use the provided ticker function
+      this.tickerCleanup = this.ticker(
+        (deltaTime: number, ...args: any[]) => this.executeTasks(deltaTime, ...args),
+        () => this._isRunning,
+      );
+    } else {
+      // Fallback to abstract method for backward compatibility
+      this.startImplementation();
+    }
+  }
+
+  /**
+   * Stops the processor's loop.
+   */
+  public stop(): void {
+    if (!this._isRunning) {
+      return;
+    }
+    this._isRunning = false;
+
+    // Clean up ticker if it provided a cleanup function
+    if (this.tickerCleanup) {
+      this.tickerCleanup();
+      this.tickerCleanup = undefined;
+    } else {
+      // Fallback to abstract method
+      this.stopImplementation();
+    }
+  }
+
+  /**
+   * Legacy abstract methods for backward compatibility.
+   * New implementations should use ticker functions instead.
+   */
+  protected startImplementation(): void {
+    // Override in subclasses that don't use ticker functions
+  }
+
+  protected stopImplementation(): void {
+    // Override in subclasses that don't use ticker functions
   }
 
   /**
@@ -83,25 +165,14 @@ export abstract class Processor {
   }
 
   /**
-   * Starts the processor's loop.
-   * Concrete implementations must define the specific loop mechanism
-   * (e.g., requestAnimationFrame, setInterval).
-   */
-  public abstract start(): void;
-
-  /**
-   * Stops the processor's loop.
-   * Concrete implementations must handle cleanup of their loop mechanism.
-   */
-  public abstract stop(): void;
-
-  /**
    * Executes all registered tasks. This method is typically called internally
    * by the loop mechanism implemented in `start()`.
    * @param deltaTime Time elapsed since the last tick, in seconds.
    * @param args Additional arguments to pass to each task's update function.
    */
   protected executeTasks(deltaTime: number, ...args: any[]): void {
+    console.debug(`Processor '${this.name}': Executing tasks...`);
+
     // Iterate over a copy of values in case a task modifies the tasks map during execution
     const tasksToExecute = Array.from(this.tasks.values());
     for (const task of tasksToExecute) {

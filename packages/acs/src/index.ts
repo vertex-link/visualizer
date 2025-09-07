@@ -17,7 +17,6 @@ export {
   withContext,
 } from "./composables/context";
 export { useOnceEvent, useOnEvent } from "./composables/events";
-
 export { useUpdate } from "./composables/processors";
 export * from "./events/CoreEvents"; //
 export { emitToQuery } from "./events/EmitToQuery"; //
@@ -36,10 +35,9 @@ export type { IProcessable, ProcessorTickCallback } from "./processor/Processor"
 // Processor System
 export { Processor } from "./processor/Processor"; //
 export { ProcessorRegistry } from "./processor/ProcessorRegistry"; //
+export { Tickers } from "./processor/ProcessorTickers";
 export { ComputeResource } from "./resources/ComputeResource";
 export { Resource, ResourceStatus } from "./resources/Resource";
-export type { ServiceKey } from "./Service"; //
-export { type IService, ServiceRegistry } from "./Service"; //
 export { QueryBuilder } from "./scene/QueryBuilder"; //
 export type {
   ComponentQueryCondition,

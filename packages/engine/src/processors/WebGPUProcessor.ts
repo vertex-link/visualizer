@@ -1,10 +1,9 @@
-import { type IEventBus, Processor, type Scene } from "@vertex-link/acs";
-import { ResourceReadyEvent } from "../events";
-import { GPUResourcePool } from "../rendering/GPUResourcePool";
-import { RenderGraph } from "../rendering/RenderGraph";
+import { type IEventBus, Processor, type Scene, Tickers } from "@vertex-link/acs";
 import { CameraComponent } from "../rendering/camera/CameraComponent";
 import { MeshRendererComponent } from "../rendering/components/MeshRendererComponent";
 import { TransformComponent } from "../rendering/components/TransformComponent";
+import { GPUResourcePool } from "../rendering/GPUResourcePool";
+import { RenderGraph } from "../rendering/RenderGraph";
 import type { MaterialResource } from "../resources/MaterialResource";
 import type { MeshResource } from "../resources/MeshResource";
 import { WebGPURenderer } from "../webgpu/WebGPURenderer";
@@ -38,6 +37,7 @@ interface InstancedRenderBatch {
 
 /**
  * WebGPU Processor - Coordinates rendering through existing component system
+ * Now uses the ticker function approach for flexible rendering control.
  */
 export class WebGPUProcessor extends Processor {
   private canvas: HTMLCanvasElement;
@@ -61,7 +61,7 @@ export class WebGPUProcessor extends Processor {
   private eventBus: IEventBus;
 
   constructor(canvas: HTMLCanvasElement, name = "webgpu", eventBus: IEventBus) {
-    super(name);
+    super(name, Tickers.animationFrame()); // Use animation frame by default
     this.canvas = canvas;
     this.renderer = new WebGPURenderer();
     this.resourcePool = new GPUResourcePool();
@@ -76,7 +76,7 @@ export class WebGPUProcessor extends Processor {
     await this.renderer.initialize(this.canvas);
     this.resourcePool.initialize(this.renderer.getDevice()!);
 
-    // Initialize render graph with device - THIS WAS MISSING!
+    // Initialize render graph with device
     this.renderGraph.initialize(this.renderer.getDevice()!);
 
     // Update camera aspect ratio based on canvas
@@ -93,6 +93,56 @@ export class WebGPUProcessor extends Processor {
   setScene(scene: Scene): void {
     this.scene = scene;
     this.isDirty = true;
+  }
+
+  /**
+   * Set a custom rendering strategy using ticker functions.
+   * Examples:
+   * - setRenderTicker(Tickers.fixedFPS(30)) for fixed 30 FPS
+   * - setRenderTicker(Tickers.conditional(Tickers.animationFrame(), () => !document.hidden)) for visibility-aware rendering
+   * @param ticker The ticker function to control rendering behavior
+   */
+  public setRenderTicker(ticker: Parameters<Processor["setTicker"]>[0]): void {
+    this.setTicker(ticker);
+  }
+
+  /**
+   * Convenience method to cap rendering at a specific FPS.
+   * Useful for performance optimization or battery saving.
+   * @param maxFPS Maximum frames per second
+   */
+  public setMaxFPS(maxFPS: number): void {
+    this.setTicker(Tickers.throttled(Tickers.animationFrame(), 1000 / maxFPS));
+  }
+
+  /**
+   * Convenience method to only render when the page is visible.
+   * Automatically pauses rendering when user switches tabs.
+   */
+  public setVisibilityAware(): void {
+    this.setTicker(Tickers.conditional(Tickers.animationFrame(), () => !document.hidden));
+  }
+
+  /**
+   * Convenience method to render only when the canvas is in view.
+   * Uses Intersection Observer API to detect visibility.
+   */
+  public setViewportAware(): void {
+    let isInViewport = true;
+
+    if ("IntersectionObserver" in window) {
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          isInViewport = entry.isIntersecting;
+        },
+        { threshold: 0 },
+      );
+      observer.observe(this.canvas);
+    }
+
+    this.setTicker(
+      Tickers.conditional(Tickers.animationFrame(), () => isInViewport && !document.hidden),
+    );
   }
 
   /**

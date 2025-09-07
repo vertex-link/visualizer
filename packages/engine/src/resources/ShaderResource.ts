@@ -1,5 +1,4 @@
 import { ProcessorRegistry, Resource } from "@vertex-link/acs";
-import { ServiceRegistry } from "@vertex-link/acs";
 import type { WebGPUProcessor } from "../processors/WebGPUProcessor";
 
 /**
