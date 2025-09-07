@@ -5,8 +5,8 @@
 </template>
 
 <script setup lang="ts">
-import hljs from "highlight.js";
 import { marked } from "marked";
+import prism from "prismjs";
 import { computed } from "vue";
 
 interface Props {
@@ -18,8 +18,8 @@ const props = defineProps<Props>();
 // Configure marked with syntax highlighting
 marked.setOptions({
   highlight: (code, language) => {
-    const validLanguage = hljs.getLanguage(language) ? language : "plaintext";
-    return hljs.highlight(code, { language: validLanguage }).value;
+    const validLanguage = prism.getLanguage(language) ? language : "plaintext";
+    return prism.highlight(code, { language: validLanguage }).value;
   },
   breaks: false,
   gfm: true,
