@@ -121,10 +121,6 @@ Useful APIs on a `Processor` instance:
 
 Note on legacy subclassing: `startImplementation()` and `stopImplementation()` exist for backward compatibility, but new code should prefer using tickers and should not override `start()`/`stop()`.
 
-## The Processor Registry
-
-A global `ProcessorRegistry` exists but is deprecated in this project’s guidelines. Prefer managing processors explicitly or via an EngineContext-specific service.
-
 ## Best Practices
 
 - Separation of Concerns: Each Processor should have a single responsibility (e.g., physics, rendering, input).
