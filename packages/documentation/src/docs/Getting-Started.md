@@ -61,49 +61,40 @@ scene.addActor(cameraActor);
 engineContext.start();
 ```
 
+Note:
+- EngineContext currently manages a single active Scene at a time via `setScene(scene)`. You can prepare other scenes off-thread or swap them in later, but concurrent rendering of multiple scenes is not provided by the default WebGPU processor yet.
+
+
 ## Resource Management Pattern
 
-Resources in Vertex Link are created and managed through handles with explicit compilation. This pattern ensures proper WebGPU device management and resource lifecycle:
+Resources in Vertex Link are plain classes you instantiate (e.g., MeshResource, MaterialResource). They lazy-load and compile as needed when first used by systems like the WebGPU renderer. You typically attach them to an Actor via ResourceComponent.
 
 ```typescript
-// Create shader handle
-const shaderHandle = createShaderHandle(
-    resourceManager,
-    "StandardShader",
-    vertexShaderSource,
-    fragmentShaderSource,
-);
+// Create resources directly (no global resource manager required)
+const mesh = new MeshResource("CubeMesh", meshDescriptor);
+const material = new MaterialResource("CubeMaterial", {
+  // shader/material setup depends on your renderer configuration
+  // e.g., references to shader code, pipeline layout, uniforms, etc.
+});
 
-// Get and compile the resource
-const standardShader = await shaderHandle.get();
-standardShader.setDevice(device);
-await standardShader.compile();
+// Attach resources to an actor via ResourceComponent
+const resources = myActor.addComponent(ResourceComponent, [mesh, material]);
 
-// Create mesh and material similarly
-const meshHandle = createMeshHandle(resourceManager, "CubeMesh", meshDescriptor);
-const mesh = await meshHandle.get();
-mesh.setDevice(device);
-await mesh.compile();
+// Optionally, ensure GPU readiness ahead of time
+await mesh.whenReady();
+await material.whenReady();
 
-const materialHandle = createMaterialHandle(
-    resourceManager,
-    "CubeMaterial",
-    shaderHandle,
-    uniforms,
-    vertexLayout,
-);
-const material = await materialHandle.get();
-material.setDevice(device, preferredFormat);
-await material.compile();
+// MeshRendererComponent will read MeshResource/MaterialResource from ResourceComponent
+const meshRenderer = myActor.addComponent(MeshRendererComponent);
 ```
 
 ### Key Resource Management Concepts
 
-1. **Handle Creation**: Create lightweight handles that reference resources
-2. **Lazy Loading**: Resources are loaded when `get()` is called
-3. **Device Binding**: Call `setDevice()` to bind to a WebGPU device
-4. **Compilation**: Call `compile()` to create GPU-ready resources
-5. **Recompilation**: Resources can be recompiled when device changes
+1. **Direct Instantiation**: Create resources via `new MeshResource(...)`, `new MaterialResource(...)`.
+2. **Lazy Readiness**: Use `await resource.whenReady()` if you need to ensure readiness ahead of time; otherwise, render systems request readiness on demand.
+3. **Device Binding**: GPU device binding is handled internally via the current WebGPU processor; you do not manually pass the device.
+4. **Compilation**: `compile()` is called by systems as needed; you can call it explicitly, but it is not required in typical flows.
+5. **Recompilation**: Resources manage their own recompile lifecycle when renderer/device changes occur.
 
 ## Composable-like Helpers (Decorator Replacement)
 
@@ -115,14 +106,14 @@ Vertex Link uses thin, context-aware functions inspired by Vue composables inste
 
 - `runWithContext(ctx, fn)`: enter a context for the synchronous duration of fn
 - `getCurrentContext(strict?)`: fetch current context (throw if strict and missing)
-- `useActor/useComponent/useScene/useEventBus/useProcessor/useService`: read from the current context
+- `useActor/useComponent/useScene/useEventBus/useProcessor`: read from the current context
 - `deriveContext(partial)`: shallow-merge a new context from the current
 - `withContext(ctx, fn)`: convenience alias for class methods
 
 ### Example: OOP Component Using Helpers
 
 ```typescript
-import { withContext, useActor, useEventBus } from "./src/composables/context";
+import { withContext, useActor, useEventBus } from "@vertex-link/space/composables/context";
 
 class MyComponent {
   constructor(public actor: any, public bus: any) {}
@@ -141,7 +132,7 @@ class MyComponent {
 ### Procedural Usage
 
 ```typescript
-import { runWithContext, useProcessor } from "./src/composables/context";
+import { runWithContext, useProcessor } from "@vertex-link/space/composables/context";
 
 runWithContext({ scene, processors: new Map([["webgpu", webgpuProcessor]]) }, () => {
   const p = useProcessor<any>("webgpu");
@@ -155,13 +146,13 @@ runWithContext({ scene, processors: new Map([["webgpu", webgpuProcessor]]) }, ()
 - **Incremental migration**: Start by wrapping selected methods with `withContext` and gradually remove decorators.
 - **Engine-agnostic**: You control what goes into the context (actor, component, eventBus, processors/services), keeping boundaries clear.
 
-### Additional ACS Composables
+### Additional SPACe Composables
 
-**Event Management** (`packages/acs/src/composables/events.ts`):
+**Event Management** (`packages/space/src/composables/events.ts`):
 - `useOnEvent/useOnceEvent`: Subscribe to events on the current context's event bus. Both return disposer functions.
 
 ```typescript
-import { useOnEvent, useOnceEvent } from '@vertex-link/acs/composables/events';
+import { useOnEvent, useOnceEvent } from '@vertex-link/space/composables/events';
 
 // In a component or system
 const disposeHandler = useOnEvent('playerDied', (event) => {
@@ -172,11 +163,11 @@ const disposeHandler = useOnEvent('playerDied', (event) => {
 disposeHandler();
 ```
 
-**Processor Management** (`packages/acs/src/composables/processors.ts`):
+**Processor Management** (`packages/space/src/composables/processors.ts`):
 - `useUpdate(processorName, fn, context[, id])`: Register per-frame/fixed-tick work without decorators.
 
 ```typescript
-import { useUpdate } from '@vertex-link/acs/composables/processors';
+import { useUpdate } from '@vertex-link/space/composables/processors';
 
 // Register update function
 useUpdate('render', () => {

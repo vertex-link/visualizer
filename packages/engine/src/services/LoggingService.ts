@@ -1,7 +1,4 @@
 // Define a unique key for the LoggingService
-
-import type { IService } from "@vertex-link/acs";
-
 export const ILoggingServiceKey = Symbol.for("ILoggingService");
 
 /**
@@ -22,7 +19,7 @@ export enum LogLevel {
  * Interface for the Logging Service.
  * Defines the contract for logging messages at various levels.
  */
-export interface ILoggingService extends IService {
+export interface ILoggingService {
   setLogLevel(level: LogLevel): void;
   getLogLevel(): LogLevel;
 

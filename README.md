@@ -14,7 +14,6 @@ Vertex Link emphasizes a decoupled, component-based architecture. It provides a 
 -   **Scenes**: Manage collections of Actors and provide querying capabilities.
 -   **Actors**: Represent entities, acting as containers for Components.
 -   **Components**: Encapsulate data and behavior for Actors.
--   **Services**: Provide shared, cross-cutting functionalities.
 -   **Processors**: Manage distinct update loops (e.g., rendering, game logic).
 -   **Events**: Facilitate type-safe, decoupled communication via an EventBus.
 
@@ -27,7 +26,7 @@ The framework uses explicit dependency resolution for simplicity and maintainabi
 -   **Explicit Component Dependencies**: Clear, maintainable component relationships without decorator complexity.
 -   **Resource Management**: System for loading, compiling, and managing assets like meshes, materials, and shaders.
 -   **WebGPU Rendering**: High-performance rendering using the modern WebGPU API, managed by the `WebGPUProcessor` and `RenderGraph`.
--   **Modular Design**: Core logic (`@vertex-link/acs`) is separate from the rendering engine (`@vertex-link/engine`), promoting flexibility.
+-   **Modular Design**: Core logic (`@vertex-link/space`) is separate from the rendering engine (`@vertex-link/engine`), promoting flexibility.
 
 ## Development Setup
 

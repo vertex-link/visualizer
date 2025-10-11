@@ -41,7 +41,7 @@ export default defineConfig({
     resolve: {
       alias: {
         "@renderer": resolve(__dirname, "src/app/src"),
-        "@vertex-link/acs": resolve(__dirname, "../acs/src/index.ts"),
+        "@vertex-link/space": resolve(__dirname, "../space/src/index.ts"),
         "@vertex-link/engine": resolve(__dirname, "../engine/src/index.ts"),
       },
     },

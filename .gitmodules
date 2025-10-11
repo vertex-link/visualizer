@@ -1,0 +1,3 @@
+[submodule "packages/engine/src/resources/zgltf"]
+	path = packages/engine/src/resources/zgltf
+	url = https://github.com/kooparse/zgltf.git

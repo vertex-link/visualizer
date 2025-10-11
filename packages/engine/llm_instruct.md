@@ -1,412 +1,155 @@
 # Engine Package - LLM Implementation Instructions
 
 ## Package Purpose
-The `@vertex-link/engine` package provides WebGPU rendering, resource management, and visual components built on top of the ACS framework. This package handles all GPU-related functionality and rendering pipelines.
+The `@vertex-link/engine` package provides WebGPU rendering, resource management, and visual components built on top of the `@vertex-link/space` framework. This package handles all GPU-related functionality.
 
 ## Directory Structure
 ```
 packages/engine/src/
-├── EngineContext.ts              # Central engine context (replaces ProcessorRegistry)
-├── events/
-│   └── index.ts                 # Engine-specific events
+├── EngineContext.ts              # Central engine context
+├── index.ts                      # Package entry point
+├── events.ts                     # Engine-specific events (input, resources)
 ├── processors/
 │   ├── WebGPUProcessor.ts       # Main rendering processor
-│   ├── RenderProcessor.ts       # Generic render processor
+│   ├── RenderProcessor.ts       # Generic render processor base
 │   └── FixedTickProcessor.ts    # Fixed timestep processor
 ├── rendering/
 │   ├── components/
 │   │   ├── TransformComponent.ts    # Position/rotation/scale
-│   │   └── MeshRendererComponent.ts # Mesh+Material reference
+│   │   └── MeshRendererComponent.ts # Links mesh and material
 │   ├── camera/
 │   │   ├── CameraComponent.ts       # Camera configuration
-│   │   └── PerspectiveCamera.ts     # Perspective projection
-│   ├── interfaces/
-│   │   ├── IBuffer.ts              # Buffer abstraction
-│   │   └── IPipeline.ts            # Pipeline abstraction
+│   │   └── PerspectiveCamera.ts     # Perspective projection logic
 │   ├── math/
-│   │   └── Transform.ts            # Transform utilities
-│   ├── GPUResourcePool.ts          # Resource caching
-│   ├── RenderGraph.ts              # Render pipeline graph
-│   └── RenderStage.ts              # Individual render stages
+│   │   └── Transform.ts            # Transform matrix utilities
+│   ├── GPUResourcePool.ts          # Caching for GPU assets (pipelines, etc.)
+│   └── RenderGraph.ts              # Manages render passes
 ├── resources/
-│   ├── Resource.ts                 # Base resource class
-│   ├── ResourceManager.ts          # Resource loading/caching
 │   ├── ShaderResource.ts           # WGSL shader management
 │   ├── MeshResource.ts             # Geometry data
 │   ├── MaterialResource.ts         # Material/uniform data
-│   └── GeometryUtils.ts           # Primitive generation
+│   └── GeometryUtils.ts            # Primitive generation (cubes, planes)
 ├── services/
-│   └── LoggingService.ts          # Logging implementation
+│   └── LoggingService.ts           # Logging implementation
 └── webgpu/
-    ├── WebGPURenderer.ts           # WebGPU device/context
-    ├── WebGPUPipeline.ts          # Pipeline creation
-    └── WebGPUBuffer.ts            # Buffer management
+    ├── WebGPURenderer.ts           # Core WebGPU device/context wrapper
+    ├── WebGPUPipeline.ts           # Pipeline creation helper
+    └── WebGPUBuffer.ts             # Buffer creation helper
 ```
 
 ## Core Concepts
 
-### EngineContext (NEW - Phase 0)
+### EngineContext
+This class is the main entry point for the engine. It sets up the rendering processor and event bus.
 ```typescript
 class EngineContext {
-  private canvas: HTMLCanvasElement;
-  private webgpuProcessor: WebGPUProcessor;
-  private eventBus: IEventBus;
-  private scene?: Scene;
-  
+  public readonly eventBus: IEventBus;
+
+  constructor(canvas: HTMLCanvasElement);
   async initialize(): Promise<void>;
   setScene(scene: Scene): void;
   start(): void;
   stop(): void;
-  
-  get device(): GPUDevice | null;
-  get renderer(): WebGPURenderer;
 }
 ```
-
-**Key Implementation:**
-- Replaces global ProcessorRegistry
-- Scoped context for engine services
-- Passed explicitly to components/resources
-- Manages WebGPU initialization
+- **Key Idea**: It initializes the `WebGPUProcessor` and provides a central place for the scene and event bus. 
 
 ### Resource Management
-
-#### Resource Base Class
-```typescript
-abstract class Resource<T> {
-  protected device: GPUDevice | null;
-  protected compiled: T | null;
-  status: ResourceStatus;
-  
-  abstract get(): Promise<this>;
-  setDevice(device: GPUDevice): void;
-  abstract compile(): Promise<void>;
-  abstract dispose(): void;
-}
-```
+Resources are classes that manage GPU data (meshes, shaders, materials). They extend the base `Resource` class from `@vertex-link/space`.
 
 **Resource Lifecycle:**
-1. Create handle via ResourceManager
-2. Call `get()` to load/prepare data
-3. Call `setDevice(device)` to set GPU device
-4. Call `compile()` to create GPU resources
-5. Resource ready with `status === ResourceStatus.Ready`
+1.  Instantiate the specific resource class (e.g., `MeshResource`).
+2.  The `WebGPUProcessor` provides the `GPUDevice` to the resource via `setDevice(device)`.
+3.  The processor then calls `compile()` on the resource, which creates the actual GPU buffers, textures, and pipelines.
+4.  The resource's `status` becomes `ResourceStatus.Ready`.
 
-#### Key Resource Types
+**Key Resource Types:**
+-   `ShaderResource`: Holds WGSL vertex and fragment shader source code.
+-   `MeshResource`: Holds vertex and index data for a piece of geometry.
+-   `MaterialResource`: Holds a reference to a `ShaderResource` and uniform data. It compiles into a `GPURenderPipeline`.
 
-**ShaderResource:**
-```typescript
-class ShaderResource extends Resource<GPUShaderModule> {
-  constructor(
-    public readonly id: string,
-    private vertexSource: string,
-    private fragmentSource: string
-  );
-}
-```
+### Rendering Components
 
-**MeshResource:**
-```typescript
-class MeshResource extends Resource<{
-  vertexBuffer: GPUBuffer;
-  indexBuffer?: GPUBuffer;
-}> {
-  constructor(
-    public readonly id: string,
-    private descriptor: MeshDescriptor
-  );
-}
-```
-
-**MaterialResource:**
-```typescript
-class MaterialResource extends Resource<GPURenderPipeline> {
-  uniforms: Map<string, UniformValue>;
-  
-  constructor(
-    public readonly id: string,
-    private shaderResource: ShaderResource,
-    private descriptor: MaterialDescriptor
-  );
-}
-```
-
-### Components
-
-#### TransformComponent
-```typescript
-class TransformComponent extends Component {
-  position: Vec3;
-  rotation: Quat;
-  scale: Vec3;
-  
-  getWorldMatrix(): Mat4;
-  getLocalMatrix(): Mat4;
-  setPosition(x: number, y: number, z: number): void;
-  lookAt(target: Vec3): void;
-}
-```
-
-**Matrix Updates:**
-- Lazy evaluation with dirty flag
-- Cached world matrix
-- Parent hierarchy support (planned)
-
-#### MeshRendererComponent
-```typescript
-class MeshRendererComponent extends Component {
-  enabled: boolean;
-  layer: number;
-  
-  get mesh(): MeshResource | undefined;
-  get material(): MaterialResource | undefined;
-  
-  updateForRender(deltaTime: number): void;
-  isRenderable(): boolean;
-}
-```
-
-**Current Implementation:**
-- Gets resources from ResourceComponent
-- No direct resource injection
-- Manages visibility and layer sorting
-
-#### CameraComponent
-```typescript
-class CameraComponent extends Component {
-  projectionType: ProjectionType;
-  isActive: boolean;
-  
-  getViewMatrix(): Mat4;
-  getProjectionMatrix(): Mat4;
-  getViewProjectionMatrix(): Mat4;
-}
-```
+-   **TransformComponent**: Manages an actor's position, rotation, and scale in 3D space. It can calculate local and world matrices.
+-   **MeshRendererComponent**: A simple component that acts as a flag to the `WebGPUProcessor` indicating that this actor should be rendered. It relies on the actor having a `ResourceComponent` that holds a `MeshResource` and a `MaterialResource`.
+-   **CameraComponent**: Defines a camera, including its projection type (e.g., perspective) and manages the view and projection matrices.
 
 ### Rendering Pipeline
 
-#### WebGPUProcessor
-```typescript
-class WebGPUProcessor extends Processor {
-  private renderer: WebGPURenderer;
-  private renderGraph: RenderGraph;
-  private resourcePool: GPUResourcePool;
-  
-  async initialize(): Promise<void>;
-  setScene(scene: Scene): void;
-  protected executeTasks(deltaTime: number): void;
-}
-```
-
-**Rendering Flow:**
-1. Query scene for renderable actors
-2. Batch by material/mesh for instancing
-3. Update instance buffers
-4. Execute render graph stages
-5. Submit command buffer
-
-#### RenderGraph
-```typescript
-class RenderGraph {
-  private stages: RenderStage[];
-  
-  addStage(stage: RenderStage): void;
-  execute(
-    renderer: WebGPURenderer,
-    batches: RenderBatch[],
-    camera: CameraComponent | null,
-    deltaTime: number
-  ): void;
-}
-```
-
-**Built-in Stages:**
-- `ForwardPass`: Main geometry rendering
-- `PostProcessPass`: Screen-space effects
-- `ShadowPass`: Shadow map generation (planned)
-
-### WebGPU Abstraction
-
-#### WebGPURenderer
-```typescript
-class WebGPURenderer {
-  device: GPUDevice | null;
-  context: GPUCanvasContext | null;
-  
-  async initialize(canvas: HTMLCanvasElement): Promise<void>;
-  beginFrame(): GPUCommandEncoder;
-  endFrame(commandEncoder: GPUCommandEncoder): void;
-}
-```
+-   **WebGPUProcessor**: The heart of the engine. It runs the main render loop.
+    1.  On startup, it initializes the `WebGPURenderer` to get a `GPUDevice`.
+    2.  On each frame, it queries the scene for all actors with a `MeshRendererComponent`.
+    3.  It finds the active `CameraComponent`.
+    4.  It iterates through the renderable actors, ensuring their associated `MeshResource` and `MaterialResource` are compiled.
+    5.  It batches draw calls (though instancing is not fully implemented) and submits them to the GPU.
+-   **RenderGraph**: A system used by `WebGPUProcessor` to organize rendering into passes (e.g., a forward pass). It is not as complex as the old `RenderStage` system.
 
 ## Important Implementation Rules
 
 ### ✅ DO's
-- Use EngineContext for service access
-- Follow resource lifecycle strictly
-- Check device before GPU operations
-- Handle device loss gracefully
-- Cache GPU resources in GPUResourcePool
-- Use typed uniforms in materials
+-   **Use `EngineContext` to initialize and run the engine.**
+-   **Add `MeshResource` and `MaterialResource` to an actor's `ResourceComponent` to make it renderable.**
+-   Follow the resource lifecycle: instantiate, `setDevice`, `compile`.
+-   Check for `navigator.gpu` support before initializing the engine.
+-   Handle cleanup by calling `dispose()` on resources.
 
 ### ❌ DON'Ts
-- Don't use ProcessorRegistry
-- Don't create GPU resources before compile()
-- Don't leak GPU resources (call dispose())
-- Don't assume WebGPU support
-- Don't mix resource management patterns
-- Don't access device globally
+
+-   **Don't look for a `ResourceManager`. It does not exist.**
+-   Don't create GPU resources outside of the `compile()` method.
+-   Don't leak GPU resources. Ensure `dispose()` is called.
 
 ## Common Patterns
 
-### Resource Creation Pattern
-```typescript
-// Create and compile a mesh resource
-const meshDescriptor: MeshDescriptor = {
-  vertices: new Float32Array([...]),
-  indices: new Uint16Array([...]),
-  vertexLayout: [
-    { name: "position", format: "float32x3" },
-    { name: "normal", format: "float32x3" }
-  ]
-};
-
-const mesh = new MeshResource("myMesh", meshDescriptor);
-await mesh.get();
-mesh.setDevice(device);
-await mesh.compile();
-```
-
-### Component with Resources Pattern
-```typescript
-class MyVisualComponent extends Component {
-  private resources?: ResourceComponent;
-  
-  override onInitialize(): void {
-    this.resources = this.actor.getComponent(ResourceComponent);
-    if (!this.resources) {
-      // Add resources to actor
-      const mesh = new MeshResource(...);
-      const material = new MaterialResource(...);
-      this.resources = this.actor.addComponent(
-        ResourceComponent,
-        mesh,
-        material
-      );
-    }
-  }
-}
-```
-
-### Render Stage Pattern
-```typescript
-class CustomRenderStage extends RenderStage {
-  execute(
-    encoder: GPUCommandEncoder,
-    batches: RenderBatch[],
-    context: RenderPassContext
-  ): void {
-    const pass = encoder.beginRenderPass({...});
-    
-    for (const batch of batches) {
-      // Set pipeline and bind groups
-      pass.setPipeline(batch.pipeline);
-      pass.setBindGroup(0, batch.bindGroup);
-      
-      // Draw instances
-      pass.draw(batch.vertexCount, batch.instanceCount);
-    }
-    
-    pass.end();
-  }
-}
-```
-
-## Testing Approach
+### Creating a Renderable Actor
+To make an actor appear on screen, you need to give it geometry, a material, and a transform.
 
 ```typescript
-import { describe, it, expect, beforeAll } from "bun:test";
+import {
+  Actor,
+  ResourceComponent
+} from "@vertex-link/space";
+import {
+  TransformComponent,
+  MeshRendererComponent,
+  MeshResource,
+  MaterialResource,
+  ShaderResource,
+  GeometryUtils
+} from "@vertex-link/engine";
 
-describe("WebGPU Resources", () => {
-  let device: GPUDevice;
-  
-  beforeAll(async () => {
-    // Mock or get test device
-    const adapter = await navigator.gpu?.requestAdapter();
-    device = await adapter?.requestDevice();
-  });
-  
-  it("should compile shader resource", async () => {
-    const shader = new ShaderResource("test", vertSrc, fragSrc);
-    await shader.get();
-    shader.setDevice(device);
-    await shader.compile();
-    expect(shader.status).toBe(ResourceStatus.Ready);
-  });
-});
+// 1. Create an Actor
+const scene = new Scene();
+const cubeActor = new Actor("my-cube");
+
+// 2. Add a Transform to position it
+cubeActor.addComponent(TransformComponent);
+
+// 3. Create Shader, Mesh, and Material resources
+const shader = new ShaderResource('basic-shader', vsCode, fsCode);
+const mesh = new MeshResource('cube-mesh', GeometryUtils.createCube());
+const material = new MaterialResource('red-material', shader);
+
+// 4. Add resources to the actor via ResourceComponent
+const resources = cubeActor.addComponent(ResourceComponent);
+resources.add(shader);
+resources.add(mesh);
+resources.add(material);
+
+// 5. Add MeshRendererComponent to mark it as renderable
+cubeActor.addComponent(MeshRendererComponent);
+
+// 6. Add the actor to the scene
+scene.addActor(cubeActor);
 ```
 
 ## Current Issues & TODOs
 
-1. **Instance Buffer Growth**: Fixed size, needs dynamic resizing
-2. **Material System**: Needs uniform buffer automation
-3. **Shadow Mapping**: Not yet implemented
-4. **Compute Shaders**: Basic support, needs ergonomics
-5. **Device Loss**: Recovery not fully implemented
-6. **Culling**: No frustum culling yet
-
-## WebGPU Requirements
-
-### Browser Support
-- Chrome 113+ (stable WebGPU)
-- Edge 113+ (stable WebGPU)
-- Firefox Nightly (behind flag)
-- Safari Technology Preview
-
-### Feature Detection
-```typescript
-if (!navigator.gpu) {
-  throw new Error("WebGPU not supported");
-}
-
-const adapter = await navigator.gpu.requestAdapter();
-if (!adapter) {
-  throw new Error("No GPU adapter available");
-}
-```
-
-### Required Features
-- Bind group layouts
-- Vertex/fragment shaders
-- Instanced rendering
-- Depth/stencil testing
-
-## Performance Considerations
-
-### Batching Strategy
-- Group by material + mesh
-- Use instanced rendering
-- Minimize bind group switches
-- Pre-allocate instance buffers
-
-### Resource Pooling
-- Cache compiled pipelines
-- Reuse bind groups
-- Pool uniform buffers
-- Share vertex/index buffers
-
-## Integration Points
-
-### With ACS Package
-- Extends Component class
-- Uses Scene queries
-- Emits/listens to events
-- Accesses via ResourceComponent
-
-### With Documentation Package
-- Provides rendering for examples
-- Must maintain stable API
-- Used in interactive demos
+1.  **Instancing**: The rendering pipeline batches draws but does not yet use GPU instancing effectively.
+2.  **Material System**: Uniform buffer management is manual and needs to be automated.
+3.  **Advanced Rendering**: Features like shadow mapping and post-processing are not implemented.
+4.  **Device Loss**: Graceful recovery from GPU device loss is not implemented.
+5.  **Culling**: No view frustum or occlusion culling is performed.
 
 ## Build & Development
 
@@ -419,16 +162,4 @@ bun run dev
 
 # Type checking
 bun run typecheck
-
-# Run tests
-bun test
 ```
-
-## Export Structure
-Main exports from `src/index.ts`:
-- Core: `EngineContext`
-- Components: `TransformComponent`, `MeshRendererComponent`, `CameraComponent`
-- Resources: `ShaderResource`, `MeshResource`, `MaterialResource`
-- Rendering: `WebGPUProcessor`, `RenderGraph`, `GPUResourcePool`
-- Math: `Transform`, `Vec3`, `Quat`, `Mat4`
-- Utils: `GeometryUtils`

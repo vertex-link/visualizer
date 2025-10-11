@@ -1,4 +1,4 @@
-export { ILoggingServiceKey, LogLevel, ConsoleLoggingService } from "./services/LoggingService";
+export { LogLevel, ConsoleLoggingService } from "./services/LoggingService";
 export type { ILoggingService } from "./services/LoggingService";
 
 // Core

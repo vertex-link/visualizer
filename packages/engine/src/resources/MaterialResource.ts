@@ -1,4 +1,9 @@
-import { ProcessorRegistry, Resource, ResourceStatus } from "@vertex-link/acs";
+import {
+  Resource,
+  runWithContext,
+  useProcessor,
+  type Context,
+} from "@vertex-link/space";
 import type { WebGPUProcessor } from "../processors/WebGPUProcessor";
 import type { VertexLayout } from "../rendering/interfaces/IPipeline";
 import { WebGPUPipeline } from "./../webgpu/WebGPUPipeline";
@@ -7,7 +12,12 @@ import { type ShaderResource, ShaderStage } from "./ShaderResource";
 /**
  * Uniform data types supported by materials.
  */
-export type UniformValue = number | number[] | Float32Array | Int32Array | Uint32Array;
+export type UniformValue =
+  | number
+  | number[]
+  | Float32Array
+  | Int32Array
+  | Uint32Array;
 
 /**
  * Uniform descriptor for material properties.
@@ -46,8 +56,8 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
   public isCompiled = false;
   private preferredFormat: GPUTextureFormat = "bgra8unorm";
 
-  constructor(name: string, materialData: MaterialDescriptor) {
-    super(name, materialData);
+  constructor(name: string, materialData: MaterialDescriptor, context?: Context) {
+    super(name, materialData, context);
 
     // Process uniforms immediately
     if (materialData.uniforms) {
@@ -67,15 +77,19 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
     return this.payload;
   }
 
-  async compile(): Promise<void> {
+  async compile(context: Context): Promise<void> {
     console.log(
       `🔧 MaterialResource "${this.name}" (ID: ${this.id}) starting compilation. isCompiled: ${this.isCompiled}`,
     );
 
-    const device = this.getDevice();
+    const webgpuProcessor = runWithContext(context, () =>
+      useProcessor<WebGPUProcessor>("webgpu"),
+    );
+    const device = webgpuProcessor.renderer.device;
+
     if (!device) {
       throw new Error(
-        `MaterialResource "${this.name}": WebGPU device is not available on globalThis for compilation.`,
+        `MaterialResource "${this.name}": WebGPU device is not available for compilation.`,
       );
     }
     this.device = device;
@@ -163,7 +177,9 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
 
     if (!vertexShader || !fragmentShader) {
       // If this error still occurs, the problem lies within ShaderResource.compile itself.
-      throw new Error(`MaterialResource "${this.name}": Missing required shader stages.`);
+      throw new Error(
+        `MaterialResource "${this.name}": Missing required shader stages.`,
+      );
     }
 
     const pipelineDescriptor = {
@@ -222,7 +238,11 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
   /**
    * Pack a uniform value into the buffer
    */
-  private packUniformValue(view: DataView, offset: number, uniform: UniformDescriptor): void {
+  private packUniformValue(
+    view: DataView,
+    offset: number,
+    uniform: UniformDescriptor,
+  ): void {
     const value = uniform.value;
 
     switch (uniform.type) {
@@ -289,19 +309,6 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
     }
   }
 
-  private getDevice(): GPUDevice | null {
-    if (this.device) {
-      return this.device;
-    }
-
-    const processor = ProcessorRegistry.get<WebGPUProcessor>("webgpu");
-    if (!this.device && processor) {
-      this.device = processor.renderer.device;
-      return this.device;
-    } else {
-      throw new Error("No GPU Device found. No webgpuProcessor");
-    }
-  }
   /**
    * Create basic material with standard uniforms
    */
@@ -309,6 +316,7 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
     name: string,
     shader: ShaderResource,
     color: number[] = [1.0, 0.5, 0.2, 1.0],
+    context?: Context,
   ): MaterialResource {
     // Identity matrices for initialization
     const identity = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
@@ -352,6 +360,6 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
       },
     };
 
-    return new MaterialResource(name, descriptor);
+    return new MaterialResource(name, descriptor, context);
   }
 }

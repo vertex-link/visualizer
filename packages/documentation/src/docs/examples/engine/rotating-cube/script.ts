@@ -1,4 +1,4 @@
-import { Scene } from "@vertex-link/acs";
+import { Scene } from "@vertex-link/space";
 import { EngineContext } from "@vertex-link/engine";
 import { createCamera, createRotatingCube } from "./composables";
 
@@ -16,7 +16,7 @@ async function init(container: HTMLElement) {
 
   // Create camera and rotating cube using composables
   createCamera(scene, canvas);
-  createRotatingCube(scene, 0.8);
+  createRotatingCube(scene, context, 0.8);
 
   // Start render loop
   context.start();

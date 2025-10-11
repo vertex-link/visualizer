@@ -31,7 +31,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@vertex-link/acs": "../../../acs/src/index.ts",
+      "@vertex-link/space": "../../../space/src/index.ts",
       "@vertex-link/engine": "../../../engine/src/index.ts",
     },
   },

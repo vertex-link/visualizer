@@ -1,10 +1,10 @@
-import { type IEventBus, Processor, type Scene } from "@vertex-link/acs";
-import { ResourceReadyEvent } from "../events";
-import { GPUResourcePool } from "../rendering/GPUResourcePool";
-import { RenderGraph } from "../rendering/RenderGraph";
+import { type IEventBus, Processor, runWithContext, type Scene, Tickers } from "@vertex-link/space";
+import type { Context } from "@vertex-link/space/composables/context";
 import { CameraComponent } from "../rendering/camera/CameraComponent";
 import { MeshRendererComponent } from "../rendering/components/MeshRendererComponent";
 import { TransformComponent } from "../rendering/components/TransformComponent";
+import { GPUResourcePool } from "../rendering/GPUResourcePool";
+import { RenderGraph } from "../rendering/RenderGraph";
 import type { MaterialResource } from "../resources/MaterialResource";
 import type { MeshResource } from "../resources/MeshResource";
 import { WebGPURenderer } from "../webgpu/WebGPURenderer";
@@ -38,6 +38,7 @@ interface InstancedRenderBatch {
 
 /**
  * WebGPU Processor - Coordinates rendering through existing component system
+ * Now uses the ticker function approach for flexible rendering control.
  */
 export class WebGPUProcessor extends Processor {
   private canvas: HTMLCanvasElement;
@@ -59,14 +60,21 @@ export class WebGPUProcessor extends Processor {
   private lastFrameTime = 0;
   private animationFrameId?: number;
   private eventBus: IEventBus;
+  private contextProvider?: () => Context;
 
-  constructor(canvas: HTMLCanvasElement, name = "webgpu", eventBus: IEventBus) {
-    super(name);
+  constructor(
+    canvas: HTMLCanvasElement,
+    name = "webgpu",
+    eventBus: IEventBus,
+    contextProvider?: () => Context,
+  ) {
+    super(name, Tickers.animationFrame()); // Use animation frame by default
     this.canvas = canvas;
     this.renderer = new WebGPURenderer();
     this.resourcePool = new GPUResourcePool();
     this.renderGraph = new RenderGraph();
     this.eventBus = eventBus;
+    this.contextProvider = contextProvider;
   }
 
   /**
@@ -76,13 +84,13 @@ export class WebGPUProcessor extends Processor {
     await this.renderer.initialize(this.canvas);
     this.resourcePool.initialize(this.renderer.getDevice()!);
 
-    // Initialize render graph with device - THIS WAS MISSING!
+    // Initialize render graph with device
     this.renderGraph.initialize(this.renderer.getDevice()!);
 
     // Update camera aspect ratio based on canvas
     this.updateCameraAspectRatios();
 
-    console.log(this.renderer.device?.adapterInfo.vendor);
+    console.log(this.renderer.device?.adapterInfo);
 
     console.log("✅ WebGPUProcessor initialized");
   }
@@ -103,28 +111,36 @@ export class WebGPUProcessor extends Processor {
       return;
     }
 
-    // Run any explicitly registered per-frame tasks (e.g., RotatingComponent tickers)
-    super.executeTasks(deltaTime);
+    const tasks = () => {
+      // Run any explicitly registered per-frame tasks (e.g., RotatingComponent tickers)
+      super.executeTasks(deltaTime);
 
-    // Update render batches and camera after logic updates
-    this.updateRenderBatches();
-    this.updateActiveCamera();
+      // Update render batches and camera after logic updates
+      this.updateRenderBatches();
+      this.updateActiveCamera();
 
-    // Check for transform updates and mark batches dirty
-    this.checkTransformUpdates();
+      // Check for transform updates and mark batches dirty
+      this.checkTransformUpdates();
 
-    // Upload instance data and create global uniforms
-    this.uploadInstanceData();
-    this.updateGlobalUniforms();
+      // Upload instance data and create global uniforms
+      this.uploadInstanceData();
+      this.updateGlobalUniforms();
 
-    // Execute render graph with camera
-    this.renderGraph.execute(
-      this.renderer,
-      this.cachedBatches,
-      this.activeCamera,
-      deltaTime,
-      this.globalBindGroup,
-    );
+      // Execute render graph with camera
+      this.renderGraph.execute(
+        this.renderer,
+        this.cachedBatches,
+        this.activeCamera,
+        deltaTime,
+        this.globalBindGroup,
+      );
+    };
+
+    if (this.contextProvider) {
+      runWithContext(this.contextProvider(), tasks);
+    } else {
+      tasks();
+    }
   }
 
   /**
@@ -180,10 +196,6 @@ export class WebGPUProcessor extends Processor {
       batch.isDirty = true;
       return batch;
     });
-
-    console.log(
-      `📦 Created ${this.cachedBatches.length} instanced render batches for ${renderables.length} objects`,
-    );
   }
 
   /**
@@ -457,43 +469,8 @@ export class WebGPUProcessor extends Processor {
     return this.renderer.getDevice();
   }
 
-  /**
-   * Start the WebGPU render loop using requestAnimationFrame
-   */
-  public start(): void {
-    if (!this.renderer.getDevice()) {
-      console.error("❌ Cannot start WebGPUProcessor: not initialized");
-      return;
-    }
-
-    if (this._isRunning) {
-      console.warn("⚠️ WebGPUProcessor already running");
-      return;
-    }
-
-    this._isRunning = true;
-    this.lastFrameTime = performance.now();
-    console.log("🚀 WebGPUProcessor started");
-
-    // Start the render loop
-    this.renderLoop();
-  }
-
-  /**
-   * Stop the render loop
-   */
   public stop(): void {
-    if (!this._isRunning) {
-      return;
-    }
-
-    this._isRunning = false;
-
-    // Cancel animation frame
-    if (this.animationFrameId) {
-      cancelAnimationFrame(this.animationFrameId);
-      this.animationFrameId = undefined;
-    }
+    super.stop();
 
     // Cleanup instanced resources
     this.cachedBatches.forEach((batch) => {
@@ -510,25 +487,5 @@ export class WebGPUProcessor extends Processor {
     this.renderer.dispose();
 
     console.log("🛑 WebGPUProcessor stopped");
-  }
-
-  /**
-   * Main render loop using requestAnimationFrame
-   */
-  private renderLoop(): void {
-    if (!this._isRunning) {
-      return; // Stop the loop
-    }
-
-    // Calculate delta time
-    const now = performance.now();
-    const deltaTime = this.lastFrameTime === 0 ? 0.016 : (now - this.lastFrameTime) / 1000;
-    this.lastFrameTime = now;
-
-    // Execute tasks (this calls our overridden executeTasks method)
-    this.executeTasks(deltaTime);
-
-    // Schedule next frame
-    this.animationFrameId = requestAnimationFrame(() => this.renderLoop());
   }
 }

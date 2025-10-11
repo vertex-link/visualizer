@@ -1,0 +1,25 @@
+{
+  "name": "@vertex-link/space",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "bun build ./src/index.ts --outdir ./dist --target bun --splitting --format esm --sourcemap=external",
+    "typecheck": "tsc --noEmit -p ./tsconfig.json",
+    "dev": "bun build ./src/index.ts --outdir ./dist --watch"
+  },
+  "dependencies": {
+    "reflect-metadata": "^0.2.2"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

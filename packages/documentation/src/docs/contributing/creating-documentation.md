@@ -271,7 +271,7 @@ The demo responds to parameter changes in real-time.
 ### Step 4: Implement Demo Logic
 ```typescript
 // script.ts
-import { Actor, Scene, TransformComponent } from '@vertex-link/acs';
+import { Actor, Scene, TransformComponent } from '@vertex-link/space';
 import { Engine, MeshRendererComponent } from '@vertex-link/engine';
 
 class DemoScene {

@@ -1,5 +1,5 @@
 // Type aliases for 3D math (simple arrays for now)
-import { type Actor, Component } from "@vertex-link/acs";
+import { type Actor, Component } from "@vertex-link/space";
 
 export type Vec3 = [number, number, number];
 export type Quat = [number, number, number, number]; // [x, y, z, w]
@@ -177,5 +177,63 @@ export class TransformComponent extends Component {
     const yaw = Math.atan2(siny_cosp, cosy_cosp);
 
     return [roll, pitch, yaw];
+  }
+
+  public lookAt(target: Vec3, up: Vec3 = [0, 1, 0]): void {
+    const direction = [target[0] - this.position[0], target[1] - this.position[1], target[2] - this.position[2]];
+    const z = [direction[0] * -1, direction[1] * -1, direction[2] * -1];
+    const n = Math.sqrt(z[0] * z[0] + z[1] * z[1] + z[2] * z[2]);
+    z[0] /= n;
+    z[1] /= n;
+    z[2] /= n;
+
+    const x = [up[1] * z[2] - up[2] * z[1], up[2] * z[0] - up[0] * z[2], up[0] * z[1] - up[1] * z[0]];
+    const n2 = Math.sqrt(x[0] * x[0] + x[1] * x[1] + x[2] * x[2]);
+    x[0] /= n2;
+    x[1] /= n2;
+    x[2] /= n2;
+
+    const y = [z[1] * x[2] - z[2] * x[1], z[2] * x[0] - z[0] * x[2], z[0] * x[1] - z[1] * x[0]];
+
+    const m00 = x[0];
+    const m01 = x[1];
+    const m02 = x[2];
+    const m10 = y[0];
+    const m11 = y[1];
+    const m12 = y[2];
+    const m20 = z[0];
+    const m21 = z[1];
+    const m22 = z[2];
+
+    const trace = m00 + m11 + m22;
+    let S = 0;
+
+    if (trace > 0) {
+      S = Math.sqrt(trace + 1.0) * 2;
+      this.rotation[3] = 0.25 * S;
+      this.rotation[0] = (m21 - m12) / S;
+      this.rotation[1] = (m02 - m20) / S;
+      this.rotation[2] = (m10 - m01) / S;
+    } else if ((m00 > m11) && (m00 > m22)) {
+      S = Math.sqrt(1.0 + m00 - m11 - m22) * 2;
+      this.rotation[3] = (m21 - m12) / S;
+      this.rotation[0] = 0.25 * S;
+      this.rotation[1] = (m01 + m10) / S;
+      this.rotation[2] = (m02 + m20) / S;
+    } else if (m11 > m22) {
+      S = Math.sqrt(1.0 + m11 - m00 - m22) * 2;
+      this.rotation[3] = (m02 - m20) / S;
+      this.rotation[0] = (m01 + m10) / S;
+      this.rotation[1] = 0.25 * S;
+      this.rotation[2] = (m12 + m21) / S;
+    } else {
+      S = Math.sqrt(1.0 + m22 - m00 - m11) * 2;
+      this.rotation[3] = (m10 - m01) / S;
+      this.rotation[0] = (m02 + m20) / S;
+      this.rotation[1] = (m12 + m21) / S;
+      this.rotation[2] = 0.25 * S;
+    }
+
+    this.markDirty();
   }
 }

@@ -1,7 +1,7 @@
 // Fix for StandardShaderResource.ts
 
 import { ShaderResource } from "@vertex-link/engine";
-import basicShaderSource from "../../../../engine/src/webgpu/shaders/basic.wgsl?raw";
+import basicShaderSource from "../../../engine/src/webgpu/shaders/basic.wgsl?raw";
 
 export class StandardShaderResource extends ShaderResource {
   constructor() {
