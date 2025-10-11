@@ -63,7 +63,7 @@ engineContext.start();
 
 Note:
 - EngineContext currently manages a single active Scene at a time via `setScene(scene)`. You can prepare other scenes off-thread or swap them in later, but concurrent rendering of multiple scenes is not provided by the default WebGPU processor yet.
-- Avoid using the deprecated global ProcessorRegistry directly; EngineContext wires the WebGPUProcessor internally.
+
 
 ## Resource Management Pattern
 
@@ -106,7 +106,7 @@ Vertex Link uses thin, context-aware functions inspired by Vue composables inste
 
 - `runWithContext(ctx, fn)`: enter a context for the synchronous duration of fn
 - `getCurrentContext(strict?)`: fetch current context (throw if strict and missing)
-- `useActor/useComponent/useScene/useEventBus/useProcessor/useService`: read from the current context
+- `useActor/useComponent/useScene/useEventBus/useProcessor`: read from the current context
 - `deriveContext(partial)`: shallow-merge a new context from the current
 - `withContext(ctx, fn)`: convenience alias for class methods
 

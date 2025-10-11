@@ -1,4 +1,4 @@
-import { ProcessorRegistry, Resource } from "@vertex-link/acs";
+import { Resource, runWithContext, useProcessor, type Context } from "@vertex-link/acs";
 import type { WebGPUProcessor } from "../processors/WebGPUProcessor";
 import { BufferUsage } from "../rendering/interfaces/IBuffer";
 import { WebGPUBuffer } from "./../webgpu/WebGPUBuffer";
@@ -21,7 +21,11 @@ export interface MeshDescriptor {
   indices?: Uint16Array | Uint32Array;
   vertexAttributes: VertexAttribute[];
   vertexStride: number; // Bytes per vertex
-  primitiveTopology?: "triangle-list" | "triangle-strip" | "line-list" | "point-list";
+  primitiveTopology?:
+    | "triangle-list"
+    | "triangle-strip"
+    | "line-list"
+    | "point-list";
 }
 
 /**
@@ -34,8 +38,8 @@ export class MeshResource extends Resource<MeshDescriptor> {
   private indexBuffer: WebGPUBuffer | null = null;
   public isCompiled = false;
 
-  constructor(name: string, meshData: MeshDescriptor) {
-    super(name, meshData);
+  constructor(name: string, meshData: MeshDescriptor, context?: Context) {
+    super(name, meshData, context);
   }
 
   protected async loadInternal(): Promise<MeshDescriptor> {
@@ -44,26 +48,34 @@ export class MeshResource extends Resource<MeshDescriptor> {
       throw new Error(`MeshResource "${this.name}": No vertex data provided`);
     }
 
-    console.debug(`MeshResource "${this.name}" loaded with ${this.vertexCount} vertices`);
+    console.debug(
+      `MeshResource "${this.name}" loaded with ${this.vertexCount} vertices`,
+    );
     return this.payload;
   }
 
-  async compile(): Promise<void> {
+  async compile(context: Context): Promise<void> {
     console.log("compile meshdata", this);
     if (this.isCompiled) {
-      console.log(`🔧 MeshResource "${this.name}": Skipping compile - already compiled`);
+      console.log(
+        `🔧 MeshResource "${this.name}": Skipping compile - already compiled`,
+      );
       return;
     }
 
-    // Get device from global processor
-    this.device = await this.getDevice();
+    const webgpuProcessor = runWithContext(context, () =>
+      useProcessor<WebGPUProcessor>("webgpu"),
+    );
+    this.device = webgpuProcessor.renderer.device;
     console.log(`🔧 MeshResource "${this.name}": Got device for compilation`);
 
     try {
       // Create vertex buffer
       console.log(`🔧 MeshResource "${this.name}": Creating vertex buffer...`);
       this.vertexBuffer = await this.createVertexBuffer();
-      console.log(`🔧 MeshResource "${this.name}": Vertex buffer created, storing reference`);
+      console.log(
+        `🔧 MeshResource "${this.name}": Vertex buffer created, storing reference`,
+      );
 
       // Create index buffer if indices exist
       if (this.payload.indices) {
@@ -74,7 +86,8 @@ export class MeshResource extends Resource<MeshDescriptor> {
 
       this.isCompiled = true;
       console.log(
-        `✅ MeshResource "${this.name}" compiled successfully - vertexBuffer exists: ${!!this.vertexBuffer}, indexBuffer exists: ${!!this.indexBuffer}`,
+        `✅ MeshResource "${this.name}" compiled successfully - vertexBuffer exists: ${!!this
+          .vertexBuffer}, indexBuffer exists: ${!!this.indexBuffer}`,
       );
     } catch (error) {
       console.error(`❌ Failed to compile MeshResource "${this.name}":`, error);
@@ -86,7 +99,9 @@ export class MeshResource extends Resource<MeshDescriptor> {
    * Get vertex count for rendering.
    */
   get vertexCount(): number {
-    return this.payload ? this.payload.vertices.length / (this.payload.vertexStride / 4) : 0;
+    return this.payload
+      ? this.payload.vertices.length / (this.payload.vertexStride / 4)
+      : 0;
   }
 
   /**
@@ -188,28 +203,6 @@ export class MeshResource extends Resource<MeshDescriptor> {
     // Upload index data
     buffer.setData(this.payload.indices);
     return buffer;
-  }
-
-  /**
-   * Get GPU device - wait for device to be available
-   */
-  private async getDevice(): Promise<GPUDevice> {
-    if (this.device) {
-      return this.device;
-    }
-
-    const processor = ProcessorRegistry.get<WebGPUProcessor>("webgpu");
-    if (!processor) {
-      throw new Error("No GPU Device found. No webgpuProcessor");
-    }
-
-    // Wait for the renderer device to be available
-    while (!processor.renderer.device) {
-      await new Promise((resolve) => setTimeout(resolve, 10)); // Wait 10ms before checking again
-    }
-
-    this.device = processor.renderer.device;
-    return this.device;
   }
 
   /**

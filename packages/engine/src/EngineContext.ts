@@ -1,4 +1,5 @@
-import { EventBus, type IEventBus, ProcessorRegistry, type Scene } from "@vertex-link/acs";
+import { EventBus, type IEventBus, type Processor, type Scene } from "@vertex-link/acs";
+import type { Context } from "@vertex-link/acs/composables/context";
 import { WebGPUProcessor } from "./processors/WebGPUProcessor";
 
 export class EngineContext {
@@ -6,15 +7,26 @@ export class EngineContext {
   public readonly services: Map<any, any> = new Map();
 
   private processor: WebGPUProcessor | null = null;
+  private processors: Map<string, Processor> = new Map();
   private scene: Scene | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.eventBus = new EventBus();
 
-    // Create and register the WebGPU processor (compat with existing resources using ProcessorRegistry)
-    this.processor = new WebGPUProcessor(canvas, "webgpu", this.eventBus);
-    ProcessorRegistry.register(this.processor!);
+    const contextProvider = () => this.getContext();
+
+    // Create and register the WebGPU processor
+    this.processor = new WebGPUProcessor(canvas, "webgpu", this.eventBus, contextProvider);
+    this.processors.set("webgpu", this.processor);
     this.services.set(WebGPUProcessor, this.processor);
+  }
+
+  public getContext(): Context {
+    return {
+      processors: this.processors,
+      scene: this.scene,
+      eventBus: this.eventBus,
+    };
   }
 
   public async initialize(): Promise<void> {
@@ -31,11 +43,15 @@ export class EngineContext {
   }
 
   public start(): void {
-    this.processor?.start();
+    for (const processor of this.processors.values()) {
+      processor.start();
+    }
   }
 
   public stop(): void {
-    this.processor?.stop();
+    for (const processor of this.processors.values()) {
+      processor.stop();
+    }
   }
 
   public getScene(): Scene | null {

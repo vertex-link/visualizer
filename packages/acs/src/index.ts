@@ -13,7 +13,6 @@ export {
   useEventBus,
   useProcessor,
   useScene,
-  useService,
   withContext,
 } from "./composables/context";
 export { useOnceEvent, useOnEvent } from "./composables/events";
@@ -34,7 +33,7 @@ export {
 export type { IProcessable, ProcessorTickCallback } from "./processor/Processor"; //
 // Processor System
 export { Processor } from "./processor/Processor"; //
-export { ProcessorRegistry } from "./processor/ProcessorRegistry"; //
+
 export { Tickers } from "./processor/ProcessorTickers";
 export { ComputeResource } from "./resources/ComputeResource";
 export { Resource, ResourceStatus } from "./resources/Resource";

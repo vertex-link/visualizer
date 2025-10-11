@@ -53,4 +53,8 @@ export default abstract class Component {
     // Decorator-based event cleanup removed; components should clean up explicitly if needed
     this._initialized = false;
   }
+
+  public onInitialize(): void {
+    // Can be overridden by subclasses
+  }
 }

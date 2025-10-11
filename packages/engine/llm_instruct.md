@@ -52,7 +52,7 @@ class EngineContext {
   stop(): void;
 }
 ```
-- **Key Idea**: It initializes the `WebGPUProcessor` and provides a central place for the scene and event bus. It still registers the processor with the deprecated `ProcessorRegistry` for backward compatibility.
+- **Key Idea**: It initializes the `WebGPUProcessor` and provides a central place for the scene and event bus. 
 
 ### Resource Management
 Resources are classes that manage GPU data (meshes, shaders, materials). They extend the base `Resource` class from `@vertex-link/acs`.
@@ -94,7 +94,7 @@ Resources are classes that manage GPU data (meshes, shaders, materials). They ex
 -   Handle cleanup by calling `dispose()` on resources.
 
 ### ❌ DON'Ts
--   **Don't use `ProcessorRegistry`. It is deprecated.**
+
 -   **Don't look for a `ResourceManager`. It does not exist.**
 -   Don't create GPU resources outside of the `compile()` method.
 -   Don't leak GPU resources. Ensure `dispose()` is called.

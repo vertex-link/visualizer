@@ -38,5 +38,5 @@ Audience: Advanced contributors to this repository. This document captures proje
   -   Follow the explicit dependency and resource management patterns.
 -   **Don't**:
   -   Introduce decorator-based DI.
-  -   Use the global `ProcessorRegistry` (it is deprecated).
+  
   -   Mix CommonJS with ESM.

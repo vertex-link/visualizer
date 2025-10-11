@@ -1,4 +1,5 @@
-import { type IEventBus, Processor, type Scene, Tickers } from "@vertex-link/acs";
+import { type IEventBus, Processor, runWithContext, type Scene, Tickers } from "@vertex-link/acs";
+import type { Context } from "@vertex-link/acs/composables/context";
 import { CameraComponent } from "../rendering/camera/CameraComponent";
 import { MeshRendererComponent } from "../rendering/components/MeshRendererComponent";
 import { TransformComponent } from "../rendering/components/TransformComponent";
@@ -59,14 +60,21 @@ export class WebGPUProcessor extends Processor {
   private lastFrameTime = 0;
   private animationFrameId?: number;
   private eventBus: IEventBus;
+  private contextProvider?: () => Context;
 
-  constructor(canvas: HTMLCanvasElement, name = "webgpu", eventBus: IEventBus) {
+  constructor(
+    canvas: HTMLCanvasElement,
+    name = "webgpu",
+    eventBus: IEventBus,
+    contextProvider?: () => Context,
+  ) {
     super(name, Tickers.animationFrame()); // Use animation frame by default
     this.canvas = canvas;
     this.renderer = new WebGPURenderer();
     this.resourcePool = new GPUResourcePool();
     this.renderGraph = new RenderGraph();
     this.eventBus = eventBus;
+    this.contextProvider = contextProvider;
   }
 
   /**
@@ -82,7 +90,7 @@ export class WebGPUProcessor extends Processor {
     // Update camera aspect ratio based on canvas
     this.updateCameraAspectRatios();
 
-    console.log(this.renderer.device?.adapterInfo.vendor);
+    console.log(this.renderer.device?.adapterInfo);
 
     console.log("✅ WebGPUProcessor initialized");
   }
@@ -96,56 +104,6 @@ export class WebGPUProcessor extends Processor {
   }
 
   /**
-   * Set a custom rendering strategy using ticker functions.
-   * Examples:
-   * - setRenderTicker(Tickers.fixedFPS(30)) for fixed 30 FPS
-   * - setRenderTicker(Tickers.conditional(Tickers.animationFrame(), () => !document.hidden)) for visibility-aware rendering
-   * @param ticker The ticker function to control rendering behavior
-   */
-  public setRenderTicker(ticker: Parameters<Processor["setTicker"]>[0]): void {
-    this.setTicker(ticker);
-  }
-
-  /**
-   * Convenience method to cap rendering at a specific FPS.
-   * Useful for performance optimization or battery saving.
-   * @param maxFPS Maximum frames per second
-   */
-  public setMaxFPS(maxFPS: number): void {
-    this.setTicker(Tickers.throttled(Tickers.animationFrame(), 1000 / maxFPS));
-  }
-
-  /**
-   * Convenience method to only render when the page is visible.
-   * Automatically pauses rendering when user switches tabs.
-   */
-  public setVisibilityAware(): void {
-    this.setTicker(Tickers.conditional(Tickers.animationFrame(), () => !document.hidden));
-  }
-
-  /**
-   * Convenience method to render only when the canvas is in view.
-   * Uses Intersection Observer API to detect visibility.
-   */
-  public setViewportAware(): void {
-    let isInViewport = true;
-
-    if ("IntersectionObserver" in window) {
-      const observer = new IntersectionObserver(
-        ([entry]) => {
-          isInViewport = entry.isIntersecting;
-        },
-        { threshold: 0 },
-      );
-      observer.observe(this.canvas);
-    }
-
-    this.setTicker(
-      Tickers.conditional(Tickers.animationFrame(), () => isInViewport && !document.hidden),
-    );
-  }
-
-  /**
    * Main render loop - called by processor system
    */
   protected executeTasks(deltaTime: number): void {
@@ -153,28 +111,36 @@ export class WebGPUProcessor extends Processor {
       return;
     }
 
-    // Run any explicitly registered per-frame tasks (e.g., RotatingComponent tickers)
-    super.executeTasks(deltaTime);
+    const tasks = () => {
+      // Run any explicitly registered per-frame tasks (e.g., RotatingComponent tickers)
+      super.executeTasks(deltaTime);
 
-    // Update render batches and camera after logic updates
-    this.updateRenderBatches();
-    this.updateActiveCamera();
+      // Update render batches and camera after logic updates
+      this.updateRenderBatches();
+      this.updateActiveCamera();
 
-    // Check for transform updates and mark batches dirty
-    this.checkTransformUpdates();
+      // Check for transform updates and mark batches dirty
+      this.checkTransformUpdates();
 
-    // Upload instance data and create global uniforms
-    this.uploadInstanceData();
-    this.updateGlobalUniforms();
+      // Upload instance data and create global uniforms
+      this.uploadInstanceData();
+      this.updateGlobalUniforms();
 
-    // Execute render graph with camera
-    this.renderGraph.execute(
-      this.renderer,
-      this.cachedBatches,
-      this.activeCamera,
-      deltaTime,
-      this.globalBindGroup,
-    );
+      // Execute render graph with camera
+      this.renderGraph.execute(
+        this.renderer,
+        this.cachedBatches,
+        this.activeCamera,
+        deltaTime,
+        this.globalBindGroup,
+      );
+    };
+
+    if (this.contextProvider) {
+      runWithContext(this.contextProvider(), tasks);
+    } else {
+      tasks();
+    }
   }
 
   /**
@@ -230,10 +196,6 @@ export class WebGPUProcessor extends Processor {
       batch.isDirty = true;
       return batch;
     });
-
-    console.log(
-      `📦 Created ${this.cachedBatches.length} instanced render batches for ${renderables.length} objects`,
-    );
   }
 
   /**
@@ -507,43 +469,8 @@ export class WebGPUProcessor extends Processor {
     return this.renderer.getDevice();
   }
 
-  /**
-   * Start the WebGPU render loop using requestAnimationFrame
-   */
-  public start(): void {
-    if (!this.renderer.getDevice()) {
-      console.error("❌ Cannot start WebGPUProcessor: not initialized");
-      return;
-    }
-
-    if (this._isRunning) {
-      console.warn("⚠️ WebGPUProcessor already running");
-      return;
-    }
-
-    this._isRunning = true;
-    this.lastFrameTime = performance.now();
-    console.log("🚀 WebGPUProcessor started");
-
-    // Start the render loop
-    this.renderLoop();
-  }
-
-  /**
-   * Stop the render loop
-   */
   public stop(): void {
-    if (!this._isRunning) {
-      return;
-    }
-
-    this._isRunning = false;
-
-    // Cancel animation frame
-    if (this.animationFrameId) {
-      cancelAnimationFrame(this.animationFrameId);
-      this.animationFrameId = undefined;
-    }
+    super.stop();
 
     // Cleanup instanced resources
     this.cachedBatches.forEach((batch) => {
@@ -560,25 +487,5 @@ export class WebGPUProcessor extends Processor {
     this.renderer.dispose();
 
     console.log("🛑 WebGPUProcessor stopped");
-  }
-
-  /**
-   * Main render loop using requestAnimationFrame
-   */
-  private renderLoop(): void {
-    if (!this._isRunning) {
-      return; // Stop the loop
-    }
-
-    // Calculate delta time
-    const now = performance.now();
-    const deltaTime = this.lastFrameTime === 0 ? 0.016 : (now - this.lastFrameTime) / 1000;
-    this.lastFrameTime = now;
-
-    // Execute tasks (this calls our overridden executeTasks method)
-    this.executeTasks(deltaTime);
-
-    // Schedule next frame
-    this.animationFrameId = requestAnimationFrame(() => this.renderLoop());
   }
 }

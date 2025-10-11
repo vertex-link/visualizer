@@ -23,7 +23,7 @@ packages/acs/src/
 │   └── EmitToQuery.ts         # Query-based event emission
 ├── processor/
 │   ├── Processor.ts           # Base processor class
-│   └── ProcessorRegistry.ts   # DEPRECATED - do not use
+
 ├── scene/
 │   ├── Scene.ts               # Scene container and queries
 │   ├── QueryBuilder.ts        # Query construction
@@ -110,8 +110,7 @@ Composables are the primary mechanism for dependency injection and managing side
 
 ### ❌ DON'Ts
 - **Don't use decorators for dependencies.**
-- **Don't use `ServiceRegistry`. It has been removed.**
-- **Don't use `ProcessorRegistry` directly. Use `useUpdate` or `EngineContext`.**
+
 - Don't create circular dependencies between components.
 - Don't leak memory (composables help, but be mindful).
 
@@ -188,7 +187,7 @@ class SpinningComponent extends Component {
 
 ## Current Issues & TODOs
 1.  **ResourceComponent**: Needs full implementation with lazy loading and a descriptor-based API.
-2.  **ProcessorRegistry**: Needs complete removal. The `useUpdate` composable still contains a fallback.
+
 3.  **Actor Hierarchy**: Not yet implemented (Phase 4).
 4.  **Documentation**: Examples need to be updated to reflect the new composable patterns.
 

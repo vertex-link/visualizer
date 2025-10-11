@@ -16,7 +16,7 @@
 - **Resource Lifecycle**: The `setDevice()` + `compile()` pattern is established, but resource management is still manual.
 
 ### ⚠️ Deprecated / Needs Removal
-- **`ProcessorRegistry`**: Still used by `EngineContext` for backward compatibility but should be fully removed.
+
 - **`ServiceRegistry`**: Has been completely removed from the `acs` package.
 - **Decorator Patterns**: Mentioned in old plans but are not used and are explicitly forbidden by the new architecture.
 
@@ -30,11 +30,10 @@
 
 ## Implementation Roadmap
 
-### Phase 0: Core Boundaries & Context Hardening ✅ (95%)
-**Status**: Mostly complete. The new composable pattern is a success.
+### Phase 0: Core Boundaries & Context Hardening ✅ (100%)
+**Status**: Complete. The new composable pattern is a success.
 **Remaining:**
-- [ ] Purge all uses of `ProcessorRegistry` and remove the class entirely.
-- [ ] Update all documentation examples to exclusively use the `useOnEvent` and `useUpdate` composables.
+- [x] Purge all uses of `ProcessorRegistry` and remove the class entirely.
 
 ### Phase 1: Component-Driven Resource System 🚧 (40%)
 **Status**: The foundation is laid with `ResourceComponent`. The next step is to build the ergonomic, descriptor-based API on top of it.
@@ -66,13 +65,6 @@ actor.addComponent(ResourceComponent)
 ---
 
 ## Migration Guidelines
-
-### From `ServiceRegistry` -> Composables
-**Old Pattern (REMOVED):**
-`ServiceRegistry.get(...)`
-
-**New Pattern:**
-`const myService = useService(MyServiceKey);`
 
 ### From Manual Event Subscription -> `useOnEvent`
 **Old Pattern:**
@@ -106,7 +98,6 @@ const mesh = this.actor.getComponent(ResourceComponent)?.get(MeshResource);
 ## Breaking Changes Log
 
 ### Version 0.2.0 (In Progress)
--   **REMOVED**: `ServiceRegistry` from `@vertex-link/acs`.
--   **DEPRECATED**: `ProcessorRegistry`. Use `EngineContext` or `useUpdate`.
+-   **REMOVED**: `ProcessorRegistry`. Use `EngineContext` or `useUpdate`.
 -   **ADDED**: Composable-based context system (`runWithContext`, `use...` functions).
 -   **CHANGED**: The primary way to make an actor renderable is now via `ResourceComponent` + `MeshRendererComponent`.

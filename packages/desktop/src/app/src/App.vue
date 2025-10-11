@@ -37,7 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import { Actor, EventBus, ProcessorRegistry, ResourceComponent, Scene } from "@vertex-link/acs";
+import { Actor, EventBus, ResourceComponent, Scene } from "@vertex-link/acs";
 import {
   CameraComponent,
   MeshRendererComponent,
@@ -70,10 +70,21 @@ const initEngine = async () => {
   try {
     status.value = "Starting WebGPU...";
 
-    // Initialize WebGPU processor (exactly like working example!)
+    // Initialize WebGPU processor
     const eventBus = new EventBus();
-    processor = new WebGPUProcessor(canvasRef.value, "desktop-renderer", eventBus);
-    ProcessorRegistry.register(processor);
+    const processors = new Map();
+    const contextProvider = () => ({
+      processors,
+      scene,
+      eventBus,
+    });
+    processor = new WebGPUProcessor(
+      canvasRef.value,
+      "desktop-renderer",
+      eventBus,
+      contextProvider,
+    );
+    processors.set("desktop-renderer", processor);
     await processor.initialize();
 
     console.log(processor);

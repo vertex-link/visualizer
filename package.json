@@ -12,7 +12,10 @@
     "vite": "^7.1.4",
     "vite-plugin-zig": "^0.0.13"
   },
-  "workspaces": ["packages/*"],
+  "packageManager": "bun@1.2.0",
+  "workspaces": [
+    "packages/*"
+  ],
   "peerDependencies": {
     "typescript": "^5.9.2"
   },

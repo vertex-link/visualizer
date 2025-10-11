@@ -2,23 +2,22 @@
 // composable-like, context-aware functions. Designed to work with the current
 // OOP style by acting as thin utilities. No globals from engine/acs required.
 
-export type EngineLikeContext = {
+export type Context = {
   actor?: unknown;
   component?: unknown;
   scene?: unknown;
   eventBus?: unknown;
   processors?: Map<string | symbol, unknown> | Record<string | symbol, unknown>;
-  services?: Map<string | symbol, unknown> | Record<string | symbol, unknown>;
 };
 
 // Internal stack to support nested scopes; use only for synchronous flows.
-const ctxStack: EngineLikeContext[] = [];
+const ctxStack: Context[] = [];
 
 /**
  * Run a function within a provided context. All useX() helpers will resolve
  * against this context for the sync duration of the callback.
  */
-export function runWithContext<T>(ctx: EngineLikeContext, fn: () => T): T {
+export function runWithContext<T>(ctx: Context, fn: () => T): T {
   ctxStack.push(ctx);
   try {
     return fn();
@@ -28,9 +27,9 @@ export function runWithContext<T>(ctx: EngineLikeContext, fn: () => T): T {
 }
 
 /** Get current context or throw if strict and none present. */
-export function getCurrentContext(strict: true): EngineLikeContext;
-export function getCurrentContext(strict?: boolean): EngineLikeContext | undefined;
-export function getCurrentContext(strict = true): EngineLikeContext | undefined {
+export function getCurrentContext(strict: true): Context;
+export function getCurrentContext(strict?: boolean): Context | undefined;
+export function getCurrentContext(strict = true): Context | undefined {
   const current = ctxStack[ctxStack.length - 1];
   if (!current && strict) {
     throw new Error("No current context. Ensure you're calling useX() inside runWithContext(...).");
@@ -78,20 +77,8 @@ export function useProcessor<T = unknown>(key: string | symbol): T {
   return ensure<T>(value as T, `processor(${String(key)})`);
 }
 
-export function useService<T = unknown>(key: string | symbol): T {
-  const ctx = getCurrentContext();
-  const source = ctx?.services;
-  let value: unknown;
-  if (source && typeof (source as any).get === "function") {
-    value = (source as Map<string | symbol, unknown>).get(key);
-  } else if (source && typeof source === "object") {
-    value = (source as Record<string | symbol, unknown>)[key as any];
-  }
-  return ensure<T>(value as T, `service(${String(key)})`);
-}
-
 /** Utility to create a new context by shallow-merging values atop the current one. */
-export function deriveContext(partial: EngineLikeContext): EngineLikeContext {
+export function deriveContext(partial: Context): Context {
   const base = getCurrentContext(false) ?? {};
   return { ...base, ...partial };
 }
@@ -101,6 +88,6 @@ export function deriveContext(partial: EngineLikeContext): EngineLikeContext {
  * Example:
  *   class MyComponent { update() { return withContext({ component: this }, () => { ... }) }}
  */
-export function withContext<T>(ctx: EngineLikeContext, fn: () => T): T {
+export function withContext<T>(ctx: Context, fn: () => T): T {
   return runWithContext(ctx, fn);
 }

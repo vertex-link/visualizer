@@ -12,6 +12,7 @@
     }
   },
   "dependencies": {
+    "@gltf-transform/core": "^4.0.8",
     "@vertex-link/acs": "workspace:*"
   },
   "peerDependencies": {

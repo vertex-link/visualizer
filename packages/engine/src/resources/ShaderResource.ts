@@ -1,4 +1,9 @@
-import { ProcessorRegistry, Resource } from "@vertex-link/acs";
+import {
+  Resource,
+  runWithContext,
+  useProcessor,
+  type Context,
+} from "@vertex-link/acs";
 import type { WebGPUProcessor } from "../processors/WebGPUProcessor";
 
 /**
@@ -46,26 +51,9 @@ export class ShaderResource extends Resource<ShaderDescriptor> {
   // Direct device reference instead of going through service
   private device: GPUDevice | null = null;
 
-  constructor(name: string, shaderDescriptor: ShaderDescriptor, device?: GPUDevice) {
-    super(name, shaderDescriptor);
-    console.log(this.payload);
-    const processor = ProcessorRegistry.get<WebGPUProcessor>("webgpu");
-    if (!device && processor) {
-      this.device = processor.renderer.device;
-    } else if (device) {
-      this.device = device;
-    } else {
-      throw Error("Shader reosurce need the gpu device!");
-    }
-
+  constructor(name: string, shaderDescriptor: ShaderDescriptor, context?: Context) {
+    super(name, shaderDescriptor, context);
     this.isCompiled = false; // Need to recompile
-  }
-
-  /**
-   * Set the GPU device for compilation (called by processor/manager)
-   */
-  setDevice(device: GPUDevice): void {
-    this.device = device;
   }
 
   /**
@@ -140,58 +128,37 @@ export class ShaderResource extends Resource<ShaderDescriptor> {
     return this.payload;
   }
 
-  // /**
-  //  * Load shader source code.
-  //  */
-  // private async performLoad(): Promise<void> {
-  //   if (!this.payload) {
-  //     throw new Error(`ShaderResource "${this.name}": No shader data provided`);
-  //   }
-
-  //   // Validate that at least one stage is provided
-  //   if (this.availableStages.length === 0) {
-  //     throw new Error(`ShaderResource "${this.name}": No shader stages provided`);
-  //   }
-
-  //   console.debug(`ShaderResource "${this.name}" loaded with stages: ${this.availableStages.join(', ')}`);
-  // }
-  private async getDevice(): Promise<GPUDevice> {
-    if (this.device) {
-      return this.device;
-    }
-
-    const processor = ProcessorRegistry.get<WebGPUProcessor>("webgpu");
-    if (!processor) {
-      throw new Error("No GPU Device found. No webgpuProcessor");
-    }
-
-    // Wait for the renderer device to be available
-    while (!processor.renderer.device) {
-      await new Promise((resolve) => setTimeout(resolve, 10)); // Wait 10ms before checking again
-    }
-
-    this.device = processor.renderer.device;
-    return this.device;
-  }
   /**
    * Compile shader source into GPU modules.
    * Requires device to be set first!
    */
-  async compile(): Promise<void> {
-    const device = await this.getDevice();
+  async compile(context: Context): Promise<void> {
+    const webgpuProcessor = runWithContext(context, () =>
+      useProcessor<WebGPUProcessor>("webgpu"),
+    );
+    const device = webgpuProcessor.renderer.device;
+    this.device = device;
+
     if (!device) {
-      throw new Error(`ShaderResource "${this.name}": WebGPU device not available on globalThis.`);
+      throw new Error(
+        `ShaderResource "${this.name}": WebGPU device not available.`,
+      );
     }
 
     if (!this.payload) {
-      throw new Error(`ShaderResource "${this.name}": Cannot compile without shader data`);
+      throw new Error(
+        `ShaderResource "${this.name}": Cannot compile without shader data`,
+      );
     }
 
     this.compiledShaders.clear();
 
     for (const stage of this.availableStages) {
       const source = this.getSourceForStage(stage);
-      const module = device.createShaderModule({ code: source, label: `${this.name}_${stage}` });
+      const module = device.createShaderModule ({
+        code: source,
+        label: `${this.name}_${stage}`,
+      });
       this.compiledShaders.set(stage, {
         stage,
         module,
@@ -228,36 +195,6 @@ export class ShaderResource extends Resource<ShaderDescriptor> {
 
     console.debug(`ShaderResource "${this.name}" unloaded`);
   }
-
-  // /**
-  //  * Compile a specific shader stage.
-  //  */
-  // private async compileStage(stage: ShaderStage): Promise<CompiledShader> {
-  //   if (!this.payload || !this.device) {
-  //     throw new Error('No shader data or device for compilation');
-  //   }
-
-  //   let source: string;
-  //   switch (stage) {
-  //     case ShaderStage.VERTEX: source = this.payload.vertexSource!; break;
-  //     case ShaderStage.FRAGMENT: source = this.payload.fragmentSource!; break;
-  //     case ShaderStage.COMPUTE: source = this.payload.computeSource!; break;
-  //     default: throw new Error(`Unsupported shader stage: ${stage}`);
-  //   }
-
-  //   // Compile through device directly
-  //   const module = this.device.createShaderModule({
-  //     code: source,
-  //     label: `${this.name}_${stage}`
-  //   });
-
-  //   return {
-  //     stage,
-  //     module,
-  //     entryPoint: this.getEntryPoint(stage),
-  //     source
-  //   };
-  // }
 
   /**
    * Validate WGSL shader source (basic validation).

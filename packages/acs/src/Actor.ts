@@ -53,6 +53,8 @@ export default class Actor {
     this.components[componentId] = component;
     this.componentMask |= 1n << BigInt(componentId);
 
+    component.onInitialize();
+
     return component;
   }
 

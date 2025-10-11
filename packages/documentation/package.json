@@ -29,11 +29,11 @@
     "vue-router": "^4.5.1"
   },
   "devDependencies": {
+    "@types/glob": "^9.0.0",
     "@types/node": "^24.3.0",
     "@webgpu/types": "^0.1.64",
     "typescript": "^5.9.2",
-    "vite-plugin-zig": "^0.0.13",
     "vite": "^7.1.4",
-    "@types/glob": "^9.0.0"
+    "vite-plugin-zig": "^0.0.13"
   }
 }

@@ -1,3 +1,5 @@
+import type { Context } from "../composables/context";
+
 export enum ResourceStatus {
   UNLOADED = 0,
   LOADING = 1,
@@ -15,17 +17,17 @@ export abstract class Resource<TData = unknown> {
 
   private readyPromise: Promise<void>;
 
-  constructor(name: string, payload: TData) {
+  constructor(name: string, payload: TData, context?: Context) {
     this.name = name;
     this.payload = payload;
-    this.readyPromise = this.loadAndCompile();
+    this.readyPromise = this.loadAndCompile(context);
   }
 
   /**
    * The core lifecycle method called by the constructor.
    * It loads data and then immediately tries to compile.
    */
-  private async loadAndCompile(): Promise<void> {
+  private async loadAndCompile(context?: Context): Promise<void> {
     // Prevent re-entry
     if (this.status !== ResourceStatus.UNLOADED) return;
 
@@ -39,7 +41,12 @@ export abstract class Resource<TData = unknown> {
         console.log(
           `🔧 Resource "${this.name}" (ID: ${this.id}) calling compile(). isCompiled before: ${this.isCompiled}`,
         );
-        await this.compile();
+        if (!context) {
+          throw new Error(
+            `Resource "${this.name}" has a compile() method but no context was provided.`,
+          );
+        }
+        await this.compile(context);
         console.log(
           `🔧 Resource "${this.name}" (ID: ${this.id}) compile() finished. Setting isCompiled = true`,
         );
@@ -90,7 +97,7 @@ export abstract class Resource<TData = unknown> {
    * If implemented by a subclass, this method is responsible for compiling
    * the resource. It should acquire any dependencies (like a GPU device) it needs.
    */
-  compile?(): Promise<void>;
+  compile?(context: Context): Promise<void>;
 
   /**
    * Checks if the resource has successfully completed its entire lifecycle.

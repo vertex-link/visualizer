@@ -1,6 +1,13 @@
-import { Actor, ResourceComponent, type Scene, useUpdate } from "@vertex-link/acs";
+import {
+  Actor,
+  ResourceComponent,
+  runWithContext,
+  type Scene,
+  useUpdate,
+} from "@vertex-link/acs";
 import {
   CameraComponent,
+  EngineContext,
   MaterialResource,
   MeshRendererComponent,
   ProjectionType,
@@ -41,9 +48,11 @@ export function createCamera(scene: Scene, canvas: HTMLCanvasElement): Actor {
  */
 export function createRotatingCube(
   scene: Scene,
-  speed: number = 0.8,
+  engineContext: EngineContext,
+  speed = 0.8,
   color: [number, number, number, number] = [0.9, 0.6, 0.2, 1.0],
 ): Actor {
+  const context = engineContext.getContext();
   const cubeActor = new Actor("Cube");
   const transform = cubeActor.addComponent(TransformComponent);
   cubeActor.addComponent(MeshRendererComponent);
@@ -53,13 +62,22 @@ export function createRotatingCube(
   rotationComponent.speed = speed;
 
   // Resources via ResourceComponent
-  const cubeMesh = new CubeMeshResource(1);
-  const shader = new ShaderResource("CubeShader", {
-    vertexSource: vertexWGSL,
-    fragmentSource: fragmentWGSL,
-    entryPoints: { vertex: "vs_main", fragment: "fs_main" },
-  } as any);
-  const material = MaterialResource.createBasic("CubeMaterial", shader, color);
+  const cubeMesh = new CubeMeshResource(1, context);
+  const shader = new ShaderResource(
+    "CubeShader",
+    {
+      vertexSource: vertexWGSL,
+      fragmentSource: fragmentWGSL,
+      entryPoints: { vertex: "vs_main", fragment: "fs_main" },
+    } as any,
+    context,
+  );
+  const material = MaterialResource.createBasic(
+    "CubeMaterial",
+    shader,
+    color,
+    context,
+  );
 
   const resources = cubeActor.addComponent(ResourceComponent);
   resources.add(cubeMesh);
@@ -68,12 +86,14 @@ export function createRotatingCube(
   scene.addActor(cubeActor);
 
   // Use composable for rotation updates instead of manual processor registration
-  useUpdate(
-    "webgpu",
-    rotationComponent.tick.bind(rotationComponent),
-    rotationComponent,
-    `${cubeActor.id}:rotation`,
-  );
+  runWithContext(context, () => {
+    useUpdate(
+      "webgpu",
+      rotationComponent.tick.bind(rotationComponent),
+      rotationComponent,
+      `${cubeActor.id}:rotation`,
+    );
+  });
 
   return cubeActor;
 }
