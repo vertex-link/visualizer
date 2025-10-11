@@ -12,7 +12,7 @@ A `Scene` is a container for `Actors`. It represents a world, a level, or any lo
 Creating a new Scene is straightforward. The constructor can take an optional name and an optional shared `IEventBus`.
 
 ```typescript
-import { Scene } from '@vertex-link/acs';
+import { Scene } from '@vertex-link/space';
 
 // Create a scene with a specific name
 const myScene = new Scene('Level 1');

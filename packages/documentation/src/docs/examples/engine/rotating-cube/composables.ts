@@ -4,7 +4,7 @@ import {
   runWithContext,
   type Scene,
   useUpdate,
-} from "@vertex-link/acs";
+} from "@vertex-link/space";
 import {
   CameraComponent,
   EngineContext,

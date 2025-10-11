@@ -113,7 +113,7 @@ Vertex Link uses thin, context-aware functions inspired by Vue composables inste
 ### Example: OOP Component Using Helpers
 
 ```typescript
-import { withContext, useActor, useEventBus } from "@vertex-link/acs/composables/context";
+import { withContext, useActor, useEventBus } from "@vertex-link/space/composables/context";
 
 class MyComponent {
   constructor(public actor: any, public bus: any) {}
@@ -132,7 +132,7 @@ class MyComponent {
 ### Procedural Usage
 
 ```typescript
-import { runWithContext, useProcessor } from "@vertex-link/acs/composables/context";
+import { runWithContext, useProcessor } from "@vertex-link/space/composables/context";
 
 runWithContext({ scene, processors: new Map([["webgpu", webgpuProcessor]]) }, () => {
   const p = useProcessor<any>("webgpu");
@@ -146,13 +146,13 @@ runWithContext({ scene, processors: new Map([["webgpu", webgpuProcessor]]) }, ()
 - **Incremental migration**: Start by wrapping selected methods with `withContext` and gradually remove decorators.
 - **Engine-agnostic**: You control what goes into the context (actor, component, eventBus, processors/services), keeping boundaries clear.
 
-### Additional ACS Composables
+### Additional SPACe Composables
 
-**Event Management** (`packages/acs/src/composables/events.ts`):
+**Event Management** (`packages/space/src/composables/events.ts`):
 - `useOnEvent/useOnceEvent`: Subscribe to events on the current context's event bus. Both return disposer functions.
 
 ```typescript
-import { useOnEvent, useOnceEvent } from '@vertex-link/acs/composables/events';
+import { useOnEvent, useOnceEvent } from '@vertex-link/space/composables/events';
 
 // In a component or system
 const disposeHandler = useOnEvent('playerDied', (event) => {
@@ -163,11 +163,11 @@ const disposeHandler = useOnEvent('playerDied', (event) => {
 disposeHandler();
 ```
 
-**Processor Management** (`packages/acs/src/composables/processors.ts`):
+**Processor Management** (`packages/space/src/composables/processors.ts`):
 - `useUpdate(processorName, fn, context[, id])`: Register per-frame/fixed-tick work without decorators.
 
 ```typescript
-import { useUpdate } from '@vertex-link/acs/composables/processors';
+import { useUpdate } from '@vertex-link/space/composables/processors';
 
 // Register update function
 useUpdate('render', () => {

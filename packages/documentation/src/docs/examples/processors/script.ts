@@ -1,4 +1,4 @@
-import { Processor, Tickers } from "@vertex-link/acs";
+import { Processor, Tickers } from "@vertex-link/space";
 
 // 1. Define a Processor
 class CounterProcessor extends Processor {

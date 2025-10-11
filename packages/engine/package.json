@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@gltf-transform/core": "^4.0.8",
-    "@vertex-link/acs": "workspace:*"
+    "@vertex-link/space": "workspace:*"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"

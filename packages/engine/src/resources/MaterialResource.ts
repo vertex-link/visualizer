@@ -3,7 +3,7 @@ import {
   runWithContext,
   useProcessor,
   type Context,
-} from "@vertex-link/acs";
+} from "@vertex-link/space";
 import type { WebGPUProcessor } from "../processors/WebGPUProcessor";
 import type { VertexLayout } from "../rendering/interfaces/IPipeline";
 import { WebGPUPipeline } from "./../webgpu/WebGPUPipeline";

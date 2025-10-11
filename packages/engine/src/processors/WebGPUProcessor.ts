@@ -1,5 +1,5 @@
-import { type IEventBus, Processor, runWithContext, type Scene, Tickers } from "@vertex-link/acs";
-import type { Context } from "@vertex-link/acs/composables/context";
+import { type IEventBus, Processor, runWithContext, type Scene, Tickers } from "@vertex-link/space";
+import type { Context } from "@vertex-link/space/composables/context";
 import { CameraComponent } from "../rendering/camera/CameraComponent";
 import { MeshRendererComponent } from "../rendering/components/MeshRendererComponent";
 import { TransformComponent } from "../rendering/components/TransformComponent";

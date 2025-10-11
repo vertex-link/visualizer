@@ -1,7 +1,7 @@
 # Engine Package - LLM Implementation Instructions
 
 ## Package Purpose
-The `@vertex-link/engine` package provides WebGPU rendering, resource management, and visual components built on top of the `@vertex-link/acs` framework. This package handles all GPU-related functionality.
+The `@vertex-link/engine` package provides WebGPU rendering, resource management, and visual components built on top of the `@vertex-link/space` framework. This package handles all GPU-related functionality.
 
 ## Directory Structure
 ```
@@ -55,7 +55,7 @@ class EngineContext {
 - **Key Idea**: It initializes the `WebGPUProcessor` and provides a central place for the scene and event bus. 
 
 ### Resource Management
-Resources are classes that manage GPU data (meshes, shaders, materials). They extend the base `Resource` class from `@vertex-link/acs`.
+Resources are classes that manage GPU data (meshes, shaders, materials). They extend the base `Resource` class from `@vertex-link/space`.
 
 **Resource Lifecycle:**
 1.  Instantiate the specific resource class (e.g., `MeshResource`).
@@ -108,7 +108,7 @@ To make an actor appear on screen, you need to give it geometry, a material, and
 import {
   Actor,
   ResourceComponent
-} from "@vertex-link/acs";
+} from "@vertex-link/space";
 import {
   TransformComponent,
   MeshRendererComponent,

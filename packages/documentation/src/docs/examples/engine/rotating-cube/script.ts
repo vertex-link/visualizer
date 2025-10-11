@@ -1,4 +1,4 @@
-import { Scene } from "@vertex-link/acs";
+import { Scene } from "@vertex-link/space";
 import { EngineContext } from "@vertex-link/engine";
 import { createCamera, createRotatingCube } from "./composables";
 

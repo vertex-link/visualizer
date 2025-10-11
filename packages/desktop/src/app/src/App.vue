@@ -37,7 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import { Actor, EventBus, ResourceComponent, Scene } from "@vertex-link/acs";
+import { Actor, EventBus, ResourceComponent, Scene } from "@vertex-link/space";
 import {
   CameraComponent,
   MeshRendererComponent,

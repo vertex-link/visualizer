@@ -6,9 +6,9 @@ Audience: Advanced contributors to this repository. This document captures proje
 
 - **Runtime/Tooling**: Bun (primary runtime, package manager, bundler), TypeScript 5, Vite (documentation), Electron + electron-vite (desktop), esbuild.
 - **Monorepo layout** using Bun workspaces (declared in root package.json):
-  - `packages/acs`: Core Actor-Component-System library. For more details, see `packages/acs/LLM_INSTRUCT.md`.
-  - `packages/engine`: Rendering/Resource management built on top of ACS; targets WebGPU and provides processors/services. For more details, see `packages/engine/LLM_INSTRUCT.md`.
-  - `packages/documentation`: Vite site with examples and docs; consumes `acs` and `engine` via TS path aliases.
+  - `packages/space`: Core SPACe (Scene-Processor-Actor-Component) library. For more details, see `packages/space/llm_instruct.md`.
+  - `packages/engine`: Rendering/Resource management built on top of SPACe; targets WebGPU and provides processors/services. For more details, see `packages/engine/LLM_INSTRUCT.md`.
+  - `packages/documentation`: Vite site with examples and docs; consumes `space` and `engine` via TS path aliases.
   - `packages/desktop`: Electron-based editor shell (experimental).
 
 ## Build and Configuration Instructions
@@ -20,7 +20,7 @@ Audience: Advanced contributors to this repository. This document captures proje
 
 ## Architecture Guidelines and Best Practices
 
--   **ACS-first design**:
+-   **SPACe-first design**:
   -   Actors are thin containers; Components encapsulate data/behavior.
   -   Services provide cross-cutting functionality; Processors own lifecycle/update loops.
 -   **Dependency handling**:

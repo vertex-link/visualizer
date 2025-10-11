@@ -39,12 +39,12 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "@vertex-link/acs": path.resolve(__dirname, "../acs/src/index.ts"),
+      "@vertex-link/space": path.resolve(__dirname, "../space/src/index.ts"),
       "@vertex-link/engine": path.resolve(__dirname, "../engine/src/index.ts"),
     },
   },
   optimizeDeps: {
-    exclude: ["@vertex-link/acs", "@vertex-link/engine"],
+    exclude: ["@vertex-link/space", "@vertex-link/engine"],
     esbuildOptions: {
       target: "ES2022",
       keepNames: true,

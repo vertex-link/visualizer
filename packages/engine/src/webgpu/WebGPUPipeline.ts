@@ -1,4 +1,4 @@
-import { generateUUID } from "@vertex-link/acs";
+import { generateUUID } from "@vertex-link/space";
 import type {
   IPipeline,
   PipelineDescriptor,

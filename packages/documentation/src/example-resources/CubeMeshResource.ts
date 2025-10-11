@@ -1,4 +1,4 @@
-import { Context } from "@vertex-link/acs/composables/context";
+import { Context } from "@vertex-link/space/composables/context";
 import { GeometryUtils, MeshResource } from "@vertex-link/engine";
 
 export class CubeMeshResource extends MeshResource {

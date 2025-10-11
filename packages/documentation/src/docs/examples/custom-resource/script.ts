@@ -1,4 +1,4 @@
-import { Resource } from "@vertex-link/acs";
+import { Resource } from "@vertex-link/space";
 
 // 1. Define the resource data and class
 interface ResourceData {

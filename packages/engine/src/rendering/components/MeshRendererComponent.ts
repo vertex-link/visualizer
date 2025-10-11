@@ -1,4 +1,4 @@
-import { type Actor, Component, ResourceComponent } from "@vertex-link/acs";
+import { type Actor, Component, ResourceComponent } from "@vertex-link/space";
 import { TransformComponent } from "../../rendering/components/TransformComponent";
 import { MaterialResource } from "../../resources/MaterialResource";
 import { MeshResource } from "../../resources/MeshResource";

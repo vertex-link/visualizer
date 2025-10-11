@@ -22,7 +22,7 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
-    "@vertex-link/acs": "workspace:*",
+    "@vertex-link/space": "workspace:*",
     "@vertex-link/engine": "workspace:*",
     "@webgpu/types": "^0.1.64"
   }

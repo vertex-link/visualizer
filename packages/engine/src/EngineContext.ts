@@ -1,5 +1,5 @@
-import { EventBus, type IEventBus, type Processor, type Scene } from "@vertex-link/acs";
-import type { Context } from "@vertex-link/acs/composables/context";
+import { EventBus, type IEventBus, type Processor, type Scene } from "@vertex-link/space";
+import type { Context } from "@vertex-link/space/composables/context";
 import { WebGPUProcessor } from "./processors/WebGPUProcessor";
 
 export class EngineContext {

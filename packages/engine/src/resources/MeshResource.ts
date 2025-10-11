@@ -1,4 +1,4 @@
-import { Resource, runWithContext, useProcessor, type Context } from "@vertex-link/acs";
+import { Resource, runWithContext, useProcessor, type Context } from "@vertex-link/space";
 import type { WebGPUProcessor } from "../processors/WebGPUProcessor";
 import { BufferUsage } from "../rendering/interfaces/IBuffer";
 import { WebGPUBuffer } from "./../webgpu/WebGPUBuffer";

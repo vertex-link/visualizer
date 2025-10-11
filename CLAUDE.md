@@ -5,7 +5,7 @@ Auto-generated from all feature plans. Last updated: 2025-09-11
 ## Active Technologies
 - TypeScript 5.9.2 with Bun runtime (001-i-want-to)
 - WebGPU for 3D rendering (001-i-want-to)
-- @vertex-link/acs for Actor-Component-System architecture (001-i-want-to)
+- @vertex-link/space for Actor-Component-System architecture (001-i-want-to)
 - @vertex-link/engine for rendering and resource management (001-i-want-to)
 - Vite for development builds (001-i-want-to)
 - @gltf-transform/core for JavaScript glTF parsing (002-building-a-feature)

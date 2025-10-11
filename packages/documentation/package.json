@@ -13,7 +13,7 @@
   "dependencies": {
     "@primevue/themes": "^4.3.8",
     "@types/prismjs": "^1.26.5",
-    "@vertex-link/acs": "workspace:*",
+    "@vertex-link/space": "workspace:*",
     "@vertex-link/engine": "workspace:*",
     "@vitejs/plugin-vue": "^6.0.1",
     "front-matter": "^4.0.2",

@@ -1,4 +1,4 @@
-import { Actor, Component, Scene } from "@vertex-link/acs";
+import { Actor, Component, Scene } from "@vertex-link/space";
 
 // Define some components for querying
 class TransformComponent extends Component {}

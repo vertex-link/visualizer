@@ -1,4 +1,4 @@
-import { generateUUID } from "@vertex-link/acs";
+import { generateUUID } from "@vertex-link/space";
 import { type BufferDescriptor, BufferUsage, type IBuffer } from "../rendering/interfaces/IBuffer";
 
 /**

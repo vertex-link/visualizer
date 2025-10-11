@@ -1,4 +1,4 @@
-import { Event } from "@vertex-link/acs";
+import { Event } from "@vertex-link/space";
 
 /**
  * Resource events

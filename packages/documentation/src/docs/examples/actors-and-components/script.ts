@@ -1,4 +1,4 @@
-import { Actor, Component } from "@vertex-link/acs";
+import { Actor, Component } from "@vertex-link/space";
 
 // 1. Define a simple Component
 class PlayerDataComponent extends Component {

@@ -25,7 +25,7 @@ The `whenReady()` promise only resolves after both loading and compilation (if a
 To create a new type of resource, you extend the base `Resource<TData>` class. You typically override the `loadInternal` method to fetch your data asynchronously.
 
 ```typescript
-import { Resource } from '@vertex-link/acs';
+import { Resource } from '@vertex-link/space';
 
 // The data structure for our resource
 interface LevelData {
@@ -95,7 +95,7 @@ class ShaderResource extends Resource<string> {
 The standard way to use resources is to attach them to an `Actor` using a `ResourceComponent`. This keeps your scene graph organized.
 
 ```typescript
-import { Actor, ResourceComponent } from '@vertex-link/acs';
+import { Actor, ResourceComponent } from '@vertex-link/space';
 
 // Create a shader and a material resource
 const shader = new ShaderResource(...);

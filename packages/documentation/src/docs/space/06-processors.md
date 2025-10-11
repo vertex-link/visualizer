@@ -38,7 +38,7 @@ You can also provide your own custom ticker function.
 Here is a complete example of a processor that rotates objects every frame using `requestAnimationFrame`.
 
 ```typescript
-import { Processor, Tickers, Scene, Actor } from '@vertex-link/acs';
+import { Processor, Tickers, Scene, Actor } from '@vertex-link/space';
 import { TransformComponent, RotatingComponent } from './components'; // Assuming these exist
 
 class RotationProcessor extends Processor {
@@ -85,7 +85,7 @@ rotationProcessor.start();
 Advanced: provide a custom ticker if you need special scheduling (e.g., pausing on tab hidden, fixed-step accumulator):
 
 ```ts
-import { Processor } from '@vertex-link/acs';
+import { Processor } from '@vertex-link/space';
 
 const customTicker = (executeTasks: (dt: number) => void, isRunning: () => boolean) => {
   let last = performance.now();
