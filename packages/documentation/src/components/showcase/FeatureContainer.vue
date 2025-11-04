@@ -53,8 +53,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { computed, reactive, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
 // PrimeVue Component Imports
 import Panel from 'primevue/panel';
@@ -73,6 +73,13 @@ const iframeRef = ref<HTMLIFrameElement | null>(null);
 const parameters = computed(() => (route.meta.parameters || []) as any[]);
 const parameterValues = reactive<Record<string, any>>({});
 
+
+watch(route, () => {
+  initializeParameters();
+  console.log(parameterValues);
+  triggerValueUpdate();
+}, {deep: true})
+
 // Function to initialize parameters from route meta
 const initializeParameters = () => {
   parameters.value.forEach(p => {
@@ -84,12 +91,23 @@ const initializeParameters = () => {
 
 const iframeUrl = computed(() => route.meta.entryUrl as string);
 
-function updateParameter(key: string, value: any) {
+const updateParameter = (key: string, value: any) => {
   parameterValues[key] = value;
 
   if (iframeRef.value?.contentWindow) {
     iframeRef.value.contentWindow.postMessage({ key, value }, '*');
   }
+}
+
+const triggerValueUpdate = () => {
+  parameters.value.forEach(p => {
+    console.log('p',p);
+    if (p.key) {
+      setTimeout(()=> {
+        updateParameter(p.key, p.defaultValue)
+      }, 200)
+    }
+  });
 }
 
 function resetParameters() {
@@ -99,6 +117,7 @@ function resetParameters() {
 // Initialize when the component is mounted
 onMounted(() => {
   initializeParameters();
+  triggerValueUpdate();
 });
 </script>
 

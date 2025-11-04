@@ -15,7 +15,7 @@ function generateFeatureRoutes(): RouteRecordRaw[] {
     for (const feature of category.features) {
       // Ensure unique route names by including category
       const routeName = `${category.id}-${feature.id}`;
-
+      console.log(feature.parameters);
       if (feature.type === "complex") {
         routes.push({
           path: feature.route,

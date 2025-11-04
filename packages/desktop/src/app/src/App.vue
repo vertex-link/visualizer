@@ -37,7 +37,6 @@
 </template>
 
 <script setup lang="ts">
-import { Actor, EventBus, ResourceComponent, Scene } from "@vertex-link/space";
 import {
   CameraComponent,
   MeshRendererComponent,
@@ -45,6 +44,7 @@ import {
   TransformComponent,
   WebGPUProcessor,
 } from "@vertex-link/engine";
+import { Actor, Context, EventBus, ResourceComponent, Scene } from "@vertex-link/space";
 import { onMounted, onUnmounted, ref } from "vue";
 
 import { RotatingComponent } from "./RotatingComponent";
@@ -70,21 +70,18 @@ const initEngine = async () => {
   try {
     status.value = "Starting WebGPU...";
 
-    // Initialize WebGPU processor
-    const eventBus = new EventBus();
-    const processors = new Map();
-    const contextProvider = () => ({
-      processors,
-      scene,
-      eventBus,
-    });
+    // Initialize context and WebGPU processor
+    const context = new Context();
+
     processor = new WebGPUProcessor(
       canvasRef.value,
       "desktop-renderer",
-      eventBus,
-      contextProvider,
+      context.eventBus,
+      () => context,
     );
-    processors.set("desktop-renderer", processor);
+
+    context.addProcessor(processor);
+
     await processor.initialize();
 
     console.log(processor);
@@ -93,7 +90,7 @@ const initEngine = async () => {
 
     // Create scene
     scene = new Scene("RotatingCubesScene");
-    processor.setScene(scene);
+    context.setScene(scene);
 
     status.value = "creating cubes...";
 

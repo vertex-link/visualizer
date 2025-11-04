@@ -11,7 +11,7 @@ The SPACe package includes a powerful event system that allows different parts o
 
 At the core of the system is the `EventBus`. It acts as a central dispatcher for all events. You can create your own instances of the `EventBus`. For convenience, a default global instance is also available via the `emit`, `on`, `off`, and `once` helper functions exported from `@vertex-link/space`.
 
-**Recommended Practice**: If you are using the `@vertex-link/engine`, prefer the `EventBus` instance created by `EngineContext`. Pass this instance explicitly where possible (e.g., via your own context or dependency injection). The global helpers are best suited for quick scripts or scenarios where dependency injection is overly complex.
+**Recommended Practice**: If you are using the `@vertex-link/engine`, prefer the `EventBus` instance created by `Engine`. Pass this instance explicitly where possible (e.g., via your own context or dependency injection). The global helpers are best suited for quick scripts or scenarios where dependency injection is overly complex.
 
 ## Defining an Event
 
@@ -82,15 +82,15 @@ class HealthBarUI {
 }
 ```
 
-### Using EngineContext's EventBus
+### Using Engine's EventBus
 
-For better code structure, use the `eventBus` instance from your `EngineContext`.
+For better code structure, use the `eventBus` instance from your `Engine`.
 
 ```typescript
-import { EngineContext } from '@vertex-link/engine';
+import { Engine } from '@vertex-link/engine';
 import { PlayerHealthChangedEvent } from './events';
 
-const engine = new EngineContext(canvas);
+const engine = new Engine(canvas);
 
 engine.eventBus.on(PlayerHealthChangedEvent, (evt) => {
   console.log('Engine bus received health change:', evt.payload);

@@ -82,6 +82,7 @@ import InputText from "primevue/inputtext";
 import Select from "primevue/select";
 import Slider from "primevue/slider";
 import ToggleSwitch from "primevue/toggleswitch";
+import { onMounted } from "vue";
 
 interface Props {
   parameters: ParameterDefinition[];
@@ -93,6 +94,7 @@ defineProps<Props>();
 const emit = defineEmits<{
   update: [key: string, value: any];
 }>();
+
 
 function updateValue(key: string, value: any) {
   emit("update", key, value);

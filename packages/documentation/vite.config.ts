@@ -34,7 +34,10 @@ const exampleEntryPoints = globSync("src/features/**/index.html", {
 export default defineConfig({
   plugins: [vue(), zig(), wgslLoader()],
   server: {
+    host: "0.0.0.0",
+    origin: "http://192.168.88.14:8000",
     port: 8000,
+    allowedHosts: [".orb.local"]
   },
   resolve: {
     alias: {

@@ -15,7 +15,7 @@ Here's a complete example of creating an actor and adding components:
 // --- In your main application setup ---
 
 // Initialize the engine context
-const engineContext = new EngineContext(canvas);
+const engineContext = new Engine(canvas);
 await engineContext.initialize();
 
 // Create a scene and set it on the context
@@ -62,7 +62,7 @@ engineContext.start();
 ```
 
 Note:
-- EngineContext currently manages a single active Scene at a time via `setScene(scene)`. You can prepare other scenes off-thread or swap them in later, but concurrent rendering of multiple scenes is not provided by the default WebGPU processor yet.
+- Engine currently manages a single active Scene at a time via `setScene(scene)`. You can prepare other scenes off-thread or swap them in later, but concurrent rendering of multiple scenes is not provided by the default WebGPU processor yet.
 
 
 ## Resource Management Pattern

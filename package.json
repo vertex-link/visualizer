@@ -35,6 +35,7 @@
     "lint:fix": "biome format --write packages src tests && biome check --write packages src tests"
   },
   "dependencies": {
-    "@webgpu/types": "^0.1.64"
+    "@webgpu/types": "^0.1.64",
+    "turbo": "^2.5.8"
   }
 }

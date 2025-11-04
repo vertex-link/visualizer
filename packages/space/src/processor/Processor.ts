@@ -65,6 +65,14 @@ export abstract class Processor {
   }
 
   /**
+   * Initialize the processor. Override in subclasses if initialization is needed.
+   * @returns A promise that resolves when initialization is complete.
+   */
+  public async initialize(): Promise<void> {
+    // Override in subclasses that need initialization
+  }
+
+  /**
    * Sets or updates the ticker function for this processor.
    * @param ticker The ticker function to use for execution control.
    */

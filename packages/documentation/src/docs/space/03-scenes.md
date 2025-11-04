@@ -93,7 +93,7 @@ The query system is highly optimized. The `Scene` maintains internal indices of 
 
 ## Multiple Scenes
 
-You can create multiple `Scene` instances in your application. However, the current EngineContext/WebGPUProcessor handles a single active Scene at a time via `engineContext.setScene(scene)`. You can still:
+You can create multiple `Scene` instances in your application. However, the current Engine/WebGPUProcessor handles a single active Scene at a time via `engineContext.setScene(scene)`. You can still:
 
 - Prepare/load another Scene in the background (off the active renderer).
 - Use separate Scenes for UI vs. world and swap which one is active.

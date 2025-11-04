@@ -63,6 +63,13 @@ export class SceneDeactivatedEvent extends Event<{
   static readonly eventType = "core.scene.deactivated";
 }
 
+export class SceneChangedEvent extends Event<{
+  scene: Scene;
+  previousScene: Scene | null;
+}> {
+  static readonly eventType = "core.scene.changed";
+}
+
 // ==================== Game Events (Examples) ====================
 
 /**

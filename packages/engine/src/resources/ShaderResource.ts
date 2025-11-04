@@ -1,10 +1,5 @@
-import {
-  Resource,
-  runWithContext,
-  useProcessor,
-  type Context,
-} from "@vertex-link/space";
-import type { WebGPUProcessor } from "../processors/WebGPUProcessor";
+import { Resource, type Context } from "@vertex-link/space";
+import { WebGPUProcessor } from "../processors/WebGPUProcessor";
 
 /**
  * Shader stage types supported by the engine.
@@ -133,9 +128,10 @@ export class ShaderResource extends Resource<ShaderDescriptor> {
    * Requires device to be set first!
    */
   async compile(context: Context): Promise<void> {
-    const webgpuProcessor = runWithContext(context, () =>
-      useProcessor<WebGPUProcessor>("webgpu"),
-    );
+    const webgpuProcessor = context.processors.find(p => p instanceof WebGPUProcessor) as WebGPUProcessor | undefined;
+    if (!webgpuProcessor) {
+      throw new Error("Cannot compile ShaderResource: WebGPUProcessor not found in context.");
+    }
     const device = webgpuProcessor.renderer.device;
     this.device = device;
 

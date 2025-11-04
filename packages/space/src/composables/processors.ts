@@ -1,31 +1,38 @@
 import type { IProcessable, Processor } from "../processor/Processor";
-import { useProcessor } from "./context";
+import { Context } from "./context";
 
 export type UpdateTask = (deltaTime: number) => void;
 
 /**
- * Registers an update function as a task on a named processor from the current context.
+ * Registers an update function as a task on a processor.
+ * Works with the new Context API - call within Context.runWith() scope.
  * Returns a disposer function to remove the task.
+ *
+ * @param processorClass - The processor class to get from context (e.g., WebGPUProcessor)
+ * @param fn - The update function to call each frame
+ * @param taskContext - The 'this' context for the update function
+ * @param id - Optional task ID (auto-generated if not provided)
  */
-export function useUpdate(
-  processorName: string,
+export function useUpdate<T extends Processor>(
+  processorClass: new (...args: any[]) => T,
   fn: UpdateTask,
-  context: any,
+  taskContext: any,
   id?: string | symbol,
 ): () => void {
-  const processor = useProcessor<Processor>(processorName);
+  const context = Context.current();
+  const processor = context.processors.find(p => p instanceof processorClass) as T | undefined;
 
   if (!processor) {
     throw new Error(
-      `useUpdate: Processor '${processorName}' not found in context.`,
+      `useUpdate: Processor '${processorClass.name}' not found in context.`,
     );
   }
 
-  const taskId = id ?? Symbol(`task_${processorName}`);
+  const taskId = id ?? Symbol(`task_${processorClass.name}`);
   const task: IProcessable = {
     id: taskId,
     update: fn,
-    context: context,
+    context: taskContext,
   };
 
   processor.addTask(task);

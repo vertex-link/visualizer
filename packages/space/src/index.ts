@@ -5,15 +5,8 @@ export { default as Component } from "./component/Component"; //
 export { ComponentTypeRegistry } from "./component/ComponentRegistry"; //
 export { ResourceComponent } from "./component/ResourceComponent";
 export {
-  deriveContext,
-  getCurrentContext,
-  runWithContext,
-  useActor,
-  useComponent,
-  useEventBus,
-  useProcessor,
-  useScene,
-  withContext,
+  Context,
+  useContext
 } from "./composables/context";
 export { useOnceEvent, useOnEvent } from "./composables/events";
 export { useUpdate } from "./composables/processors";

@@ -61,3 +61,21 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # IntelliJ based IDEs
 .idea
 
+.turbo
+
+
+/.claude/commands/plan.md
+/.claude/commands/specify.md
+/.claude/commands/tasks.md
+/memory/constitution.md
+/memory/constitution_update_checklist.md
+/scripts/check-task-prerequisites.sh
+/scripts/common.sh
+/scripts/create-new-feature.sh
+/scripts/get-feature-paths.sh
+/scripts/setup-plan.sh
+/scripts/update-agent-context.sh
+/templates/agent-file-template.md
+/templates/plan-template.md
+/templates/spec-template.md
+/templates/tasks-template.md

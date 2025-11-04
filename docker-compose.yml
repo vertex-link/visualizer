@@ -1,7 +1,7 @@
 version: "3.8"
 services:
   bun_dev:
-    image: bunlovesnode/bun:latest
+    image: oven/bun:1
     ports:
       - 8000:8000
     environment:
@@ -11,6 +11,7 @@ services:
       - .:/app
     working_dir: /app
     tty: true
+    command: turbo dev --filter=!@vertex-link/desktop
 
 volumes:
   deno-cache:

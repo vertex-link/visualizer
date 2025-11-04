@@ -180,30 +180,54 @@ export class TransformComponent extends Component {
   }
 
   public lookAt(target: Vec3, up: Vec3 = [0, 1, 0]): void {
-    const direction = [target[0] - this.position[0], target[1] - this.position[1], target[2] - this.position[2]];
-    const z = [direction[0] * -1, direction[1] * -1, direction[2] * -1];
-    const n = Math.sqrt(z[0] * z[0] + z[1] * z[1] + z[2] * z[2]);
-    z[0] /= n;
-    z[1] /= n;
-    z[2] /= n;
+    // Use the exact same logic as Transform.lookAt() for view matrix
+    // zAxis points from target to eye (camera looks down -Z)
+    let zAxis = [
+      this.position[0] - target[0],
+      this.position[1] - target[1],
+      this.position[2] - target[2]
+    ];
 
-    const x = [up[1] * z[2] - up[2] * z[1], up[2] * z[0] - up[0] * z[2], up[0] * z[1] - up[1] * z[0]];
-    const n2 = Math.sqrt(x[0] * x[0] + x[1] * x[1] + x[2] * x[2]);
-    x[0] /= n2;
-    x[1] /= n2;
-    x[2] /= n2;
+    // Normalize Z axis
+    let len = Math.sqrt(zAxis[0] * zAxis[0] + zAxis[1] * zAxis[1] + zAxis[2] * zAxis[2]);
+    if (len === 0) return; // Can't look at self
+    zAxis[0] /= len;
+    zAxis[1] /= len;
+    zAxis[2] /= len;
 
-    const y = [z[1] * x[2] - z[2] * x[1], z[2] * x[0] - z[0] * x[2], z[0] * x[1] - z[1] * x[0]];
+    // Calculate X axis (right) = up × zAxis
+    let xAxis = [
+      up[1] * zAxis[2] - up[2] * zAxis[1],
+      up[2] * zAxis[0] - up[0] * zAxis[2],
+      up[0] * zAxis[1] - up[1] * zAxis[0]
+    ];
 
-    const m00 = x[0];
-    const m01 = x[1];
-    const m02 = x[2];
-    const m10 = y[0];
-    const m11 = y[1];
-    const m12 = y[2];
-    const m20 = z[0];
-    const m21 = z[1];
-    const m22 = z[2];
+    // Normalize X axis
+    len = Math.sqrt(xAxis[0] * xAxis[0] + xAxis[1] * xAxis[1] + xAxis[2] * xAxis[2]);
+    if (len === 0) return; // Up and forward are parallel
+    xAxis[0] /= len;
+    xAxis[1] /= len;
+    xAxis[2] /= len;
+
+    // Calculate Y axis = zAxis × xAxis
+    const yAxis = [
+      zAxis[1] * xAxis[2] - zAxis[2] * xAxis[1],
+      zAxis[2] * xAxis[0] - zAxis[0] * xAxis[2],
+      zAxis[0] * xAxis[1] - zAxis[1] * xAxis[0]
+    ];
+
+    // Build rotation matrix as TRANSPOSE of view matrix rotation
+    // (world rotation is transpose of view rotation)
+    // Transpose means basis vectors become ROWS instead of columns
+    const m00 = xAxis[0];
+    const m01 = xAxis[1];
+    const m02 = xAxis[2];
+    const m10 = yAxis[0];
+    const m11 = yAxis[1];
+    const m12 = yAxis[2];
+    const m20 = zAxis[0];
+    const m21 = zAxis[1];
+    const m22 = zAxis[2];
 
     const trace = m00 + m11 + m22;
     let S = 0;

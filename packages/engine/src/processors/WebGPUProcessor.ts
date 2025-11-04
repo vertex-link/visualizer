@@ -1,5 +1,4 @@
-import { type IEventBus, Processor, runWithContext, type Scene, Tickers } from "@vertex-link/space";
-import type { Context } from "@vertex-link/space/composables/context";
+import { Context, type IEventBus, Processor, type Scene, Tickers, SceneChangedEvent } from "@vertex-link/space";
 import { CameraComponent } from "../rendering/camera/CameraComponent";
 import { MeshRendererComponent } from "../rendering/components/MeshRendererComponent";
 import { TransformComponent } from "../rendering/components/TransformComponent";
@@ -90,6 +89,11 @@ export class WebGPUProcessor extends Processor {
     // Update camera aspect ratio based on canvas
     this.updateCameraAspectRatios();
 
+    // Subscribe to scene change events
+    this.eventBus.on(SceneChangedEvent, (event) => {
+      this.setScene(event.payload.scene);
+    }, this);
+
     console.log(this.renderer.device?.adapterInfo);
 
     console.log("✅ WebGPUProcessor initialized");
@@ -137,7 +141,7 @@ export class WebGPUProcessor extends Processor {
     };
 
     if (this.contextProvider) {
-      runWithContext(this.contextProvider(), tasks);
+      Context.runWith(this.contextProvider(), tasks);
     } else {
       tasks();
     }

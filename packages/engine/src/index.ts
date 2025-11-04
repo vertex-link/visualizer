@@ -2,7 +2,7 @@ export { LogLevel, ConsoleLoggingService } from "./services/LoggingService";
 export type { ILoggingService } from "./services/LoggingService";
 
 // Core
-export { EngineContext } from "./EngineContext";
+export { Engine } from "./Engine";
 
 // Events
 export * from "./events";

@@ -1,6 +1,5 @@
-import type { Event, EventClass, EventHandler } from "../events/Event";
-import type { IEventBus } from "../events/Event";
-import { useEventBus } from "./context";
+import type { Event, EventClass, EventHandler, IEventBus } from "../events/Event";
+import { useContext } from "./context";
 
 /**
  * Subscribes a handler to an event class within the current context.
@@ -15,7 +14,8 @@ export function useOnEvent<T extends Event>(
   handler: EventHandler<T>,
   context: any,
 ): () => void {
-  const bus = useEventBus<IEventBus>();
+  const c = useContext();
+  const bus = c.eventBus;
   bus.on(eventClass, handler, context);
   return () => bus.off(eventClass, handler);
 }
@@ -33,7 +33,8 @@ export function useOnceEvent<T extends Event>(
   handler: EventHandler<T>,
   context: any,
 ): () => void {
-  const bus = useEventBus<IEventBus>();
+  const c = useContext();
+  const bus = c.eventBus;
   bus.once(eventClass, handler, context);
   return () => bus.off(eventClass, handler);
 }

@@ -1,93 +1,86 @@
-// Lightweight, framework-agnostic context helpers to replace decorators with
-// composable-like, context-aware functions. Designed to work with the current
-// OOP style by acting as thin utilities. No globals from engine/acs required.
-
-export type Context = {
-  actor?: unknown;
-  component?: unknown;
-  scene?: unknown;
-  eventBus?: unknown;
-  processors?: Map<string | symbol, unknown> | Record<string | symbol, unknown>;
-};
-
-// Internal stack to support nested scopes; use only for synchronous flows.
-const ctxStack: Context[] = [];
+import { SceneChangedEvent } from "../events/CoreEvents";
+import { EventBus, type IEventBus } from "../events/EventBus";
+import type { Processor } from "../processor/Processor";
+import { Scene } from "../scene/Scene";
 
 /**
- * Run a function within a provided context. All useX() helpers will resolve
- * against this context for the sync duration of the callback.
+ * The Context is the container for an entire application world, including its scene,
+ * services, resources, and processors. It is a passive data container that is
+ * brought to life by an Engine.
  */
-export function runWithContext<T>(ctx: Context, fn: () => T): T {
-  ctxStack.push(ctx);
-  try {
-    return fn();
-  } finally {
-    ctxStack.pop();
+export class Context {
+  // The static registry for all named contexts. The 'default' key is special.
+  private static registry = new Map<string | symbol, Context>();
+  // The stack for managing active scopes via `runWith`.
+  private static stack: Context[] = [];
+
+  // Instance properties
+  public scene: Scene = new Scene();
+  public readonly processors: Processor[] = [];
+  public eventBus: IEventBus = new EventBus(); // Or initialize with a default EventBus
+
+  /**
+   * Gets the currently active context.
+   * If called outside of a `Context.runWith` scope, it falls back to the
+   * lazily-created default context.
+   */
+  public static current(): Context {
+    const active = Context.stack[Context.stack.length - 1];
+    if (active) {
+      return active;
+    }
+    return Context.default();
   }
-}
 
-/** Get current context or throw if strict and none present. */
-export function getCurrentContext(strict: true): Context;
-export function getCurrentContext(strict?: boolean): Context | undefined;
-export function getCurrentContext(strict = true): Context | undefined {
-  const current = ctxStack[ctxStack.length - 1];
-  if (!current && strict) {
-    throw new Error("No current context. Ensure you're calling useX() inside runWithContext(...).");
+  /**
+   * Gets, or lazily creates, the singleton default context.
+   * This is the heart of the "automagic" zero-setup experience.
+   */
+  public static default(): Context {
+    if (!Context.registry.has("default")) {
+      Context.registry.set("default", new Context());
+    }
+    return Context.registry.get("default")!;
   }
-  return current;
-}
 
-function ensure<T>(value: T | undefined, name: string): T {
-  if (value === undefined || value === null) {
-    throw new Error(`${name} is not available in the current context.`);
+  /**
+   * Runs a given function within the scope of a specific context.
+   * Any call to `useContext()` or `Context.current()` within the function
+   * will resolve to the provided context.
+   */
+  public static runWith<T>(context: Context, fn: () => T): T {
+    Context.stack.push(context);
+    try {
+      return fn();
+    } finally {
+      Context.stack.pop();
+    }
   }
-  return value as T;
-}
 
-// Composable-like helpers
-export function useActor<T = unknown>(): T {
-  const ctx = getCurrentContext();
-  return ensure<T>(ctx?.actor as T, "actor");
-}
+  // --- Instance Methods ---
 
-export function useComponent<T = unknown>(): T {
-  const ctx = getCurrentContext();
-  return ensure<T>(ctx?.component as T, "component");
-}
+  public setScene(scene: Scene): void {
+    const previousScene = this.scene;
+    this.scene = scene;
 
-export function useScene<T = unknown>(): T {
-  const ctx = getCurrentContext();
-  return ensure<T>(ctx?.scene as T, "scene");
-}
-
-export function useEventBus<T = unknown>(): T {
-  const ctx = getCurrentContext();
-  return ensure<T>(ctx?.eventBus as T, "eventBus");
-}
-
-export function useProcessor<T = unknown>(key: string | symbol): T {
-  const ctx = getCurrentContext();
-  const source = ctx?.processors;
-  let value: unknown;
-  if (source && typeof (source as any).get === "function") {
-    value = (source as Map<string | symbol, unknown>).get(key);
-  } else if (source && typeof source === "object") {
-    value = (source as Record<string | symbol, unknown>)[key as any];
+    // Emit scene changed event
+    this.eventBus.emit(
+      new SceneChangedEvent({
+        scene,
+        previousScene,
+      }),
+    );
   }
-  return ensure<T>(value as T, `processor(${String(key)})`);
-}
 
-/** Utility to create a new context by shallow-merging values atop the current one. */
-export function deriveContext(partial: Context): Context {
-  const base = getCurrentContext(false) ?? {};
-  return { ...base, ...partial };
+  public addProcessor(processor: Processor): void {
+    this.processors.push(processor);
+  }
 }
 
 /**
- * Helper for OOP-style classes: run a method with a provided context.
- * Example:
- *   class MyComponent { update() { return withContext({ component: this }, () => { ... }) }}
+ * A user-facing helper function to get the current context.
+ * This is the primary way components and resources should get context access.
  */
-export function withContext<T>(ctx: Context, fn: () => T): T {
-  return runWithContext(ctx, fn);
+export function useContext(): Context {
+  return Context.current();
 }

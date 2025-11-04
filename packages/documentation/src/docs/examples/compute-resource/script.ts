@@ -35,6 +35,7 @@ async function main() {
 }
 
 window.addEventListener('message', (event) => {
+  console.log('kommt an')
     const { key, value } = event.data;
     if (key === 'a') {
         operandA = Number(value);

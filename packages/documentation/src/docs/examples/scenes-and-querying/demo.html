@@ -5,16 +5,145 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Scenes and Querying Demo</title>
   <style>
-    body { font-family: system-ui, sans-serif; background: #121212; color: #eee; margin: 0; }
-    #container { padding: 16px; }
-    .card { background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
-    code { background: #000; padding: 2px 4px; border-radius: 4px; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #121212;
+      color: #eee;
+      margin: 0;
+      padding: 16px;
+    }
+
+    #container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0 0 8px 0;
+      font-size: 24px;
+      font-weight: 600;
+    }
+
+    .subtitle {
+      color: #999;
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
+
+    .visualization-container {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      padding: 0;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+
+    #visualization {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .card {
+      background: #1e1e1e;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .stat-card {
+      background: #252525;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .stat-card.highlight {
+      background: #1a3a1a;
+      border-color: #2a5a2a;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #999;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .stat-card.highlight .stat-value {
+      color: #4ade80;
+    }
+
+    .query-info {
+      padding: 12px;
+      background: #252525;
+      border-radius: 6px;
+      font-size: 14px;
+      color: #ccc;
+    }
+
+    .query-info strong {
+      color: #fff;
+    }
+
+    code {
+      background: #000;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+      font-size: 13px;
+    }
+
+    .info-box {
+      background: #1a2a3a;
+      border: 1px solid #2a4a5a;
+      border-radius: 6px;
+      padding: 12px;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #aaa;
+    }
+
+    .info-box strong {
+      color: #6eb3ff;
+    }
   </style>
 </head>
 <body>
   <div id="container">
-    <h1>Scenes and Querying Demo</h1>
+    <h1>Scenes and Querying Performance Demo</h1>
+    <div class="subtitle">
+      Visualizing 2,000 actors with complex component queries in real-time
+    </div>
+
+    <div class="visualization-container">
+      <canvas id="visualization" width="800" height="600"></canvas>
+    </div>
+
     <div id="output" class="card"></div>
+
+    <div class="info-box">
+      <strong>How it works:</strong> Toggle the filters on the right to query actors by their components.
+      Matching actors glow brightly on the canvas, while non-matching actors appear dimmed.
+      The query performance is measured in milliseconds, showcasing the efficiency of the SPACe query system.
+    </div>
   </div>
   <script type="module" src="./script.ts"></script>
 </body>

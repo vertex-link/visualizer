@@ -1,13 +1,9 @@
-import {
-  Resource,
-  runWithContext,
-  useProcessor,
-  type Context,
-} from "@vertex-link/space";
-import type { WebGPUProcessor } from "../processors/WebGPUProcessor";
+import { Resource, type Context } from "@vertex-link/space";
+import { WebGPUProcessor } from "../processors/WebGPUProcessor";
 import type { VertexLayout } from "../rendering/interfaces/IPipeline";
 import { WebGPUPipeline } from "./../webgpu/WebGPUPipeline";
 import { type ShaderResource, ShaderStage } from "./ShaderResource";
+
 
 /**
  * Uniform data types supported by materials.
@@ -82,9 +78,10 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
       `🔧 MaterialResource "${this.name}" (ID: ${this.id}) starting compilation. isCompiled: ${this.isCompiled}`,
     );
 
-    const webgpuProcessor = runWithContext(context, () =>
-      useProcessor<WebGPUProcessor>("webgpu"),
-    );
+    const webgpuProcessor = context.processors.find(p => p instanceof WebGPUProcessor) as WebGPUProcessor | undefined;
+    if (!webgpuProcessor) {
+      throw new Error("Cannot compile MaterialResource: WebGPUProcessor not found in context.");
+    }
     const device = webgpuProcessor.renderer.device;
 
     if (!device) {

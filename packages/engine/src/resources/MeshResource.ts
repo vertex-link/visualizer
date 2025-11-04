@@ -1,7 +1,8 @@
-import { Resource, runWithContext, useProcessor, type Context } from "@vertex-link/space";
-import type { WebGPUProcessor } from "../processors/WebGPUProcessor";
+import { Resource, type Context } from "@vertex-link/space";
+import { WebGPUProcessor } from "../processors/WebGPUProcessor";
 import { BufferUsage } from "../rendering/interfaces/IBuffer";
 import { WebGPUBuffer } from "./../webgpu/WebGPUBuffer";
+
 
 /**
  * Vertex attribute definition for mesh data.
@@ -63,9 +64,10 @@ export class MeshResource extends Resource<MeshDescriptor> {
       return;
     }
 
-    const webgpuProcessor = runWithContext(context, () =>
-      useProcessor<WebGPUProcessor>("webgpu"),
-    );
+    const webgpuProcessor = context.processors.find(p => p instanceof WebGPUProcessor) as WebGPUProcessor | undefined;
+    if (!webgpuProcessor) {
+      throw new Error("Cannot compile MeshResource: WebGPUProcessor not found in context.");
+    }
     this.device = webgpuProcessor.renderer.device;
     console.log(`🔧 MeshResource "${this.name}": Got device for compilation`);
 

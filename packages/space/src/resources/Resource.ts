@@ -1,4 +1,4 @@
-import type { Context } from "../composables/context";
+import { Context } from "../composables/context";
 
 export enum ResourceStatus {
   UNLOADED = 0,
@@ -27,9 +27,10 @@ export abstract class Resource<TData = unknown> {
    * The core lifecycle method called by the constructor.
    * It loads data and then immediately tries to compile.
    */
-  private async loadAndCompile(context?: Context): Promise<void> {
+  private async loadAndCompile(_context?: Context): Promise<void> {
     // Prevent re-entry
     if (this.status !== ResourceStatus.UNLOADED) return;
+    const context = _context || Context.current();
 
     this.status = ResourceStatus.LOADING;
     try {

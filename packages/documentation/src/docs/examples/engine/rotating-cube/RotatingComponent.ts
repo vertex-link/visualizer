@@ -1,6 +1,5 @@
-import { Component } from "@vertex-link/space";
-import type { Vec3 } from "@vertex-link/engine";
-import { Transform, TransformComponent } from "@vertex-link/engine";
+import { Transform, TransformComponent, type Vec3, WebGPUProcessor } from "@vertex-link/engine";
+import { type Actor, Component, useUpdate } from "@vertex-link/space";
 
 export class RotatingComponent extends Component {
   private transform!: TransformComponent;
@@ -11,6 +10,12 @@ export class RotatingComponent extends Component {
       this.transform = this.actor.getComponent(TransformComponent)!;
     }
     return this.transform;
+  }
+
+  constructor(actor: Actor) {
+    super(actor);
+
+    useUpdate(WebGPUProcessor, this.tick, this, `${actor.id}:rotation`);
   }
 
   tick(deltaTime: number): void {
