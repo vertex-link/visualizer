@@ -60,7 +60,12 @@ export { Transform } from "./rendering/math/Transform";
 // Rendering Pipeline & Processors
 export { RenderGraph, RenderPass, ForwardPass, PostProcessPass } from "./rendering/RenderGraph";
 export type { RenderBatch, RenderPassContext } from "./rendering/RenderGraph";
+export { ShadowPass } from "./rendering/passes";
 export { GPUResourcePool } from "./rendering/GPUResourcePool";
+
+// Shadow Mapping
+export { ShadowMapResource, ShadowMapType } from "./rendering/shadows/ShadowMapResource";
+export type { ShadowMapDescriptor } from "./rendering/shadows/ShadowMapResource";
 
 export { WebGPUProcessor } from "./processors/WebGPUProcessor";
 export { LightProcessor } from "./processors/LightProcessor";

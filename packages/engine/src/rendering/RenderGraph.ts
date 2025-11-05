@@ -66,8 +66,10 @@ export class RenderGraph {
 
   constructor() {
     // Add default passes
+    // Priority order: Shadow (5) -> Forward (10) -> PostProcess (100)
     this.addPass(new ForwardPass(10));
     this.addPass(new PostProcessPass(100));
+    // Note: ShadowPass can be added via addPass() when shadow mapping is needed
   }
 
   /**
