@@ -1,5 +1,6 @@
 import { Context, EventBus, type Scene } from "@vertex-link/space";
 import { WebGPUProcessor } from "./processors/WebGPUProcessor";
+import { LightProcessor } from "./processors/LightProcessor";
 
 type EngineConfig = {
   canvas: HTMLCanvasElement;
@@ -23,12 +24,17 @@ export class Engine {
       this.context.eventBus = new EventBus();
     }
 
-    // The Engine is responsible for creating core processors and adding them to the context.
+    // Create light processor
+    const lightProcessor = new LightProcessor("light");
+    this.context.addProcessor(lightProcessor);
+
+    // Create renderer with light processor reference
     const renderer = new WebGPUProcessor(
       config.canvas,
       "webgpu",
       this.context.eventBus,
       () => this.context,
+      lightProcessor,
     );
     this.context.addProcessor(renderer);
   }

@@ -1,13 +1,13 @@
-import type { Scene } from "@vertex-link/space";
-import { PointLightComponent } from "../components/lights/PointLightComponent";
-import { DirectionalLightComponent } from "../components/lights/DirectionalLightComponent";
-import { TransformComponent } from "../components/TransformComponent";
+import { Processor, type Scene, Tickers } from "@vertex-link/space";
+import { PointLightComponent } from "../rendering/components/lights/PointLightComponent";
+import { DirectionalLightComponent } from "../rendering/components/lights/DirectionalLightComponent";
+import { TransformComponent } from "../rendering/components/TransformComponent";
 
 /**
  * GPU-aligned point light data structure.
  * Total size: 32 bytes (16-byte aligned)
  */
-export interface PointLightData {
+interface PointLightData {
   position: [number, number, number]; // 12 bytes
   radius: number; // 4 bytes
   color: [number, number, number]; // 12 bytes
@@ -18,7 +18,7 @@ export interface PointLightData {
  * GPU-aligned directional light data structure.
  * Total size: 32 bytes (16-byte aligned)
  */
-export interface DirectionalLightData {
+interface DirectionalLightData {
   direction: [number, number, number]; // 12 bytes
   _padding0: number; // 4 bytes (alignment)
   color: [number, number, number]; // 12 bytes
@@ -26,35 +26,63 @@ export interface DirectionalLightData {
 }
 
 /**
- * Manages light collection from the scene and GPU buffer uploads.
- * Queries scene for light components and packs data for shader consumption.
+ * Processor that collects lights from the scene and uploads to GPU.
+ * Follows the same pattern as WebGPUProcessor for consistency.
  */
-export class LightManager {
-  private device: GPUDevice;
+export class LightProcessor extends Processor {
+  private device: GPUDevice | null = null;
+  private scene: Scene | null = null;
 
   // GPU buffers
   private pointLightBuffer: GPUBuffer | null = null;
   private directionalLightBuffer: GPUBuffer | null = null;
   private lightCountBuffer: GPUBuffer | null = null;
 
+  // Bind group (exposed to WebGPUProcessor)
+  private lightBindGroup: GPUBindGroup | null = null;
+
   // Cached light data
   private pointLights: PointLightData[] = [];
   private directionalLights: DirectionalLightData[] = [];
 
-  // Version tracking
-  private lastUpdateVersion = -1;
-
-  constructor(device: GPUDevice) {
-    this.device = device;
+  constructor(name = "light") {
+    super(name, Tickers.animationFrame());
   }
 
   /**
-   * Query scene for lights and update GPU buffers if needed.
+   * Initialize with GPU device
    */
-  update(scene: Scene): void {
+  initialize(device: GPUDevice): void {
+    this.device = device;
+    console.log("✅ LightProcessor initialized");
+  }
+
+  /**
+   * Set the scene to query for lights
+   */
+  setScene(scene: Scene): void {
+    this.scene = scene;
+  }
+
+  /**
+   * Main update loop - query scene and upload light data
+   */
+  protected executeTasks(_deltaTime: number): void {
+    if (!this.scene || !this.device) return;
+
+    this.collectLights();
+    this.uploadLightData();
+  }
+
+  /**
+   * Query scene for light components
+   */
+  private collectLights(): void {
+    if (!this.scene) return;
+
     // Collect point lights
     this.pointLights = [];
-    const pointLightActors = scene.query([PointLightComponent, TransformComponent]);
+    const pointLightActors = this.scene.query([PointLightComponent, TransformComponent]);
 
     for (const actor of pointLightActors) {
       const light = actor.getComponent(PointLightComponent);
@@ -73,7 +101,7 @@ export class LightManager {
 
     // Collect directional lights
     this.directionalLights = [];
-    const directionalLightActors = scene.query([DirectionalLightComponent]);
+    const directionalLightActors = this.scene.query([DirectionalLightComponent]);
 
     for (const actor of directionalLightActors) {
       const light = actor.getComponent(DirectionalLightComponent);
@@ -100,15 +128,14 @@ export class LightManager {
         intensity: light.intensity,
       });
     }
-
-    // Upload to GPU
-    this.uploadLightData();
   }
 
   /**
-   * Upload light data to GPU buffers.
+   * Upload light data to GPU buffers
    */
   private uploadLightData(): void {
+    if (!this.device) return;
+
     // Point lights
     if (this.pointLights.length > 0) {
       const data = new Float32Array(this.pointLights.length * 8); // 8 floats per light
@@ -192,44 +219,73 @@ export class LightManager {
   }
 
   /**
-   * Get point light buffer for bind group.
+   * Create light bind group with given layout (called by WebGPUProcessor)
    */
-  getPointLightBuffer(): GPUBuffer | null {
-    return this.pointLightBuffer;
+  createBindGroup(layout: GPUBindGroupLayout): GPUBindGroup | null {
+    if (!this.device || !this.pointLightBuffer || !this.directionalLightBuffer || !this.lightCountBuffer) {
+      return null;
+    }
+
+    try {
+      this.lightBindGroup = this.device.createBindGroup({
+        label: "LightBindGroup",
+        layout,
+        entries: [
+          {
+            binding: 0,
+            resource: { buffer: this.pointLightBuffer },
+          },
+          {
+            binding: 1,
+            resource: { buffer: this.directionalLightBuffer },
+          },
+          {
+            binding: 2,
+            resource: { buffer: this.lightCountBuffer },
+          },
+        ],
+      });
+      return this.lightBindGroup;
+    } catch (error) {
+      console.warn("⚠️ Failed to create light bind group:", error);
+      return null;
+    }
   }
 
   /**
-   * Get directional light buffer for bind group.
+   * Get current light bind group
    */
-  getDirectionalLightBuffer(): GPUBuffer | null {
-    return this.directionalLightBuffer;
+  getLightBindGroup(): GPUBindGroup | null {
+    return this.lightBindGroup;
   }
 
   /**
-   * Get light count buffer.
-   */
-  getLightCountBuffer(): GPUBuffer | null {
-    return this.lightCountBuffer;
-  }
-
-  /**
-   * Get number of point lights.
+   * Get number of point lights
    */
   getPointLightCount(): number {
     return this.pointLights.length;
   }
 
   /**
-   * Get number of directional lights.
+   * Get number of directional lights
    */
   getDirectionalLightCount(): number {
     return this.directionalLights.length;
   }
 
   /**
-   * Cleanup GPU resources.
+   * Check if buffers are available
    */
-  dispose(): void {
+  hasLightBuffers(): boolean {
+    return !!(this.pointLightBuffer && this.directionalLightBuffer && this.lightCountBuffer);
+  }
+
+  /**
+   * Cleanup GPU resources
+   */
+  public stop(): void {
+    super.stop();
+
     this.pointLightBuffer?.destroy();
     this.directionalLightBuffer?.destroy();
     this.lightCountBuffer?.destroy();
@@ -237,5 +293,8 @@ export class LightManager {
     this.pointLightBuffer = null;
     this.directionalLightBuffer = null;
     this.lightCountBuffer = null;
+    this.lightBindGroup = null;
+
+    console.log("🛑 LightProcessor stopped");
   }
 }

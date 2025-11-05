@@ -63,6 +63,7 @@ export type { RenderBatch, RenderPassContext } from "./rendering/RenderGraph";
 export { GPUResourcePool } from "./rendering/GPUResourcePool";
 
 export { WebGPUProcessor } from "./processors/WebGPUProcessor";
+export { LightProcessor } from "./processors/LightProcessor";
 export { RenderProcessor } from "./processors/RenderProcessor";
 export { FixedTickProcessor } from "./processors/FixedTickProcessor";
 

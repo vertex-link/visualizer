@@ -7,7 +7,7 @@ import { RenderGraph } from "../rendering/RenderGraph";
 import type { MaterialResource } from "../resources/MaterialResource";
 import type { MeshResource } from "../resources/MeshResource";
 import { WebGPURenderer } from "../webgpu/WebGPURenderer";
-import { LightManager } from "../rendering/lights/LightManager";
+import type { LightProcessor } from "./LightProcessor";
 
 // Phase 0: Decorator-based update hooks disabled. Keeping placeholder commented out for reference.
 
@@ -45,7 +45,7 @@ export class WebGPUProcessor extends Processor {
   readonly renderer: WebGPURenderer;
   private resourcePool: GPUResourcePool;
   private renderGraph: RenderGraph;
-  private lightManager: LightManager | null = null;
+  private lightProcessor: LightProcessor | null = null;
 
   // Scene reference for queries
   private scene: Scene | null = null;
@@ -69,6 +69,7 @@ export class WebGPUProcessor extends Processor {
     name = "webgpu",
     eventBus: IEventBus,
     contextProvider?: () => Context,
+    lightProcessor?: LightProcessor,
   ) {
     super(name, Tickers.animationFrame()); // Use animation frame by default
     this.canvas = canvas;
@@ -77,6 +78,7 @@ export class WebGPUProcessor extends Processor {
     this.renderGraph = new RenderGraph();
     this.eventBus = eventBus;
     this.contextProvider = contextProvider;
+    this.lightProcessor = lightProcessor || null;
   }
 
   /**
@@ -89,8 +91,10 @@ export class WebGPUProcessor extends Processor {
     // Initialize render graph with device
     this.renderGraph.initialize(this.renderer.getDevice()!);
 
-    // Initialize light manager
-    this.lightManager = new LightManager(this.renderer.getDevice()!);
+    // Initialize light processor if available
+    if (this.lightProcessor) {
+      this.lightProcessor.initialize(this.renderer.getDevice()!);
+    }
 
     // Update camera aspect ratio based on canvas
     this.updateCameraAspectRatios();
@@ -111,6 +115,24 @@ export class WebGPUProcessor extends Processor {
   setScene(scene: Scene): void {
     this.scene = scene;
     this.isDirty = true;
+
+    // Also set scene for light processor
+    if (this.lightProcessor) {
+      this.lightProcessor.setScene(scene);
+    }
+  }
+
+  /**
+   * Set or update the light processor
+   */
+  setLightProcessor(lightProcessor: LightProcessor): void {
+    this.lightProcessor = lightProcessor;
+    if (this.scene) {
+      lightProcessor.setScene(this.scene);
+    }
+    if (this.renderer.getDevice()) {
+      lightProcessor.initialize(this.renderer.getDevice()!);
+    }
   }
 
   /**
@@ -132,9 +154,8 @@ export class WebGPUProcessor extends Processor {
       // Check for transform updates and mark batches dirty
       this.checkTransformUpdates();
 
-      // Update lights from scene
-      if (this.lightManager) {
-        this.lightManager.update(this.scene!);
+      // Update light bind group if light processor is available
+      if (this.lightProcessor) {
         this.updateLightBindGroup();
       }
 
@@ -466,18 +487,10 @@ export class WebGPUProcessor extends Processor {
   }
 
   /**
-   * Update light bind group with current light data
+   * Update light bind group with current light data from LightProcessor
    */
   private updateLightBindGroup(): void {
-    if (!this.lightManager) return;
-
-    const device = this.renderer.getDevice()!;
-    const pointLightBuffer = this.lightManager.getPointLightBuffer();
-    const directionalLightBuffer = this.lightManager.getDirectionalLightBuffer();
-    const lightCountBuffer = this.lightManager.getLightCountBuffer();
-
-    // Skip if no buffers available
-    if (!pointLightBuffer || !directionalLightBuffer || !lightCountBuffer) {
+    if (!this.lightProcessor || !this.lightProcessor.hasLightBuffers()) {
       return;
     }
 
@@ -503,29 +516,8 @@ export class WebGPUProcessor extends Processor {
       return;
     }
 
-    try {
-      // Create light bind group
-      this.lightBindGroup = device.createBindGroup({
-        label: "LightBindGroup",
-        layout: bindGroupLayout,
-        entries: [
-          {
-            binding: 0,
-            resource: { buffer: pointLightBuffer },
-          },
-          {
-            binding: 1,
-            resource: { buffer: directionalLightBuffer },
-          },
-          {
-            binding: 2,
-            resource: { buffer: lightCountBuffer },
-          },
-        ],
-      });
-    } catch (error) {
-      console.warn("⚠️ Failed to create light bind group:", error);
-    }
+    // Ask light processor to create bind group with the layout
+    this.lightBindGroup = this.lightProcessor.createBindGroup(bindGroupLayout);
   }
 
   /**
@@ -562,10 +554,8 @@ export class WebGPUProcessor extends Processor {
       this.globalUniformBuffer.destroy();
     }
 
-    // Cleanup light manager
-    if (this.lightManager) {
-      this.lightManager.dispose();
-    }
+    // Note: LightProcessor cleanup is handled by its own stop() method
+    // since it's a separate processor in the system
 
     // Cleanup resources
     this.resourcePool.dispose();
