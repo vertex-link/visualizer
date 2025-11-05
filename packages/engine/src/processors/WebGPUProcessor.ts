@@ -7,6 +7,7 @@ import { RenderGraph } from "../rendering/RenderGraph";
 import type { MaterialResource } from "../resources/MaterialResource";
 import type { MeshResource } from "../resources/MeshResource";
 import { WebGPURenderer } from "../webgpu/WebGPURenderer";
+import { LightManager } from "../rendering/lights/LightManager";
 
 // Phase 0: Decorator-based update hooks disabled. Keeping placeholder commented out for reference.
 
@@ -44,6 +45,7 @@ export class WebGPUProcessor extends Processor {
   readonly renderer: WebGPURenderer;
   private resourcePool: GPUResourcePool;
   private renderGraph: RenderGraph;
+  private lightManager: LightManager | null = null;
 
   // Scene reference for queries
   private scene: Scene | null = null;
@@ -52,6 +54,7 @@ export class WebGPUProcessor extends Processor {
   private cachedBatches: InstancedRenderBatch[] = [];
   private globalUniformBuffer: GPUBuffer | null = null;
   private globalBindGroup: GPUBindGroup | null = null;
+  private lightBindGroup: GPUBindGroup | null = null;
   private activeCamera: CameraComponent | null = null;
   private isDirty = true;
 
@@ -85,6 +88,9 @@ export class WebGPUProcessor extends Processor {
 
     // Initialize render graph with device
     this.renderGraph.initialize(this.renderer.getDevice()!);
+
+    // Initialize light manager
+    this.lightManager = new LightManager(this.renderer.getDevice()!);
 
     // Update camera aspect ratio based on canvas
     this.updateCameraAspectRatios();
@@ -126,6 +132,12 @@ export class WebGPUProcessor extends Processor {
       // Check for transform updates and mark batches dirty
       this.checkTransformUpdates();
 
+      // Update lights from scene
+      if (this.lightManager) {
+        this.lightManager.update(this.scene!);
+        this.updateLightBindGroup();
+      }
+
       // Upload instance data and create global uniforms
       this.uploadInstanceData();
       this.updateGlobalUniforms();
@@ -137,6 +149,7 @@ export class WebGPUProcessor extends Processor {
         this.activeCamera,
         deltaTime,
         this.globalBindGroup,
+        this.lightBindGroup,
       );
     };
 
@@ -453,6 +466,69 @@ export class WebGPUProcessor extends Processor {
   }
 
   /**
+   * Update light bind group with current light data
+   */
+  private updateLightBindGroup(): void {
+    if (!this.lightManager) return;
+
+    const device = this.renderer.getDevice()!;
+    const pointLightBuffer = this.lightManager.getPointLightBuffer();
+    const directionalLightBuffer = this.lightManager.getDirectionalLightBuffer();
+    const lightCountBuffer = this.lightManager.getLightCountBuffer();
+
+    // Skip if no buffers available
+    if (!pointLightBuffer || !directionalLightBuffer || !lightCountBuffer) {
+      return;
+    }
+
+    // Get bind group layout from first available pipeline (group 1)
+    let bindGroupLayout: GPUBindGroupLayout | null = null;
+
+    for (const batch of this.cachedBatches) {
+      const pipeline = batch.material.getPipeline();
+      if (pipeline) {
+        try {
+          bindGroupLayout = pipeline.getBindGroupLayout(1);
+          break;
+        } catch (error) {
+          // Pipeline might not have group 1, continue searching
+          continue;
+        }
+      }
+    }
+
+    if (!bindGroupLayout) {
+      // No pipeline with light bind group layout found
+      // This is normal if using basic shaders without lights
+      return;
+    }
+
+    try {
+      // Create light bind group
+      this.lightBindGroup = device.createBindGroup({
+        label: "LightBindGroup",
+        layout: bindGroupLayout,
+        entries: [
+          {
+            binding: 0,
+            resource: { buffer: pointLightBuffer },
+          },
+          {
+            binding: 1,
+            resource: { buffer: directionalLightBuffer },
+          },
+          {
+            binding: 2,
+            resource: { buffer: lightCountBuffer },
+          },
+        ],
+      });
+    } catch (error) {
+      console.warn("⚠️ Failed to create light bind group:", error);
+    }
+  }
+
+  /**
    * Get active camera
    */
   getActiveCamera(): CameraComponent | null {
@@ -484,6 +560,11 @@ export class WebGPUProcessor extends Processor {
     });
     if (this.globalUniformBuffer) {
       this.globalUniformBuffer.destroy();
+    }
+
+    // Cleanup light manager
+    if (this.lightManager) {
+      this.lightManager.dispose();
     }
 
     // Cleanup resources

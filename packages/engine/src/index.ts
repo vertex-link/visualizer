@@ -38,6 +38,13 @@ export { TransformComponent } from "./rendering/components/TransformComponent";
 export type { Vec3, Quat, Mat4 } from "./rendering/components/TransformComponent";
 export { MeshRendererComponent } from "./rendering/components/MeshRendererComponent";
 
+// Light Components
+export {
+  BaseLightComponent,
+  PointLightComponent,
+  DirectionalLightComponent,
+} from "./rendering/components/lights";
+
 // Camera
 export { CameraComponent, ProjectionType } from "./rendering/camera/CameraComponent";
 export type {

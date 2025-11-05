@@ -17,6 +17,7 @@ export interface RenderPassContext {
   camera: any; // CameraComponent
   deltaTime: number;
   globalBindGroup: GPUBindGroup | null;
+  lightBindGroup?: GPUBindGroup | null;
 }
 
 /**
@@ -124,6 +125,7 @@ export class RenderGraph {
     camera: any,
     deltaTime: number,
     globalBindGroup: GPUBindGroup | null = null,
+    lightBindGroup: GPUBindGroup | null = null,
   ): void {
     if (!this.device) {
       console.warn("⚠️ RenderGraph: No device set, skipping execution");
@@ -136,6 +138,7 @@ export class RenderGraph {
       camera,
       deltaTime,
       globalBindGroup,
+      lightBindGroup,
     };
 
     // Execute passes in priority order
@@ -218,12 +221,17 @@ export class ForwardPass extends RenderPass {
     }
 
     try {
-      // Set global uniforms once for all batches
+      // Set global uniforms once for all batches (group 0)
       const globalUniformsSet = this.setGlobalUniforms(renderer, camera, context.globalBindGroup);
 
       if (!globalUniformsSet) {
         console.log("⚠️ ForwardPass: Skipping render - global uniforms not ready");
         return; // Skip rendering if global bind group isn't available
+      }
+
+      // Set light bind group if available (group 1)
+      if (context.lightBindGroup) {
+        renderer.setBindGroup(1, context.lightBindGroup);
       }
 
       // Render each instanced batch
