@@ -117,6 +117,13 @@ export class WebGPURenderer {
       },
     });
 
+    // CRITICAL: Set viewport and scissor rect (WebGPU doesn't default to canvas size!)
+    const width = this.canvas?.width || 800;
+    const height = this.canvas?.height || 600;
+    this.currentRenderPass.setViewport(0, 0, width, height, 0, 1);
+    this.currentRenderPass.setScissorRect(0, 0, width, height);
+    console.log(`🖼️ Viewport set to ${width}x${height}`);
+
     return true;
   }
 
