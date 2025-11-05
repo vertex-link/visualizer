@@ -58,6 +58,8 @@ export class WebGPUProcessor extends Processor {
   private lightBindGroup: GPUBindGroup | null = null;
   private activeCamera: CameraComponent | null = null;
   private isDirty = true;
+  private lastLightBuffersState = false;
+  private lightBindGroupCreatedLogged = false;
 
   // Frame timing
   private lastFrameTime = 0;
@@ -158,6 +160,13 @@ export class WebGPUProcessor extends Processor {
       // Update light bind group if light processor is available
       if (this.lightProcessor) {
         const hasBuffers = this.lightProcessor.hasLightBuffers();
+
+        // Only log when state changes
+        if (hasBuffers !== this.lastLightBuffersState) {
+          console.log(`🔍 Light processor hasBuffers: ${hasBuffers}, pointLights: ${this.lightProcessor.getPointLightCount()}, directionalLights: ${this.lightProcessor.getDirectionalLightCount()}`);
+          this.lastLightBuffersState = hasBuffers;
+        }
+
         if (hasBuffers) {
           this.updateLightBindGroup();
         }
@@ -483,10 +492,13 @@ export class WebGPUProcessor extends Processor {
     // Ask light processor to create bind group with the standard layout
     this.lightBindGroup = this.lightProcessor.createBindGroup(bindGroupLayout);
 
-    if (this.lightBindGroup) {
-      console.log("✅ Light bind group created successfully");
-    } else {
-      console.log("❌ Failed to create light bind group");
+    if (!this.lightBindGroupCreatedLogged) {
+      if (this.lightBindGroup) {
+        console.log("✅ Light bind group created successfully");
+        this.lightBindGroupCreatedLogged = true;
+      } else {
+        console.log("❌ Failed to create light bind group");
+      }
     }
   }
 

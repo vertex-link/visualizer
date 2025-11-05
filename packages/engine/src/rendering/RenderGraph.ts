@@ -194,6 +194,8 @@ export class RenderGraph {
  * Forward rendering pass with improved pipeline handling
  */
 export class ForwardPass extends RenderPass {
+  private lightBindGroupLoggedOnce = false;
+
   constructor(priority = 10) {
     super("Forward", priority);
   }
@@ -231,10 +233,16 @@ export class ForwardPass extends RenderPass {
 
       // Set light bind group if available (group 1)
       if (context.lightBindGroup) {
-        console.log("💡 Setting light bind group (group 1)");
+        if (!this.lightBindGroupLoggedOnce) {
+          console.log("💡 Setting light bind group (group 1)");
+          this.lightBindGroupLoggedOnce = true;
+        }
         renderer.setBindGroup(1, context.lightBindGroup);
       } else {
-        console.log("⚠️ No light bind group available");
+        if (!this.lightBindGroupLoggedOnce) {
+          console.log("⚠️ No light bind group available");
+          this.lightBindGroupLoggedOnce = true;
+        }
       }
 
       // Render each instanced batch

@@ -180,6 +180,7 @@ export class LightProcessor extends Processor {
           size: Math.max(requiredSize, 256), // Min 256 bytes
           usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
         });
+        console.log(`📦 Created point light buffer (size: ${this.pointLightBuffer.size} bytes)`);
       }
 
       this.device.queue.writeBuffer(this.pointLightBuffer, 0, data);
@@ -211,6 +212,7 @@ export class LightProcessor extends Processor {
           size: Math.max(requiredSize, 256),
           usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
         });
+        console.log(`📦 Created directional light buffer (size: ${this.directionalLightBuffer.size} bytes)`);
       }
 
       this.device.queue.writeBuffer(this.directionalLightBuffer, 0, data);
@@ -230,6 +232,7 @@ export class LightProcessor extends Processor {
         size: 16, // 4 x u32
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
       });
+      console.log(`📦 Created light count buffer`);
     }
 
     this.device.queue.writeBuffer(this.lightCountBuffer, 0, countData);
