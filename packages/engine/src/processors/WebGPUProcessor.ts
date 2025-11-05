@@ -1,7 +1,9 @@
-import { Context, type IEventBus, Processor, type Scene, Tickers, SceneChangedEvent } from "@vertex-link/space";
+import { Context, type IEventBus, Processor, type Scene, Tickers, SceneChangedEvent, ResourceComponent } from "@vertex-link/space";
 import { CameraComponent } from "../rendering/camera/CameraComponent";
 import { MeshRendererComponent } from "../rendering/components/MeshRendererComponent";
 import { TransformComponent } from "../rendering/components/TransformComponent";
+import { DirectionalLightComponent } from "../rendering/components/lights/DirectionalLightComponent";
+import { PointLightComponent } from "../rendering/components/lights/PointLightComponent";
 import { GPUResourcePool } from "../rendering/GPUResourcePool";
 import { RenderGraph } from "../rendering/RenderGraph";
 import type { MaterialResource } from "../resources/MaterialResource";
@@ -176,6 +178,9 @@ export class WebGPUProcessor extends Processor {
       this.uploadInstanceData();
       this.updateGlobalUniforms();
 
+      // Collect shadow maps from scene
+      const shadowMaps = this.collectShadowMaps();
+
       // Execute render graph with camera
       this.renderGraph.execute(
         this.renderer,
@@ -184,6 +189,7 @@ export class WebGPUProcessor extends Processor {
         deltaTime,
         this.globalBindGroup,
         this.lightBindGroup,
+        shadowMaps,
       );
     };
 
@@ -521,6 +527,93 @@ export class WebGPUProcessor extends Processor {
    */
   getDevice(): GPUDevice | null {
     return this.renderer.getDevice();
+  }
+
+  /**
+   * Collect shadow maps from lights in the scene
+   */
+  private collectShadowMaps(): any[] {
+    if (!this.scene) return [];
+
+    const shadowMaps: any[] = [];
+    let lightIndex = 0;
+
+    // Query for directional lights with shadow maps
+    const dirLights = this.scene
+      .query()
+      .withComponent(DirectionalLightComponent)
+      .withComponent(ResourceComponent)
+      .execute();
+
+    for (const actor of dirLights) {
+      const light = actor.getComponent(DirectionalLightComponent);
+      const resources = actor.getComponent(ResourceComponent);
+
+      if (!light || !light.enabled || !resources) continue;
+
+      // Check for shadow map resource
+      const shadowMapResource = resources.getResources().find(
+        (r: any) => r.constructor.name === 'ShadowMapResource'
+      );
+
+      if (shadowMapResource && shadowMapResource.isCompiled) {
+        // Calculate directional light view-projection matrix
+        const lightViewProj = this.calculateDirectionalLightMatrix(light);
+
+        shadowMaps.push({
+          lightIndex,
+          lightType: 'directional',
+          shadowMap: shadowMapResource,
+          lightViewProj,
+        });
+      }
+
+      lightIndex++;
+    }
+
+    return shadowMaps;
+  }
+
+  /**
+   * Calculate view-projection matrix for directional light
+   */
+  private calculateDirectionalLightMatrix(light: any): Float32Array {
+    // Directional light looks down negative Y axis by default
+    // Create orthographic projection covering the scene
+    const size = 20; // Cover 20x20 area
+    const near = 0.1;
+    const far = 50;
+
+    // Simple orthographic projection
+    const matrix = new Float32Array(16);
+    matrix[0] = 2 / size;
+    matrix[5] = 2 / size;
+    matrix[10] = -2 / (far - near);
+    matrix[14] = -(far + near) / (far - near);
+    matrix[15] = 1;
+
+    // View matrix: looking down from above (position [0, 20, 0], looking at [0, 0, 0])
+    const view = new Float32Array(16);
+    view[0] = 1;
+    view[5] = 0;
+    view[6] = 1;
+    view[9] = -1;
+    view[10] = 0;
+    view[13] = -20;
+    view[15] = 1;
+
+    // Multiply view * projection
+    const result = new Float32Array(16);
+    for (let i = 0; i < 4; i++) {
+      for (let j = 0; j < 4; j++) {
+        result[i * 4 + j] = 0;
+        for (let k = 0; k < 4; k++) {
+          result[i * 4 + j] += matrix[i * 4 + k] * view[k * 4 + j];
+        }
+      }
+    }
+
+    return result;
   }
 
   public stop(): void {

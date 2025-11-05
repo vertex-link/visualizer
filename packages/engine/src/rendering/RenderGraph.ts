@@ -11,6 +11,14 @@ export interface RenderBatch {
   maxInstances: number;
 }
 
+export interface ShadowMapData {
+  lightIndex: number;
+  lightType: 'directional' | 'point';
+  shadowMap: any; // ShadowMapResource
+  lightViewProj: Float32Array; // For directional lights
+  lightPosition?: Float32Array; // For point lights
+}
+
 export interface RenderPassContext {
   renderer: any; // WebGPURenderer
   batches: RenderBatch[];
@@ -18,6 +26,7 @@ export interface RenderPassContext {
   deltaTime: number;
   globalBindGroup: GPUBindGroup | null;
   lightBindGroup?: GPUBindGroup | null;
+  shadowMaps?: ShadowMapData[];
 }
 
 /**
@@ -67,8 +76,7 @@ export class RenderGraph {
   constructor() {
     // Add default passes in priority order
     // Lower priority numbers execute first
-    // Note: ShadowPass is disabled (not added) until shadow mapping is fully implemented
-    // this.addPass(new ShadowPass(5));      // Shadow mapping (placeholder)
+    this.addPass(new ShadowPass(5));       // Shadow mapping
     this.addPass(new ForwardPass(10));     // Main scene rendering
     this.addPass(new PostProcessPass(100)); // Post-processing
   }
@@ -129,6 +137,7 @@ export class RenderGraph {
     deltaTime: number,
     globalBindGroup: GPUBindGroup | null = null,
     lightBindGroup: GPUBindGroup | null = null,
+    shadowMaps?: ShadowMapData[],
   ): void {
     if (!this.device) {
       console.warn("⚠️ RenderGraph: No device set, skipping execution");
@@ -142,6 +151,7 @@ export class RenderGraph {
       deltaTime,
       globalBindGroup,
       lightBindGroup,
+      shadowMaps,
     };
 
     // Execute passes in priority order
@@ -486,24 +496,116 @@ export class ShadowPass extends RenderPass {
   }
 
   /**
-   * Execute shadow pass
-   *
-   * Note: Currently a placeholder. Full implementation requires:
-   * - RenderPassContext extension with shadow map data
-   * - WebGPUProcessor querying scene for lights with ShadowMapResource
-   * - Shadow map render target management
+   * Execute shadow pass - render scene from light perspectives
    */
   execute(context: RenderPassContext): void {
-    // TODO: Implement shadow map rendering when shadow data is added to context
-    // For now, this pass is enabled but does nothing (like PostProcessPass)
+    if (!this.device || !this.shadowPipeline || !this.shadowBindGroupLayout) {
+      return;
+    }
 
-    // Future implementation outline:
-    // 1. Check if context has shadow maps (e.g., context.shadowMaps)
-    // 2. For each shadow-casting light:
-    //    - Begin render pass with shadow map as depth attachment
-    //    - Set pipeline and light view-projection uniforms
-    //    - Render batches from light perspective
-    //    - End render pass
+    const { batches, shadowMaps } = context;
+
+    // Skip if no shadow maps
+    if (!shadowMaps || shadowMaps.length === 0) {
+      return;
+    }
+
+    // Render shadow map for each shadow-casting light
+    for (const shadowData of shadowMaps) {
+      this.renderShadowMap(shadowData, batches);
+    }
+  }
+
+  /**
+   * Render shadow map for a single light
+   */
+  private renderShadowMap(shadowData: ShadowMapData, batches: RenderBatch[]): void {
+    if (!this.device) return;
+
+    const { shadowMap, lightViewProj, lightType } = shadowData;
+
+    const view = shadowMap.getView();
+    if (!view) {
+      console.warn("⚠️ ShadowPass: Shadow map view not available");
+      return;
+    }
+
+    // Create uniform buffer for light view-projection
+    const uniformBuffer = this.device.createBuffer({
+      size: 64, // mat4x4 = 16 floats = 64 bytes
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      label: "ShadowUniformBuffer",
+    });
+    this.device.queue.writeBuffer(uniformBuffer, 0, lightViewProj.buffer);
+
+    // Create bind group for this light
+    const bindGroup = this.device.createBindGroup({
+      layout: this.shadowBindGroupLayout,
+      entries: [
+        {
+          binding: 0,
+          resource: { buffer: uniformBuffer },
+        },
+      ],
+    });
+
+    // Create command encoder
+    const encoder = this.device.createCommandEncoder({
+      label: "ShadowPassEncoder",
+    });
+
+    // Begin render pass with shadow map as depth attachment
+    const renderPass = encoder.beginRenderPass({
+      label: "ShadowRenderPass",
+      colorAttachments: [],
+      depthStencilAttachment: {
+        view,
+        depthClearValue: 1.0,
+        depthLoadOp: "clear",
+        depthStoreOp: "store",
+      },
+    });
+
+    renderPass.setPipeline(this.shadowPipeline);
+    renderPass.setBindGroup(0, bindGroup);
+
+    // Set viewport for shadow map resolution
+    const resolution = shadowMap.resolution;
+    renderPass.setViewport(0, 0, resolution, resolution, 0, 1);
+    renderPass.setScissorRect(0, 0, resolution, resolution);
+
+    // Render each batch from light perspective
+    for (const batch of batches) {
+      if (!batch.mesh || !batch.instanceBuffer || batch.instances.size === 0) continue;
+
+      const vertexBuffer = batch.mesh.getVertexBuffer();
+      const indexBuffer = batch.mesh.getIndexBuffer();
+
+      if (vertexBuffer) {
+        renderPass.setVertexBuffer(0, vertexBuffer);
+      }
+      if (batch.instanceBuffer) {
+        renderPass.setVertexBuffer(1, batch.instanceBuffer);
+      }
+      if (indexBuffer) {
+        renderPass.setIndexBuffer(indexBuffer, "uint32");
+      }
+
+      // Draw all instances
+      if (batch.mesh.indexCount > 0) {
+        renderPass.drawIndexed(batch.mesh.indexCount, batch.instances.size);
+      } else if (batch.mesh.vertexCount > 0) {
+        renderPass.draw(batch.mesh.vertexCount, batch.instances.size);
+      }
+    }
+
+    renderPass.end();
+
+    // Submit commands
+    this.device.queue.submit([encoder.finish()]);
+
+    // Cleanup temporary buffer
+    uniformBuffer.destroy();
   }
 
   /**

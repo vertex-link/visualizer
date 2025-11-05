@@ -8,6 +8,8 @@ import {
   type Vec3,
   PointLightComponent,
   DirectionalLightComponent,
+  ShadowMapResource,
+  ShadowMapType,
 } from "@vertex-link/engine";
 import { Actor, ResourceComponent, type Scene } from "@vertex-link/space";
 import { CubeMeshResource } from "@/example-resources/CubeMeshResource";
@@ -113,6 +115,7 @@ export function createDirectionalLight(
   scene: Scene,
   color: Vec3 = [1, 1, 1],
   intensity = 0.5,
+  withShadows = false,
 ): Actor {
   const lightActor = new Actor("DirectionalLight");
 
@@ -121,6 +124,18 @@ export function createDirectionalLight(
     intensity,
     enabled: true,
   });
+
+  // Add shadow map if requested
+  if (withShadows) {
+    const shadowMap = new ShadowMapResource("DirLightShadow", {
+      type: ShadowMapType.SINGLE,
+      resolution: 2048,
+      format: "depth24plus",
+    });
+
+    const resources = lightActor.addComponent(ResourceComponent);
+    resources.add(shadowMap);
+  }
 
   scene.addActor(lightActor);
   return lightActor;

@@ -33,8 +33,8 @@ async function init(container: HTMLElement) {
   // Create cube above ground
   createLitCube(scene, [0, 1, 0], [0.8, 0.2, 0.2, 1.0]);
 
-  // Create directional light from above (like sun)
-  dirLightActor = createDirectionalLight(scene, [1.0, 0.95, 0.9], 0.5);
+  // Create directional light from above (like sun) with shadows
+  dirLightActor = createDirectionalLight(scene, [1.0, 0.95, 0.9], 0.5, true);
 
   // Create point light above the scene
   pointLightActor = createPointLight(scene, [3, 5, 3], [1.0, 0.8, 0.5], 10.0, 15.0);
