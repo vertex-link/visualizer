@@ -231,7 +231,10 @@ export class ForwardPass extends RenderPass {
 
       // Set light bind group if available (group 1)
       if (context.lightBindGroup) {
+        console.log("💡 Setting light bind group (group 1)");
         renderer.setBindGroup(1, context.lightBindGroup);
+      } else {
+        console.log("⚠️ No light bind group available");
       }
 
       // Render each instanced batch

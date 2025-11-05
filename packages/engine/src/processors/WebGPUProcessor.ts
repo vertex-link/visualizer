@@ -157,7 +157,10 @@ export class WebGPUProcessor extends Processor {
 
       // Update light bind group if light processor is available
       if (this.lightProcessor) {
-        this.updateLightBindGroup();
+        const hasBuffers = this.lightProcessor.hasLightBuffers();
+        if (hasBuffers) {
+          this.updateLightBindGroup();
+        }
       }
 
       // Upload instance data and create global uniforms
@@ -479,6 +482,12 @@ export class WebGPUProcessor extends Processor {
 
     // Ask light processor to create bind group with the standard layout
     this.lightBindGroup = this.lightProcessor.createBindGroup(bindGroupLayout);
+
+    if (this.lightBindGroup) {
+      console.log("✅ Light bind group created successfully");
+    } else {
+      console.log("❌ Failed to create light bind group");
+    }
   }
 
   /**
