@@ -208,6 +208,8 @@ export class RenderGraph {
  */
 export class ForwardPass extends RenderPass {
   private lightBindGroupLoggedOnce = false;
+  private shadowBindGroupLayout: GPUBindGroupLayout | null = null;
+  private shadowSampler: GPUSampler | null = null;
 
   constructor(priority = 10) {
     super("Forward", priority);
@@ -255,6 +257,14 @@ export class ForwardPass extends RenderPass {
         if (!this.lightBindGroupLoggedOnce) {
           console.log("⚠️ No light bind group available");
           this.lightBindGroupLoggedOnce = true;
+        }
+      }
+
+      // Set shadow bind group if shadow maps are available (group 2)
+      if (context.shadowMaps && context.shadowMaps.length > 0) {
+        const shadowBindGroup = this.createShadowBindGroup(renderer, context.shadowMaps);
+        if (shadowBindGroup) {
+          renderer.setBindGroup(2, shadowBindGroup);
         }
       }
 
@@ -343,6 +353,92 @@ export class ForwardPass extends RenderPass {
       renderer.draw(mesh.vertexCount, batch.instances.size);
     } else {
       console.warn("⚠️ Mesh has no vertices or indices!");
+    }
+  }
+
+  /**
+   * Create shadow bind group (group 2) for shadow mapping.
+   * Currently supports single shadow map (first directional light).
+   */
+  private createShadowBindGroup(renderer: any, shadowMaps: ShadowMapData[]): GPUBindGroup | null {
+    const device = renderer.device;
+    if (!device) return null;
+
+    try {
+      // Create comparison sampler (reuse if exists)
+      if (!this.shadowSampler) {
+        this.shadowSampler = device.createSampler({
+          compare: "less",
+          magFilter: "linear",
+          minFilter: "linear",
+        });
+      }
+
+      // Use only the first shadow map (single shadow support for MVP)
+      const shadowMapData = shadowMaps[0];
+      const shadowMapResource = shadowMapData.shadowMap;
+
+      if (!shadowMapResource || !shadowMapResource.getTexture()) {
+        console.warn("⚠️ No shadow map texture available");
+        return null;
+      }
+
+      // Get texture view from shadow map resource
+      const shadowTextureView = shadowMapResource.getView();
+      if (!shadowTextureView) {
+        console.warn("⚠️ No shadow map view available");
+        return null;
+      }
+
+      // Create shadow data uniform buffer (just the light view-projection matrix)
+      const shadowDataArray = new Float32Array(16); // mat4x4 = 16 floats
+      shadowDataArray.set(shadowMapData.lightViewProj);
+
+      const shadowDataBuffer = device.createBuffer({
+        size: 64, // 16 floats * 4 bytes = 64 bytes
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        mappedAtCreation: true,
+      });
+      new Float32Array(shadowDataBuffer.getMappedRange()).set(shadowDataArray);
+      shadowDataBuffer.unmap();
+
+      // Create bind group layout if not exists
+      if (!this.shadowBindGroupLayout) {
+        this.shadowBindGroupLayout = device.createBindGroupLayout({
+          entries: [
+            {
+              binding: 0,
+              visibility: GPUShaderStage.FRAGMENT,
+              texture: { sampleType: "depth", viewDimension: "2d" },
+            },
+            {
+              binding: 1,
+              visibility: GPUShaderStage.FRAGMENT,
+              sampler: { type: "comparison" },
+            },
+            {
+              binding: 2,
+              visibility: GPUShaderStage.FRAGMENT,
+              buffer: { type: "uniform" },
+            },
+          ],
+        });
+      }
+
+      // Create bind group
+      const shadowBindGroup = device.createBindGroup({
+        layout: this.shadowBindGroupLayout,
+        entries: [
+          { binding: 0, resource: shadowTextureView },
+          { binding: 1, resource: this.shadowSampler },
+          { binding: 2, resource: { buffer: shadowDataBuffer } },
+        ],
+      });
+
+      return shadowBindGroup;
+    } catch (error) {
+      console.error("❌ Failed to create shadow bind group:", error);
+      return null;
     }
   }
 }

@@ -22,6 +22,7 @@ struct VertexOutput {
   @location(1) normal: vec3f,
   @location(2) uv: vec2f,
   @location(3) color: vec4f,
+  @location(4) light_space_pos: vec4f,
 }
 
 // Global uniforms (group 0)
@@ -57,6 +58,16 @@ struct LightCounts {
 @group(1) @binding(1) var<storage, read> directionalLights: array<DirectionalLight>;
 @group(1) @binding(2) var<uniform> lightCounts: LightCounts;
 
+// Shadow mapping (group 2)
+// Currently supports single directional light shadow (can be expanded to arrays later)
+struct ShadowData {
+  lightViewProj: mat4x4f,
+}
+
+@group(2) @binding(0) var shadowMap: texture_depth_2d;
+@group(2) @binding(1) var shadowSampler: sampler_comparison;
+@group(2) @binding(2) var<uniform> shadowData: ShadowData;
+
 // Vertex shader (unchanged from basic.wgsl)
 @vertex
 fn vs_main(input: VertexInput) -> VertexOutput {
@@ -82,6 +93,9 @@ fn vs_main(input: VertexInput) -> VertexOutput {
   output.uv = input.uv;
   output.color = input.instance_color;
 
+  // Light-space position (calculated per-light in fragment shader for multi-shadow support)
+  output.light_space_pos = vec4f(0.0);
+
   return output;
 }
 
@@ -91,6 +105,56 @@ fn calculateAttenuation(distance: f32, radius: f32) -> f32 {
   let d2 = d * d;
   let d4 = d2 * d2;
   return clamp(1.0 - d4, 0.0, 1.0) / (d2 + 1.0);
+}
+
+// Calculate shadow factor using PCF (Percentage Closer Filtering)
+fn calculateShadow(worldPos: vec3f) -> f32 {
+  // Transform world position to light space
+  let lightSpacePos = shadowData.lightViewProj * vec4f(worldPos, 1.0);
+
+  // Perspective divide
+  var projCoords = lightSpacePos.xyz / lightSpacePos.w;
+
+  // Transform to [0, 1] range for texture sampling
+  projCoords = projCoords * 0.5 + 0.5;
+
+  // Flip Y coordinate (texture coords start at top-left)
+  projCoords.y = 1.0 - projCoords.y;
+
+  // Check if position is outside shadow map bounds
+  if (projCoords.x < 0.0 || projCoords.x > 1.0 ||
+      projCoords.y < 0.0 || projCoords.y > 1.0 ||
+      projCoords.z < 0.0 || projCoords.z > 1.0) {
+    return 1.0; // Outside shadow map, fully lit
+  }
+
+  // Bias to prevent shadow acne
+  let bias = 0.005;
+  let currentDepth = projCoords.z - bias;
+
+  // PCF: Sample shadow map in a 3x3 grid
+  let texelSize = 1.0 / 2048.0; // Shadow map resolution
+  var shadow_factor = 0.0;
+
+  for (var x = -1; x <= 1; x++) {
+    for (var y = -1; y <= 1; y++) {
+      let offset = vec2f(f32(x), f32(y)) * texelSize;
+      let samplePos = projCoords.xy + offset;
+
+      // Use comparison sampler (returns 1.0 if currentDepth < shadowMap, 0.0 otherwise)
+      shadow_factor += textureSampleCompare(
+        shadowMap,
+        shadowSampler,
+        samplePos,
+        currentDepth
+      );
+    }
+  }
+
+  // Average the 9 samples
+  shadow_factor /= 9.0;
+
+  return shadow_factor;
 }
 
 // Fragment shader with dynamic lighting
@@ -131,7 +195,14 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
 
     // Diffuse lighting
     let n_dot_l = max(dot(normal, lightDir), 0.0);
-    let diffuse = light.color * light.intensity * n_dot_l;
+    var diffuse = light.color * light.intensity * n_dot_l;
+
+    // Apply shadow for the first directional light (index 0)
+    // Currently only single shadow map is supported
+    if (i == 0u) {
+      let shadowFactor = calculateShadow(input.world_pos);
+      diffuse *= shadowFactor;
+    }
 
     totalLighting += diffuse;
   }
