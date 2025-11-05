@@ -26,7 +26,7 @@ export function createCamera(
   camTransform.position = position;
   camTransform.lookAt([0, 0, 0]);
 
-  cameraActor.addComponent(CameraComponent, {
+  const cam = cameraActor.addComponent(CameraComponent, {
     projectionType: ProjectionType.PERSPECTIVE,
     perspectiveConfig: {
       fov: Math.PI / 3,
@@ -36,6 +36,9 @@ export function createCamera(
     },
     isActive: true,
   });
+
+  console.log(`📷 Camera at:`, camTransform.position);
+  console.log(`📷 Camera aspect:`, canvas.width / canvas.height);
 
   scene.addActor(cameraActor);
   return cameraActor;
@@ -54,6 +57,8 @@ export function createLitCube(
   cubeActor.addComponent(MeshRendererComponent);
 
   transform.position = position;
+
+  console.log(`🧊 Cube at:`, position);
 
   // Create resources
   const cubeMesh = new CubeMeshResource(1);

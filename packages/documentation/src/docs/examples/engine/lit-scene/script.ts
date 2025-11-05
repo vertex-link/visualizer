@@ -13,6 +13,9 @@ async function init(container: HTMLElement) {
   canvas.height = container.clientHeight;
   container.appendChild(canvas);
 
+  console.log(`📐 Canvas size: ${canvas.width}x${canvas.height}`);
+  console.log(`📐 Container size: ${container.clientWidth}x${container.clientHeight}`);
+
   const engine = new Engine({ canvas });
   await engine.initialize();
 
