@@ -6,6 +6,7 @@ import { DirectionalLightComponent } from "../rendering/components/lights/Direct
 import { PointLightComponent } from "../rendering/components/lights/PointLightComponent";
 import { GPUResourcePool } from "../rendering/GPUResourcePool";
 import { RenderGraph } from "../rendering/RenderGraph";
+import { ShadowMapResource } from "../rendering/shadows/ShadowMapResource";
 import type { MaterialResource } from "../resources/MaterialResource";
 import type { MeshResource } from "../resources/MeshResource";
 import { WebGPURenderer } from "../webgpu/WebGPURenderer";
@@ -551,10 +552,8 @@ export class WebGPUProcessor extends Processor {
 
       if (!light || !light.enabled || !resources) continue;
 
-      // Check for shadow map resource
-      const shadowMapResource = resources.getResources().find(
-        (r: any) => r.constructor.name === 'ShadowMapResource'
-      );
+      // Check for shadow map resource using typed get() method
+      const shadowMapResource = resources.get(ShadowMapResource);
 
       if (shadowMapResource && shadowMapResource.isCompiled) {
         // Calculate directional light view-projection matrix

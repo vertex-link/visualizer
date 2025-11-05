@@ -407,7 +407,7 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
         depthTest: true,
         blendMode: "none",
       },
-      bindGroups: [0, 1], // Global uniforms (0) + Lights (1)
+      bindGroups: [0, 1, 2], // Global uniforms (0) + Lights (1) + Shadows (2)
     };
 
     return new MaterialResource(name, descriptor, context);

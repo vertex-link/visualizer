@@ -1,3 +1,5 @@
+import { createShadowBindGroupLayout } from "../webgpu/StandardBindGroupLayouts";
+
 export interface RenderBatch {
   material: any; // MaterialResource
   meshId: string;
@@ -402,27 +404,9 @@ export class ForwardPass extends RenderPass {
       new Float32Array(shadowDataBuffer.getMappedRange()).set(shadowDataArray);
       shadowDataBuffer.unmap();
 
-      // Create bind group layout if not exists
+      // Create bind group layout if not exists (using standard layout)
       if (!this.shadowBindGroupLayout) {
-        this.shadowBindGroupLayout = device.createBindGroupLayout({
-          entries: [
-            {
-              binding: 0,
-              visibility: GPUShaderStage.FRAGMENT,
-              texture: { sampleType: "depth", viewDimension: "2d" },
-            },
-            {
-              binding: 1,
-              visibility: GPUShaderStage.FRAGMENT,
-              sampler: { type: "comparison" },
-            },
-            {
-              binding: 2,
-              visibility: GPUShaderStage.FRAGMENT,
-              buffer: { type: "uniform" },
-            },
-          ],
-        });
+        this.shadowBindGroupLayout = createShadowBindGroupLayout(device);
       }
 
       // Create bind group

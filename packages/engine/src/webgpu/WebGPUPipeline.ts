@@ -7,6 +7,7 @@ import type {
 import {
   createGlobalBindGroupLayout,
   createLightBindGroupLayout,
+  createShadowBindGroupLayout,
 } from "./StandardBindGroupLayouts";
 
 /**
@@ -91,6 +92,9 @@ export class WebGPUPipeline implements IPipeline {
       }
       if (bindGroups.includes(1)) {
         bindGroupLayouts[1] = createLightBindGroupLayout(this.device);
+      }
+      if (bindGroups.includes(2)) {
+        bindGroupLayouts[2] = createShadowBindGroupLayout(this.device);
       }
 
       // Create pipeline layout with explicit bind group layouts

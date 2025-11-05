@@ -55,3 +55,37 @@ export function createLightBindGroupLayout(device: GPUDevice): GPUBindGroupLayou
     ],
   });
 }
+
+/**
+ * Create standard bind group layout for group 2 (shadow mapping).
+ * Contains: shadow map texture (depth 2D), comparison sampler, shadow data uniform
+ */
+export function createShadowBindGroupLayout(device: GPUDevice): GPUBindGroupLayout {
+  return device.createBindGroupLayout({
+    label: "StandardBindGroupLayout_Group2_Shadows",
+    entries: [
+      {
+        binding: 0, // Shadow map texture
+        visibility: GPUShaderStage.FRAGMENT,
+        texture: {
+          sampleType: "depth",
+          viewDimension: "2d",
+        },
+      },
+      {
+        binding: 1, // Shadow sampler
+        visibility: GPUShaderStage.FRAGMENT,
+        sampler: {
+          type: "comparison",
+        },
+      },
+      {
+        binding: 2, // Shadow data (light view-projection matrix)
+        visibility: GPUShaderStage.FRAGMENT,
+        buffer: {
+          type: "uniform",
+        },
+      },
+    ],
+  });
+}
