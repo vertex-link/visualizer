@@ -445,6 +445,7 @@ export class ForwardPass extends RenderPass {
  * - Only executes if shadow data is provided in context
  */
 export class ShadowPass extends RenderPass {
+  private device: GPUDevice | null = null;
   private shadowPipeline: GPURenderPipeline | null = null;
   private shadowBindGroupLayout: GPUBindGroupLayout | null = null;
 
@@ -456,7 +457,9 @@ export class ShadowPass extends RenderPass {
    * Initialize shadow pass resources
    */
   initialize(device: GPUDevice): void {
+    this.device = device;
     this.createShadowPipeline(device);
+    console.log("✅ ShadowPass initialized with device");
   }
 
   /**
