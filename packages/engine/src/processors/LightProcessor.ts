@@ -30,7 +30,6 @@ interface DirectionalLightData {
  * Follows the same pattern as WebGPUProcessor for consistency.
  */
 export class LightProcessor extends Processor {
-  private static VERSION = "v2.0-debug"; // Change this to verify code is loaded
   private device: GPUDevice | null = null;
   private scene: Scene | null = null;
 
@@ -46,13 +45,8 @@ export class LightProcessor extends Processor {
   private pointLights: PointLightData[] = [];
   private directionalLights: DirectionalLightData[] = [];
 
-  // Debug flags
-  private uploadLoggedOnce = false;
-  private executeTasksLoggedOnce = false;
-
   constructor(name = "light") {
     super(name, Tickers.animationFrame());
-    console.log(`🔥 LightProcessor ${LightProcessor.VERSION} instantiated`);
   }
 
   /**
@@ -60,7 +54,6 @@ export class LightProcessor extends Processor {
    */
   initialize(device: GPUDevice): void {
     this.device = device;
-    console.log("✅ LightProcessor initialized");
   }
 
   /**
@@ -74,14 +67,7 @@ export class LightProcessor extends Processor {
    * Main update loop - query scene and upload light data
    */
   protected executeTasks(_deltaTime: number): void {
-    console.log("=== LIGHTPROCESSOR EXECUTETASKS CALLED ===");
-
-    if (!this.scene) {
-      console.log("⚠️ LightProcessor: No scene");
-      return;
-    }
-    if (!this.device) {
-      console.log("⚠️ LightProcessor: No device");
+    if (!this.scene || !this.device) {
       return;
     }
 
@@ -96,7 +82,6 @@ export class LightProcessor extends Processor {
     if (!this.scene) return;
 
     // Collect point lights
-    const oldPointLightCount = this.pointLights.length;
     this.pointLights = [];
     const pointLightActors = this.scene
       .query()
@@ -119,12 +104,7 @@ export class LightProcessor extends Processor {
       });
     }
 
-    if (this.pointLights.length !== oldPointLightCount && this.pointLights.length > 0) {
-      console.log(`💡 Collected ${this.pointLights.length} point lights`);
-    }
-
     // Collect directional lights
-    const oldDirectionalLightCount = this.directionalLights.length;
     this.directionalLights = [];
     const directionalLightActors = this.scene
       .query()
@@ -156,20 +136,13 @@ export class LightProcessor extends Processor {
         intensity: light.intensity,
       });
     }
-
-    if (this.directionalLights.length !== oldDirectionalLightCount && this.directionalLights.length > 0) {
-      console.log(`💡 Collected ${this.directionalLights.length} directional lights`);
-    }
   }
 
   /**
    * Upload light data to GPU buffers
    */
   private uploadLightData(): void {
-    console.log(`📤 uploadLightData called (${this.pointLights.length} point, ${this.directionalLights.length} directional)`);
-
     if (!this.device) {
-      console.log("⚠️ uploadLightData: No device!");
       return;
     }
 
@@ -200,7 +173,6 @@ export class LightProcessor extends Processor {
         size: Math.max(requiredSize, 256), // Min 256 bytes
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
       });
-      console.log(`📦 Created point light buffer (size: ${this.pointLightBuffer.size} bytes)`);
     }
 
     this.device.queue.writeBuffer(this.pointLightBuffer, 0, pointData);
@@ -231,7 +203,6 @@ export class LightProcessor extends Processor {
         size: Math.max(directionalRequiredSize, 256),
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
       });
-      console.log(`📦 Created directional light buffer (size: ${this.directionalLightBuffer.size} bytes)`);
     }
 
     this.device.queue.writeBuffer(this.directionalLightBuffer, 0, directionalData);
@@ -250,7 +221,6 @@ export class LightProcessor extends Processor {
         size: 16, // 4 x u32
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
       });
-      console.log(`📦 Created light count buffer`);
     }
 
     this.device.queue.writeBuffer(this.lightCountBuffer, 0, countData);
@@ -332,7 +302,5 @@ export class LightProcessor extends Processor {
     this.directionalLightBuffer = null;
     this.lightCountBuffer = null;
     this.lightBindGroup = null;
-
-    console.log("🛑 LightProcessor stopped");
   }
 }
