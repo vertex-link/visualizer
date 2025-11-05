@@ -70,9 +70,15 @@ export class WebGPUPipeline implements IPipeline {
       const vertexBufferLayout = this.createWebGPUVertexLayout(descriptor.vertexLayout);
       const instanceBufferLayout = this.createInstanceBufferLayout();
 
+      // Get render state from descriptor or use defaults
+      const renderState = descriptor.renderState || {};
+      const cullMode = renderState.cullMode || "back";
+      const depthWrite = renderState.depthWrite !== false; // Default true
+      const depthTest = renderState.depthTest !== false; // Default true
+
       const depthStencilState: GPUDepthStencilState = {
-        depthWriteEnabled: true,
-        depthCompare: "less",
+        depthWriteEnabled: depthWrite,
+        depthCompare: depthTest ? "less" : "always",
         format: "depth24plus",
       };
 
@@ -112,7 +118,7 @@ export class WebGPUPipeline implements IPipeline {
         },
         primitive: {
           topology: "triangle-list",
-          cullMode: "none", // Keep as 'none' for debugging, or set to 'back'
+          cullMode: cullMode as GPUCullMode,
           frontFace: "ccw",
         },
         depthStencil: depthStencilState,

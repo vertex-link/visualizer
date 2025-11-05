@@ -173,70 +173,68 @@ export class LightProcessor extends Processor {
       return;
     }
 
-    // Point lights
-    if (this.pointLights.length > 0) {
-      const data = new Float32Array(this.pointLights.length * 8); // 8 floats per light
+    // Point lights - always create buffer (even if empty) for bind group compatibility
+    const pointLightCount = Math.max(this.pointLights.length, 1); // At least 1 for empty array
+    const pointData = new Float32Array(pointLightCount * 8); // 8 floats per light
 
-      for (let i = 0; i < this.pointLights.length; i++) {
-        const light = this.pointLights[i];
-        const offset = i * 8;
+    for (let i = 0; i < this.pointLights.length; i++) {
+      const light = this.pointLights[i];
+      const offset = i * 8;
 
-        data[offset + 0] = light.position[0];
-        data[offset + 1] = light.position[1];
-        data[offset + 2] = light.position[2];
-        data[offset + 3] = light.radius;
-        data[offset + 4] = light.color[0];
-        data[offset + 5] = light.color[1];
-        data[offset + 6] = light.color[2];
-        data[offset + 7] = light.intensity;
-      }
-
-      // Create or resize buffer
-      const requiredSize = data.byteLength;
-      if (!this.pointLightBuffer || this.pointLightBuffer.size < requiredSize) {
-        this.pointLightBuffer?.destroy();
-        this.pointLightBuffer = this.device.createBuffer({
-          label: "PointLightBuffer",
-          size: Math.max(requiredSize, 256), // Min 256 bytes
-          usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-        });
-        console.log(`📦 Created point light buffer (size: ${this.pointLightBuffer.size} bytes)`);
-      }
-
-      this.device.queue.writeBuffer(this.pointLightBuffer, 0, data);
+      pointData[offset + 0] = light.position[0];
+      pointData[offset + 1] = light.position[1];
+      pointData[offset + 2] = light.position[2];
+      pointData[offset + 3] = light.radius;
+      pointData[offset + 4] = light.color[0];
+      pointData[offset + 5] = light.color[1];
+      pointData[offset + 6] = light.color[2];
+      pointData[offset + 7] = light.intensity;
     }
 
-    // Directional lights
-    if (this.directionalLights.length > 0) {
-      const data = new Float32Array(this.directionalLights.length * 8); // 8 floats per light
-
-      for (let i = 0; i < this.directionalLights.length; i++) {
-        const light = this.directionalLights[i];
-        const offset = i * 8;
-
-        data[offset + 0] = light.direction[0];
-        data[offset + 1] = light.direction[1];
-        data[offset + 2] = light.direction[2];
-        data[offset + 3] = 0; // padding
-        data[offset + 4] = light.color[0];
-        data[offset + 5] = light.color[1];
-        data[offset + 6] = light.color[2];
-        data[offset + 7] = light.intensity;
-      }
-
-      const requiredSize = data.byteLength;
-      if (!this.directionalLightBuffer || this.directionalLightBuffer.size < requiredSize) {
-        this.directionalLightBuffer?.destroy();
-        this.directionalLightBuffer = this.device.createBuffer({
-          label: "DirectionalLightBuffer",
-          size: Math.max(requiredSize, 256),
-          usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-        });
-        console.log(`📦 Created directional light buffer (size: ${this.directionalLightBuffer.size} bytes)`);
-      }
-
-      this.device.queue.writeBuffer(this.directionalLightBuffer, 0, data);
+    // Create or resize buffer
+    const requiredSize = pointData.byteLength;
+    if (!this.pointLightBuffer || this.pointLightBuffer.size < requiredSize) {
+      this.pointLightBuffer?.destroy();
+      this.pointLightBuffer = this.device.createBuffer({
+        label: "PointLightBuffer",
+        size: Math.max(requiredSize, 256), // Min 256 bytes
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+      });
+      console.log(`📦 Created point light buffer (size: ${this.pointLightBuffer.size} bytes)`);
     }
+
+    this.device.queue.writeBuffer(this.pointLightBuffer, 0, pointData);
+
+    // Directional lights - always create buffer (even if empty) for bind group compatibility
+    const directionalLightCount = Math.max(this.directionalLights.length, 1); // At least 1 for empty array
+    const directionalData = new Float32Array(directionalLightCount * 8); // 8 floats per light
+
+    for (let i = 0; i < this.directionalLights.length; i++) {
+      const light = this.directionalLights[i];
+      const offset = i * 8;
+
+      directionalData[offset + 0] = light.direction[0];
+      directionalData[offset + 1] = light.direction[1];
+      directionalData[offset + 2] = light.direction[2];
+      directionalData[offset + 3] = 0; // padding
+      directionalData[offset + 4] = light.color[0];
+      directionalData[offset + 5] = light.color[1];
+      directionalData[offset + 6] = light.color[2];
+      directionalData[offset + 7] = light.intensity;
+    }
+
+    const directionalRequiredSize = directionalData.byteLength;
+    if (!this.directionalLightBuffer || this.directionalLightBuffer.size < directionalRequiredSize) {
+      this.directionalLightBuffer?.destroy();
+      this.directionalLightBuffer = this.device.createBuffer({
+        label: "DirectionalLightBuffer",
+        size: Math.max(directionalRequiredSize, 256),
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+      });
+      console.log(`📦 Created directional light buffer (size: ${this.directionalLightBuffer.size} bytes)`);
+    }
+
+    this.device.queue.writeBuffer(this.directionalLightBuffer, 0, directionalData);
 
     // Light count buffer (uniform)
     const countData = new Uint32Array([

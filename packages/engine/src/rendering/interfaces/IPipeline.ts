@@ -21,6 +21,17 @@ export interface VertexLayout {
 }
 
 /**
+ * Render state configuration for pipeline.
+ */
+export interface RenderState {
+  cullMode?: "none" | "front" | "back";
+  depthWrite?: boolean;
+  depthTest?: boolean;
+  blendMode?: "none" | "alpha" | "additive";
+  wireframe?: boolean;
+}
+
+/**
  * Pipeline creation descriptor.
  */
 export interface PipelineDescriptor {
@@ -41,6 +52,8 @@ export interface PipelineDescriptor {
   };
   /** Which bind groups the shader uses (default: [0] for just globals) */
   bindGroups?: number[];
+  /** Render state configuration */
+  renderState?: RenderState;
 }
 
 /**

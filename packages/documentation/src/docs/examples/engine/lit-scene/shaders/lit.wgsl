@@ -96,9 +96,6 @@ fn calculateAttenuation(distance: f32, radius: f32) -> f32 {
 // Fragment shader with dynamic lighting
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4f {
-  // DEBUG: Output bright magenta to verify fragment shader is running
-  return vec4f(1.0, 0.0, 1.0, 1.0);
-
   let normal = normalize(input.normal);
   var totalLighting = vec3f(0.0);
 

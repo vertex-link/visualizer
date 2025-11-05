@@ -190,6 +190,7 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
       },
       label: `${this.name}_pipeline`,
       bindGroups: this.payload.bindGroups || [0], // Default to just group 0
+      renderState: this.payload.renderState, // Pass through renderState configuration
     };
 
     return new WebGPUPipeline(device, pipelineDescriptor, this.preferredFormat);
@@ -358,6 +359,55 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
         depthTest: true,
         blendMode: "none",
       },
+    };
+
+    return new MaterialResource(name, descriptor, context);
+  }
+
+  /**
+   * Create lit material with lighting support (bind groups 0 and 1).
+   * This is a simplified factory method for materials that use dynamic lighting.
+   *
+   * The shader should expect:
+   * - Group 0, binding 0: Global uniforms (viewProjection matrix)
+   * - Group 1, binding 0-2: Light data (point lights, directional lights, light counts)
+   * - Instance attributes at locations 4-8: model matrix and color
+   *
+   * @param name Material name
+   * @param shader Shader resource with lighting support
+   * @param color Base color (will be passed to instance data, not as uniform)
+   * @param context Optional context
+   */
+  static createLit(
+    name: string,
+    shader: ShaderResource,
+    color: number[] = [0.8, 0.8, 0.8, 1.0],
+    context?: Context,
+  ): MaterialResource {
+    const descriptor: MaterialDescriptor = {
+      shader,
+      uniforms: {
+        color: {
+          type: "vec4",
+          size: 16,
+          value: new Float32Array(color),
+        },
+      },
+      vertexLayout: {
+        stride: 32, // position(12) + normal(12) + uv(8)
+        attributes: [
+          { location: 0, format: "float32x3", offset: 0 }, // position
+          { location: 1, format: "float32x3", offset: 12 }, // normal
+          { location: 2, format: "float32x2", offset: 24 }, // uv
+        ],
+      },
+      renderState: {
+        cullMode: "back",
+        depthWrite: true,
+        depthTest: true,
+        blendMode: "none",
+      },
+      bindGroups: [0, 1], // Global uniforms (0) + Lights (1)
     };
 
     return new MaterialResource(name, descriptor, context);
