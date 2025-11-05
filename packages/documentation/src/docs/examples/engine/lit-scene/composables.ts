@@ -86,6 +86,12 @@ export function createLitCube(
         { location: 2, format: "float32x2", offset: 24 }, // uv
       ],
     },
+    renderState: {
+      cullMode: "back",
+      depthWrite: true,
+      depthTest: true,
+      blendMode: "none",
+    },
     bindGroups: [0, 1], // This shader uses group 0 (globals) and group 1 (lights)
   });
 
