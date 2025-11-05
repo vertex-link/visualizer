@@ -8,6 +8,7 @@ import type { MaterialResource } from "../resources/MaterialResource";
 import type { MeshResource } from "../resources/MeshResource";
 import { WebGPURenderer } from "../webgpu/WebGPURenderer";
 import type { LightProcessor } from "./LightProcessor";
+import { createGlobalBindGroupLayout, createLightBindGroupLayout } from "../webgpu/StandardBindGroupLayouts";
 
 // Phase 0: Decorator-based update hooks disabled. Keeping placeholder commented out for reference.
 
@@ -433,7 +434,7 @@ export class WebGPUProcessor extends Processor {
   }
 
   /**
-   * Create global bind group for view-projection matrix
+   * Create global bind group for view-projection matrix using standard layout
    */
   private createGlobalBindGroup(): void {
     if (!this.globalUniformBuffer) {
@@ -443,33 +444,10 @@ export class WebGPUProcessor extends Processor {
 
     const device = this.renderer.getDevice()!;
 
-    // console.log(`🔍 Looking for pipeline in ${this.cachedBatches.length} batches...`);
-
-    // Get bind group layout from first available pipeline
-    let bindGroupLayout: GPUBindGroupLayout | null = null;
-    let foundPipeline = false;
-
-    for (const batch of this.cachedBatches) {
-      const pipeline = batch.material.getPipeline();
-      if (pipeline) {
-        // console.log(`✅ Found pipeline in material: ${batch.material.name}`);
-        bindGroupLayout = pipeline.getBindGroupLayout(0);
-        foundPipeline = true;
-        break;
-      } else {
-        // console.log(`❌ No pipeline in material: ${batch.material.name}`);
-      }
-    }
-
-    if (!bindGroupLayout) {
-      console.warn(
-        `⚠️ No pipeline available to get bind group layout (checked ${this.cachedBatches.length} batches, found pipeline: ${foundPipeline})`,
-      );
-      return;
-    }
-
     try {
-      // Create bind group using pipeline's layout
+      // Use standard shared bind group layout (same as pipelines use)
+      const bindGroupLayout = createGlobalBindGroupLayout(device);
+
       this.globalBindGroup = device.createBindGroup({
         label: "GlobalBindGroup",
         layout: bindGroupLayout,
@@ -480,7 +458,7 @@ export class WebGPUProcessor extends Processor {
           },
         ],
       });
-      // console.log("✅ Global bind group created successfully");
+      console.log("✅ Global bind group created with standard layout");
     } catch (error) {
       console.error("❌ Failed to create global bind group:", error);
     }
@@ -494,29 +472,12 @@ export class WebGPUProcessor extends Processor {
       return;
     }
 
-    // Get bind group layout from first available pipeline (group 1)
-    let bindGroupLayout: GPUBindGroupLayout | null = null;
+    const device = this.renderer.getDevice()!;
 
-    for (const batch of this.cachedBatches) {
-      const pipeline = batch.material.getPipeline();
-      if (pipeline) {
-        try {
-          bindGroupLayout = pipeline.getBindGroupLayout(1);
-          break;
-        } catch (error) {
-          // Pipeline might not have group 1, continue searching
-          continue;
-        }
-      }
-    }
+    // Use standard shared bind group layout (same as lit pipelines use)
+    const bindGroupLayout = createLightBindGroupLayout(device);
 
-    if (!bindGroupLayout) {
-      // No pipeline with light bind group layout found
-      // This is normal if using basic shaders without lights
-      return;
-    }
-
-    // Ask light processor to create bind group with the layout
+    // Ask light processor to create bind group with the standard layout
     this.lightBindGroup = this.lightProcessor.createBindGroup(bindGroupLayout);
   }
 
