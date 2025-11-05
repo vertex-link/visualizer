@@ -142,7 +142,7 @@ export function createPlane(
 
   transform.position = position;
   // Rotate 90 degrees around X axis to make it horizontal (ground plane)
-  transform.setRotation([-Math.PI / 2, 0, 0]);
+  transform.setRotationEuler(-Math.PI / 2, 0, 0);
 
   // Create resources (width, depth for ground plane)
   const planeMesh = new PlaneMeshResource(width, depth);
