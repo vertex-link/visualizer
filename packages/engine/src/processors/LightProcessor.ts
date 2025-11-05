@@ -47,6 +47,7 @@ export class LightProcessor extends Processor {
 
   // Debug flags
   private uploadLoggedOnce = false;
+  private executeTasksLoggedOnce = false;
 
   constructor(name = "light") {
     super(name, Tickers.animationFrame());
@@ -80,8 +81,11 @@ export class LightProcessor extends Processor {
       return;
     }
 
+    console.log("🔄 LightProcessor executeTasks: About to collect lights");
     this.collectLights();
+    console.log("🔄 LightProcessor executeTasks: About to upload light data");
     this.uploadLightData();
+    console.log("🔄 LightProcessor executeTasks: Finished");
   }
 
   /**
