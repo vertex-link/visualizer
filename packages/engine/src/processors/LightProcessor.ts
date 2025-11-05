@@ -72,20 +72,19 @@ export class LightProcessor extends Processor {
    * Main update loop - query scene and upload light data
    */
   protected executeTasks(_deltaTime: number): void {
+    console.log("=== LIGHTPROCESSOR EXECUTETASKS CALLED ===");
+
     if (!this.scene) {
-      console.log("⚠️ LightProcessor executeTasks: No scene");
+      console.log("⚠️ LightProcessor: No scene");
       return;
     }
     if (!this.device) {
-      console.log("⚠️ LightProcessor executeTasks: No device");
+      console.log("⚠️ LightProcessor: No device");
       return;
     }
 
-    console.log("🔄 LightProcessor executeTasks: About to collect lights");
     this.collectLights();
-    console.log("🔄 LightProcessor executeTasks: About to upload light data");
     this.uploadLightData();
-    console.log("🔄 LightProcessor executeTasks: Finished");
   }
 
   /**
@@ -118,8 +117,8 @@ export class LightProcessor extends Processor {
       });
     }
 
-    if (this.pointLights.length !== oldPointLightCount) {
-      console.log(`💡 Collected ${this.pointLights.length} point lights:`, this.pointLights);
+    if (this.pointLights.length !== oldPointLightCount && this.pointLights.length > 0) {
+      console.log(`💡 Collected ${this.pointLights.length} point lights`);
     }
 
     // Collect directional lights
@@ -156,8 +155,8 @@ export class LightProcessor extends Processor {
       });
     }
 
-    if (this.directionalLights.length !== oldDirectionalLightCount) {
-      console.log(`💡 Collected ${this.directionalLights.length} directional lights:`, this.directionalLights);
+    if (this.directionalLights.length !== oldDirectionalLightCount && this.directionalLights.length > 0) {
+      console.log(`💡 Collected ${this.directionalLights.length} directional lights`);
     }
   }
 
@@ -165,14 +164,11 @@ export class LightProcessor extends Processor {
    * Upload light data to GPU buffers
    */
   private uploadLightData(): void {
-    if (!this.device) {
-      console.log("⚠️ uploadLightData: No device available");
-      return;
-    }
+    console.log(`📤 uploadLightData called (${this.pointLights.length} point, ${this.directionalLights.length} directional)`);
 
-    if (!this.uploadLoggedOnce) {
-      console.log(`📤 uploadLightData: Uploading ${this.pointLights.length} point lights, ${this.directionalLights.length} directional lights`);
-      this.uploadLoggedOnce = true;
+    if (!this.device) {
+      console.log("⚠️ uploadLightData: No device!");
+      return;
     }
 
     // Point lights
