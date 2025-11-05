@@ -13,6 +13,10 @@ const props = defineProps<{
   categories: Category[];
 }>();
 
+const emit = defineEmits<{
+  navigate: [];
+}>();
+
 // 1. FIX: Get the router instance to handle navigation programmatically.
 const router = useRouter();
 
@@ -33,6 +37,8 @@ const menuModel = computed<MenuItem[]>(() => {
       // This is more robust than relying solely on the `route` property.
       command: () => {
         router.push(feature.route);
+        // Emit navigate event for mobile drawer to close
+        emit("navigate");
       },
     })),
   }));
