@@ -1,283 +1,252 @@
-# Shader Pass System - Usage Guide
+# Shader Pass System
 
-This guide demonstrates how to use the shader pass system in the visualizer engine.
-
-## Overview
-
-The shader pass system allows you to organize rendering into distinct, reusable passes. Each pass runs at a specific priority and can read/write GPU resources.
+The rendering pipeline uses a **render pass** system to organize rendering operations. Passes execute in priority order to perform distinct rendering tasks (shadow mapping, forward rendering, post-processing, etc.).
 
 ## Architecture
 
-### Core Components
+### Core Concepts
 
-1. **RenderPass** - Abstract base class for all passes
-2. **RenderGraph** - Manages and executes passes in priority order
-3. **RenderPassContext** - Shared context passed to all passes
+**RenderPass** - Abstract base class defining the pass interface
+- `initialize(device)` - Setup GPU resources
+- `execute(context)` - Perform rendering
+- `dispose()` - Cleanup resources
 
-### Priority System
+**RenderGraph** - Manages and executes passes in priority order
+- Lives inside `WebGPUProcessor` (not exposed externally)
+- Automatically creates default passes (Shadow, Forward, PostProcess)
 
-Passes execute in priority order (lower numbers first):
-
-```
-ShadowPass (5) → ForwardPass (10) → PostProcessPass (100)
-```
-
-## Using the ShadowPass
-
-The `ShadowPass` renders scene geometry from light perspectives to generate shadow maps.
-
-### Basic Setup
-
+**RenderPassContext** - Data contract passed to all passes
 ```typescript
-import { Engine, ShadowPass } from "@vertex-link/engine";
-import { Scene } from "@vertex-link/space";
-
-async function initWithShadows() {
-  const engine = new Engine({ canvas });
-  await engine.initialize();
-
-  // Get the render graph
-  const renderGraph = engine.getRenderGraph();
-
-  // Add shadow pass (it will automatically execute before forward pass)
-  const shadowPass = new ShadowPass();
-  renderGraph.addPass(shadowPass);
-
-  // Create your scene
-  const scene = new Scene("MyScene");
-  engine.setScene(scene);
-
-  // Add lights with shadow maps (see below)
-  // ...
-
-  engine.start();
+interface RenderPassContext {
+  renderer: WebGPURenderer;
+  batches: RenderBatch[];          // Pre-batched geometry instances
+  camera: CameraComponent;
+  deltaTime: number;
+  globalBindGroup: GPUBindGroup;   // View-projection matrix
+  lightBindGroup?: GPUBindGroup;   // Light data
 }
 ```
 
-### Adding Shadow Maps to Lights
+### SPACe/Engine Pattern
 
-To enable shadow casting for a light, attach a `ShadowMapResource`:
+Following SPACe and engine best practices:
+
+1. **WebGPUProcessor** queries the scene (Actor-Component-System)
+2. **WebGPUProcessor** prepares batches and bind groups
+3. **RenderGraph** executes passes with prepared data
+4. **Passes** only use `RenderPassContext` - they don't query scenes
+
+This maintains clear separation: processors coordinate, passes render.
+
+## Default Passes
+
+The engine automatically creates three default passes:
+
+### ShadowPass (Priority 5)
+Renders scene from light perspectives to generate shadow maps for shadow casting.
+
+**Status:** Implemented structure, execution placeholder
+**Location:** `packages/engine/src/rendering/RenderGraph.ts`
+
+### ForwardPass (Priority 10)
+Main scene rendering with lighting and materials.
+
+**Status:** Fully implemented
+**Location:** `packages/engine/src/rendering/RenderGraph.ts`
+
+### PostProcessPass (Priority 100)
+Post-processing effects (bloom, tonemapping, etc.)
+
+**Status:** Placeholder for future implementation
+**Location:** `packages/engine/src/rendering/RenderGraph.ts`
+
+## Usage
+
+### No Manual Configuration Needed
+
+The pass system works automatically when you use the Engine:
+
+```typescript
+import { Engine } from "@vertex-link/engine";
+import { Scene } from "@vertex-link/space";
+
+// Create engine - passes are automatically set up
+const engine = new Engine({ canvas });
+await engine.initialize();
+
+// Create scene with actors/components
+const scene = new Scene("MyScene");
+// ... add actors, lights, meshes ...
+
+// Set scene - rendering happens automatically
+engine.setScene(scene);
+engine.start();
+
+// That's it! Shadow, Forward, and PostProcess passes run automatically
+```
+
+### How It Works
+
+1. **Engine Constructor**
+   ```typescript
+   // Inside Engine constructor:
+   const processor = new WebGPUProcessor(/* ... */);
+   // WebGPUProcessor creates RenderGraph with default passes
+   ```
+
+2. **WebGPUProcessor.initialize()**
+   ```typescript
+   // Initializes RenderGraph, which calls initialize() on all passes
+   this.renderGraph.initialize(device);
+   ```
+
+3. **Rendering Loop**
+   ```typescript
+   // Each frame:
+   // 1. WebGPUProcessor queries scene for renderables
+   // 2. Batches geometry by material/mesh
+   // 3. Prepares bind groups (camera, lights)
+   // 4. Calls RenderGraph.execute(context)
+   // 5. Each pass receives the context and renders
+   ```
+
+## Shadow Mapping (Future)
+
+To enable shadow casting, add `ShadowMapResource` to light actors:
 
 ```typescript
 import {
   ShadowMapResource,
   ShadowMapType,
   DirectionalLightComponent,
-  TransformComponent
+  TransformComponent,
 } from "@vertex-link/engine";
 import { Actor, ResourceComponent } from "@vertex-link/space";
 
-// Create a directional light with shadows
+// Create light with shadows
 const lightActor = new Actor("DirectionalLight");
 
-// Add transform
+// Position and orient light
 const transform = lightActor.addComponent(TransformComponent);
-transform.setRotation([45, 45, 0]); // Point light direction
+transform.setRotation([45, 45, 0]);
 
 // Add light component
 const light = lightActor.addComponent(DirectionalLightComponent);
 light.color = [1.0, 1.0, 0.9];
 light.intensity = 1.0;
 
-// Create shadow map resource
-const shadowMap = new ShadowMapResource("MainShadowMap", {
-  type: ShadowMapType.SINGLE,
+// Attach shadow map resource
+const shadowMap = new ShadowMapResource("MainShadow", {
+  type: ShadowMapType.SINGLE,  // For directional lights
   resolution: 2048,
-  format: "depth24plus"
+  format: "depth24plus",
 });
 
-// Attach shadow map to light
-const resourceComp = lightActor.addComponent(ResourceComponent);
-resourceComp.addResource(shadowMap);
+const resources = lightActor.addComponent(ResourceComponent);
+resources.addResource(shadowMap);
 
 // Add to scene
 scene.addActor(lightActor);
+
+// ShadowPass will automatically detect and render to this shadow map
 ```
 
-### Shadow Map Types
-
-**SINGLE** - For directional and spot lights
-```typescript
-{
-  type: ShadowMapType.SINGLE,
-  resolution: 2048  // 2048x2048 texture
-}
-```
-
-**CUBE** - For point lights (omnidirectional)
-```typescript
-{
-  type: ShadowMapType.CUBE,
-  resolution: 1024  // 1024x1024 per face (6 faces)
-}
-```
-
-## Creating Custom Passes
-
-### Example: Outline Pass
-
-```typescript
-import { RenderPass, type RenderPassContext } from "@vertex-link/engine";
-
-export class OutlinePass extends RenderPass {
-  private pipeline: GPURenderPipeline | null = null;
-
-  constructor() {
-    super("Outline", 15); // After shadow (5), before post-process (100)
-  }
-
-  initialize(device: GPUDevice): void {
-    // Create pipeline for outline rendering
-    this.pipeline = device.createRenderPipeline({
-      // ... pipeline setup
-    });
-  }
-
-  execute(context: RenderPassContext): void {
-    const { renderer, batches, camera } = context;
-
-    // Implement outline rendering
-    // 1. Render silhouette to stencil buffer
-    // 2. Render expanded geometry where stencil differs
-    // 3. Output outlined objects
-  }
-
-  dispose(): void {
-    this.pipeline = null;
-  }
-}
-```
-
-### Adding Custom Pass to Engine
-
-```typescript
-const engine = new Engine({ canvas });
-await engine.initialize();
-
-const outlinePass = new OutlinePass();
-engine.getRenderGraph().addPass(outlinePass);
-```
+**Note:** Full shadow mapping implementation requires:
+- Extending `RenderPassContext` with shadow map data
+- WebGPUProcessor querying for lights with `ShadowMapResource`
+- ShadowPass using the shadow data from context
 
 ## Best Practices
 
 ### DRY (Don't Repeat Yourself)
-
-✅ **Good** - Reuse standard bind group layouts:
-```typescript
-import { createGlobalBindGroupLayout } from "@vertex-link/engine";
-
-const layout = createGlobalBindGroupLayout(device);
-```
-
-❌ **Bad** - Recreate layouts in every pass:
-```typescript
-const layout = device.createBindGroupLayout({ /* duplicate code */ });
-```
+✅ Passes are defined once in `RenderGraph.ts` with ForwardPass/PostProcessPass
+✅ Reuse bind group layouts and buffer formats across passes
+✅ Share shader code through common WGSL includes
 
 ### KISS (Keep It Simple, Stupid)
-
-✅ **Good** - Single responsibility per pass:
-```typescript
-class ShadowPass extends RenderPass {
-  execute(context) {
-    // Only render shadow maps
-    this.renderShadowMaps(context);
-  }
-}
-```
-
-❌ **Bad** - Multiple responsibilities:
-```typescript
-class MegaPass extends RenderPass {
-  execute(context) {
-    this.renderShadows(context);
-    this.renderGeometry(context);
-    this.renderPostProcess(context);
-    this.renderUI(context);
-  }
-}
-```
+✅ One pass = one responsibility (shadows, forward, post-process)
+✅ Passes only use `RenderPassContext` - no complex state management
+✅ Priority system handles ordering - no manual dependencies
 
 ### SPACe Architecture
+✅ WebGPUProcessor queries scene via Actor-Component-System
+✅ Passes receive prepared data via context
+✅ Resources (ShadowMapResource, MaterialResource) hold GPU data
+✅ Components (LightComponent, MeshRendererComponent) hold entity data
 
-✅ **Good** - Query scene for components:
+## Extending the Pass System
+
+To add a custom pass, edit `RenderGraph.ts`:
+
 ```typescript
-execute(context: RenderPassContext) {
-  // Query scene through context
-  const lights = this.scene
-    .query()
-    .withComponent(LightComponent)
-    .execute();
-}
-```
+// In RenderGraph.ts
+export class MyCustomPass extends RenderPass {
+  constructor(priority = 50) {
+    super("MyCustom", priority);
+  }
 
-❌ **Bad** - Maintain separate light list:
-```typescript
-class ShadowPass {
-  private lights: Light[] = []; // Duplicate state!
+  initialize(device: GPUDevice): void {
+    // Create pipelines, buffers, etc.
+  }
 
-  addLight(light: Light) {
-    this.lights.push(light);
+  execute(context: RenderPassContext): void {
+    const { renderer, batches, camera } = context;
+    // Render using prepared data
+  }
+
+  dispose(): void {
+    // Cleanup GPU resources
   }
 }
+
+// Add to RenderGraph constructor
+constructor() {
+  this.addPass(new ShadowPass(5));
+  this.addPass(new ForwardPass(10));
+  this.addPass(new MyCustomPass(50));  // Your pass here
+  this.addPass(new PostProcessPass(100));
+}
 ```
 
-## Integration with SPACe
+## Implementation Details
 
-Render passes work seamlessly with the Actor-Component-System:
+### Why Passes Are in RenderGraph.ts
 
-```typescript
-// Actors contain components
-const cubeActor = new Actor("Cube");
+The engine follows these patterns:
+- **Cohesion**: Related passes stay together in one file
+- **Simplicity**: No complex module system for built-in passes
+- **Clarity**: Easy to see all passes and their priorities at once
 
-// Components hold data
-cubeActor.addComponent(TransformComponent);
-cubeActor.addComponent(MeshRendererComponent);
+Looking at `ForwardPass` and `PostProcessPass` in `RenderGraph.ts` shows this pattern is intentional.
 
-// Passes query for components
-scene.query()
-  .withComponent(TransformComponent)
-  .withComponent(MeshRendererComponent)
-  .execute();
-```
+### Why RenderGraph Is Internal
 
-## Performance Tips
+The RenderGraph is owned by WebGPUProcessor and not exposed because:
+- **Encapsulation**: Rendering details are processor implementation
+- **Simplicity**: Users work with Engine/Scene, not low-level graph
+- **SPACe pattern**: Configuration happens through Actor-Component-System
 
-1. **Minimize State Changes** - Sort batches by material/pipeline
-2. **Use Instancing** - The `RenderPassContext.batches` are already instanced
-3. **Cache Resources** - Create buffers/pipelines in `initialize()`, not `execute()`
-4. **Conditional Execution** - Disable passes when not needed:
-
-```typescript
-renderGraph.setPassEnabled("Shadow", shadowsEnabled);
-```
+This keeps the API surface small and focused.
 
 ## Debugging
 
-Enable pass logging:
+The RenderGraph logs pass execution:
 
-```typescript
-const renderGraph = engine.getRenderGraph();
-
-// View all passes
-console.log(renderGraph.getPasses());
-
-// Get specific pass
-const shadowPass = renderGraph.getPass("Shadow");
-console.log(shadowPass?.enabled);
 ```
+➕ Added render pass: Shadow (priority: 5)
+➕ Added render pass: Forward (priority: 10)
+➕ Added render pass: PostProcess (priority: 100)
+📊 Configured render graph for forward rendering
+```
+
+Enable verbose logging to see pass execution details in ForwardPass.
 
 ## Future Enhancements
 
-The pass system is designed for extensibility. Planned passes include:
+Planned additions to the pass system:
+- **Deferred rendering pass** - G-buffer generation
+- **SSAO pass** - Screen-space ambient occlusion
+- **Bloom pass** - HDR bloom effect
+- **TAA pass** - Temporal anti-aliasing
 
-- **DeferredPass** - Deferred rendering (G-buffer)
-- **SSAOPass** - Screen-space ambient occlusion
-- **BloomPass** - Bloom post-processing
-- **TAA Pass** - Temporal anti-aliasing
-
----
-
-For more examples, see:
-- `packages/engine/src/rendering/passes/README.md`
-- `packages/documentation/src/docs/examples/engine/lit-scene/`
+These will follow the same pattern: added to RenderGraph constructor with appropriate priority.

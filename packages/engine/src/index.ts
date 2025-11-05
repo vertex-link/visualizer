@@ -58,9 +58,8 @@ export { PerspectiveCamera } from "./rendering/camera/PerspectiveCamera";
 export { Transform } from "./rendering/math/Transform";
 
 // Rendering Pipeline & Processors
-export { RenderGraph, RenderPass, ForwardPass, PostProcessPass } from "./rendering/RenderGraph";
+export { RenderGraph, RenderPass, ForwardPass, PostProcessPass, ShadowPass } from "./rendering/RenderGraph";
 export type { RenderBatch, RenderPassContext } from "./rendering/RenderGraph";
-export { ShadowPass } from "./rendering/passes";
 export { GPUResourcePool } from "./rendering/GPUResourcePool";
 
 // Shadow Mapping

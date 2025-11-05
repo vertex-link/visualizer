@@ -65,11 +65,11 @@ export class RenderGraph {
   private device: GPUDevice | null = null;
 
   constructor() {
-    // Add default passes
-    // Priority order: Shadow (5) -> Forward (10) -> PostProcess (100)
-    this.addPass(new ForwardPass(10));
-    this.addPass(new PostProcessPass(100));
-    // Note: ShadowPass can be added via addPass() when shadow mapping is needed
+    // Add default passes in priority order
+    // Lower priority numbers execute first
+    this.addPass(new ShadowPass(5));      // Shadow mapping
+    this.addPass(new ForwardPass(10));     // Main scene rendering
+    this.addPass(new PostProcessPass(100)); // Post-processing
   }
 
   /**
@@ -338,6 +338,184 @@ export class ForwardPass extends RenderPass {
     } else {
       console.warn("⚠️ Mesh has no vertices or indices!");
     }
+  }
+}
+
+/**
+ * Shadow mapping pass - renders scene from light perspective to generate shadow maps.
+ *
+ * This pass executes before the forward pass to prepare shadow maps for use in lighting.
+ * It renders geometry depth-only from each shadow-casting light's perspective.
+ *
+ * Following SPACe/Engine patterns:
+ * - Receives pre-prepared data via RenderPassContext
+ * - WebGPUProcessor queries scene for lights with ShadowMapResource
+ * - Only executes if shadow data is provided in context
+ */
+export class ShadowPass extends RenderPass {
+  private shadowPipeline: GPURenderPipeline | null = null;
+  private shadowBindGroupLayout: GPUBindGroupLayout | null = null;
+
+  constructor(priority = 5) {
+    super("Shadow", priority);
+  }
+
+  /**
+   * Initialize shadow pass resources
+   */
+  initialize(device: GPUDevice): void {
+    this.createShadowPipeline(device);
+  }
+
+  /**
+   * Create the shadow mapping pipeline (depth-only rendering)
+   */
+  private createShadowPipeline(device: GPUDevice): void {
+    // Bind group layout for shadow uniforms (light view-projection matrix)
+    this.shadowBindGroupLayout = device.createBindGroupLayout({
+      label: "ShadowBindGroupLayout",
+      entries: [
+        {
+          binding: 0,
+          visibility: GPUShaderStage.VERTEX,
+          buffer: { type: "uniform" },
+        },
+      ],
+    });
+
+    const pipelineLayout = device.createPipelineLayout({
+      label: "ShadowPipelineLayout",
+      bindGroupLayouts: [this.shadowBindGroupLayout],
+    });
+
+    // Shader for depth-only rendering
+    const shaderCode = `
+      struct Uniforms {
+        lightViewProj: mat4x4<f32>,
+      }
+
+      @group(0) @binding(0) var<uniform> uniforms: Uniforms;
+
+      struct VertexInput {
+        @location(0) position: vec3<f32>,
+      }
+
+      struct InstanceInput {
+        @location(1) modelRow0: vec4<f32>,
+        @location(2) modelRow1: vec4<f32>,
+        @location(3) modelRow2: vec4<f32>,
+        @location(4) modelRow3: vec4<f32>,
+      }
+
+      struct VertexOutput {
+        @builtin(position) position: vec4<f32>,
+      }
+
+      @vertex
+      fn vs_main(
+        vertex: VertexInput,
+        instance: InstanceInput,
+      ) -> VertexOutput {
+        let modelMatrix = mat4x4<f32>(
+          instance.modelRow0,
+          instance.modelRow1,
+          instance.modelRow2,
+          instance.modelRow3
+        );
+
+        var output: VertexOutput;
+        let worldPos = modelMatrix * vec4<f32>(vertex.position, 1.0);
+        output.position = uniforms.lightViewProj * worldPos;
+        return output;
+      }
+
+      @fragment
+      fn fs_main() -> @builtin(frag_depth) f32 {
+        return 0.0; // Depth is automatically written
+      }
+    `;
+
+    const shaderModule = device.createShaderModule({
+      label: "ShadowShader",
+      code: shaderCode,
+    });
+
+    this.shadowPipeline = device.createRenderPipeline({
+      label: "ShadowPipeline",
+      layout: pipelineLayout,
+      vertex: {
+        module: shaderModule,
+        entryPoint: "vs_main",
+        buffers: [
+          {
+            // Vertex buffer (position only for shadows)
+            arrayStride: 32, // Matches mesh vertex format
+            stepMode: "vertex",
+            attributes: [
+              {
+                shaderLocation: 0,
+                offset: 0,
+                format: "float32x3",
+              },
+            ],
+          },
+          {
+            // Instance buffer (model matrix)
+            arrayStride: 80, // Matches instancing format
+            stepMode: "instance",
+            attributes: [
+              { shaderLocation: 1, offset: 0, format: "float32x4" },
+              { shaderLocation: 2, offset: 16, format: "float32x4" },
+              { shaderLocation: 3, offset: 32, format: "float32x4" },
+              { shaderLocation: 4, offset: 48, format: "float32x4" },
+            ],
+          },
+        ],
+      },
+      fragment: {
+        module: shaderModule,
+        entryPoint: "fs_main",
+        targets: [], // No color targets, depth-only
+      },
+      primitive: {
+        topology: "triangle-list",
+        cullMode: "back",
+      },
+      depthStencil: {
+        format: "depth24plus",
+        depthWriteEnabled: true,
+        depthCompare: "less",
+      },
+    });
+  }
+
+  /**
+   * Execute shadow pass
+   *
+   * Note: Currently a placeholder. Full implementation requires:
+   * - RenderPassContext extension with shadow map data
+   * - WebGPUProcessor querying scene for lights with ShadowMapResource
+   * - Shadow map render target management
+   */
+  execute(context: RenderPassContext): void {
+    // TODO: Implement shadow map rendering when shadow data is added to context
+    // For now, this pass is enabled but does nothing (like PostProcessPass)
+
+    // Future implementation outline:
+    // 1. Check if context has shadow maps (e.g., context.shadowMaps)
+    // 2. For each shadow-casting light:
+    //    - Begin render pass with shadow map as depth attachment
+    //    - Set pipeline and light view-projection uniforms
+    //    - Render batches from light perspective
+    //    - End render pass
+  }
+
+  /**
+   * Cleanup resources
+   */
+  dispose(): void {
+    this.shadowPipeline = null;
+    this.shadowBindGroupLayout = null;
   }
 }
 
