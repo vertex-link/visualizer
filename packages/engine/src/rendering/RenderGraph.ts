@@ -264,10 +264,16 @@ export class ForwardPass extends RenderPass {
 
       // Set shadow bind group if shadow maps are available (group 2)
       if (context.shadowMaps && context.shadowMaps.length > 0) {
+        console.log(`🌑 ForwardPass: Creating shadow bind group for ${context.shadowMaps.length} shadow maps`);
         const shadowBindGroup = this.createShadowBindGroup(renderer, context.shadowMaps);
         if (shadowBindGroup) {
+          console.log("✅ ForwardPass: Shadow bind group created and bound to group 2");
           renderer.setBindGroup(2, shadowBindGroup);
+        } else {
+          console.warn("⚠️ ForwardPass: Failed to create shadow bind group");
         }
+      } else {
+        console.log("🌑 ForwardPass: No shadow maps available");
       }
 
       // Render each instanced batch
@@ -580,6 +586,7 @@ export class ShadowPass extends RenderPass {
    */
   execute(context: RenderPassContext): void {
     if (!this.device || !this.shadowPipeline || !this.shadowBindGroupLayout) {
+      console.log("🌑 ShadowPass: Skipping - not initialized");
       return;
     }
 
@@ -587,8 +594,11 @@ export class ShadowPass extends RenderPass {
 
     // Skip if no shadow maps
     if (!shadowMaps || shadowMaps.length === 0) {
+      console.log("🌑 ShadowPass: Skipping - no shadow maps");
       return;
     }
+
+    console.log(`🌑 ShadowPass: Rendering ${shadowMaps.length} shadow maps for ${batches.length} batches`);
 
     // Render shadow map for each shadow-casting light
     for (const shadowData of shadowMaps) {

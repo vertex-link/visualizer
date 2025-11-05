@@ -546,6 +546,8 @@ export class WebGPUProcessor extends Processor {
       .withComponent(ResourceComponent)
       .execute();
 
+    console.log(`🌑 Shadow: Found ${dirLights.length} directional lights`);
+
     for (const actor of dirLights) {
       const light = actor.getComponent(DirectionalLightComponent);
       const resources = actor.getComponent(ResourceComponent);
@@ -554,6 +556,12 @@ export class WebGPUProcessor extends Processor {
 
       // Check for shadow map resource using typed get() method
       const shadowMapResource = resources.get(ShadowMapResource);
+
+      console.log(`🌑 Shadow: Light ${lightIndex}:`, {
+        enabled: light.enabled,
+        hasShadowMap: !!shadowMapResource,
+        isCompiled: shadowMapResource?.isCompiled,
+      });
 
       if (shadowMapResource && shadowMapResource.isCompiled) {
         // Calculate directional light view-projection matrix
@@ -565,11 +573,14 @@ export class WebGPUProcessor extends Processor {
           shadowMap: shadowMapResource,
           lightViewProj,
         });
+
+        console.log(`✅ Shadow: Added shadow map for light ${lightIndex}`);
       }
 
       lightIndex++;
     }
 
+    console.log(`🌑 Shadow: Collected ${shadowMaps.length} shadow maps total`);
     return shadowMaps;
   }
 
