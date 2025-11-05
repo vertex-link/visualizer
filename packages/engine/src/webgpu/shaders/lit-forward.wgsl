@@ -121,16 +121,17 @@ fn calculateShadow(worldPos: vec3f) -> f32 {
   // Flip Y coordinate (texture coords start at top-left)
   projCoords.y = 1.0 - projCoords.y;
 
-  // Check if position is outside shadow map bounds
-  if (projCoords.x < 0.0 || projCoords.x > 1.0 ||
-      projCoords.y < 0.0 || projCoords.y > 1.0 ||
-      projCoords.z < 0.0 || projCoords.z > 1.0) {
-    return 1.0; // Outside shadow map, fully lit
-  }
+  // Check if position is outside shadow map bounds (but don't early return - uniform control flow)
+  let inBounds = projCoords.x >= 0.0 && projCoords.x <= 1.0 &&
+                 projCoords.y >= 0.0 && projCoords.y <= 1.0 &&
+                 projCoords.z >= 0.0 && projCoords.z <= 1.0;
 
   // Bias to prevent shadow acne
   let bias = 0.005;
   let currentDepth = projCoords.z - bias;
+
+  // Clamp coordinates to valid range for uniform control flow
+  let sampleCoords = clamp(projCoords.xy, vec2f(0.0), vec2f(1.0));
 
   // PCF: Sample shadow map in a 3x3 grid
   let texelSize = 1.0 / 2048.0; // Shadow map resolution
@@ -139,7 +140,7 @@ fn calculateShadow(worldPos: vec3f) -> f32 {
   for (var x = -1; x <= 1; x++) {
     for (var y = -1; y <= 1; y++) {
       let offset = vec2f(f32(x), f32(y)) * texelSize;
-      let samplePos = projCoords.xy + offset;
+      let samplePos = sampleCoords + offset;
 
       // Use comparison sampler (returns 1.0 if currentDepth < shadowMap, 0.0 otherwise)
       shadow_factor += textureSampleCompare(
@@ -154,7 +155,8 @@ fn calculateShadow(worldPos: vec3f) -> f32 {
   // Average the 9 samples
   shadow_factor /= 9.0;
 
-  return shadow_factor;
+  // If out of bounds, return fully lit (1.0), otherwise return shadow factor
+  return select(1.0, shadow_factor, inBounds);
 }
 
 // Fragment shader with dynamic lighting
