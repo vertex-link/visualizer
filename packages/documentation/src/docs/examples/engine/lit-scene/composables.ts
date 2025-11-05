@@ -11,8 +11,7 @@ import {
 } from "@vertex-link/engine";
 import { Actor, ResourceComponent, type Scene } from "@vertex-link/space";
 import { CubeMeshResource } from "@/example-resources/CubeMeshResource";
-import fragmentWGSL from "@vertex-link/engine/src/webgpu/shaders/lit-forward.wgsl?raw";
-import vertexWGSL from "@vertex-link/engine/src/webgpu/shaders/lit-forward.wgsl?raw";
+import shaderWGSL from "./shaders/lit.wgsl?raw";
 
 /**
  * Creates a perspective camera actor
@@ -59,8 +58,8 @@ export function createLitCube(
   // Create resources
   const cubeMesh = new CubeMeshResource(1);
   const shader = new ShaderResource("LitShader", {
-    vertexSource: vertexWGSL,
-    fragmentSource: fragmentWGSL,
+    vertexSource: shaderWGSL,
+    fragmentSource: shaderWGSL,
     entryPoints: { vertex: "vs_main", fragment: "fs_main" },
   } as any);
 
