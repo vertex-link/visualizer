@@ -45,6 +45,9 @@ export class LightProcessor extends Processor {
   private pointLights: PointLightData[] = [];
   private directionalLights: DirectionalLightData[] = [];
 
+  // Debug flags
+  private uploadLoggedOnce = false;
+
   constructor(name = "light") {
     super(name, Tickers.animationFrame());
   }
@@ -68,7 +71,14 @@ export class LightProcessor extends Processor {
    * Main update loop - query scene and upload light data
    */
   protected executeTasks(_deltaTime: number): void {
-    if (!this.scene || !this.device) return;
+    if (!this.scene) {
+      console.log("⚠️ LightProcessor executeTasks: No scene");
+      return;
+    }
+    if (!this.device) {
+      console.log("⚠️ LightProcessor executeTasks: No device");
+      return;
+    }
 
     this.collectLights();
     this.uploadLightData();
@@ -151,7 +161,15 @@ export class LightProcessor extends Processor {
    * Upload light data to GPU buffers
    */
   private uploadLightData(): void {
-    if (!this.device) return;
+    if (!this.device) {
+      console.log("⚠️ uploadLightData: No device available");
+      return;
+    }
+
+    if (!this.uploadLoggedOnce) {
+      console.log(`📤 uploadLightData: Uploading ${this.pointLights.length} point lights, ${this.directionalLights.length} directional lights`);
+      this.uploadLoggedOnce = true;
+    }
 
     // Point lights
     if (this.pointLights.length > 0) {
