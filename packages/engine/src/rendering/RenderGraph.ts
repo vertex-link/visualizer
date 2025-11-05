@@ -246,6 +246,7 @@ export class ForwardPass extends RenderPass {
       }
 
       // Render each instanced batch
+      console.log(`🎨 ForwardPass: Rendering ${batches.length} batches`);
       for (const batch of batches) {
         this.renderInstancedBatch(renderer, batch);
       }
@@ -278,7 +279,12 @@ export class ForwardPass extends RenderPass {
    * Render an instanced batch with single draw call
    */
   private renderInstancedBatch(renderer: any, batch: RenderBatch): void {
-    if (batch.instances.size === 0) return;
+    console.log(`🔷 Rendering batch: ${batch.material.name}, ${batch.instances.size} instances`);
+
+    if (batch.instances.size === 0) {
+      console.warn("⚠️ Batch has 0 instances");
+      return;
+    }
 
     // Get pipeline from material
     const pipeline = batch.material.getPipeline();
@@ -322,12 +328,14 @@ export class ForwardPass extends RenderPass {
 
     // Single draw call for all instances
     if (mesh.indexCount > 0) {
+      console.log(`🚀 drawIndexed(${mesh.indexCount}, ${batch.instances.size})`);
       renderer.drawIndexed(mesh.indexCount, batch.instances.size);
     } else if (mesh.vertexCount > 0) {
+      console.log(`🚀 draw(${mesh.vertexCount}, ${batch.instances.size})`);
       renderer.draw(mesh.vertexCount, batch.instances.size);
+    } else {
+      console.warn("⚠️ Mesh has no vertices or indices!");
     }
-
-    // console.log(`🚀 Rendered ${batch.instances.size} instances in single draw call`);
   }
 }
 
