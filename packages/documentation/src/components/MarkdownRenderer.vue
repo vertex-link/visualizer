@@ -3,7 +3,96 @@
 </template>
 <style scoped>
 .markdown-body {
-    padding-bottom: 3rem;
+  padding: 1.5rem;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Mobile-friendly markdown content */
+.markdown-body :deep(h1) {
+  font-size: 1.75rem;
+  line-height: 1.3;
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.markdown-body :deep(h2) {
+  font-size: 1.5rem;
+  line-height: 1.3;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.markdown-body :deep(h3) {
+  font-size: 1.25rem;
+  line-height: 1.3;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.markdown-body :deep(p) {
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.markdown-body :deep(pre) {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 0.375rem;
+  margin: 1rem 0;
+  max-width: 100%;
+}
+
+.markdown-body :deep(code) {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.markdown-body :deep(img) {
+  max-width: 100%;
+  height: auto;
+}
+
+.markdown-body :deep(table) {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.markdown-body :deep(ul),
+.markdown-body :deep(ol) {
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.markdown-body :deep(li) {
+  line-height: 1.6;
+  margin-bottom: 0.25rem;
+}
+
+/* Mobile responsive */
+@media (max-width: 767px) {
+  .markdown-body {
+    padding: 1rem;
+  }
+
+  .markdown-body :deep(h1) {
+    font-size: 1.5rem;
+  }
+
+  .markdown-body :deep(h2) {
+    font-size: 1.25rem;
+  }
+
+  .markdown-body :deep(h3) {
+    font-size: 1.125rem;
+  }
+
+  .markdown-body :deep(pre) {
+    font-size: 0.875rem;
+    margin: 0.75rem 0;
+  }
 }
 </style>
 

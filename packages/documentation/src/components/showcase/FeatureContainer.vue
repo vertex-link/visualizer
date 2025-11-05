@@ -1,8 +1,9 @@
 <template>
-  <Panel class="feature-panel">
+  <!-- Desktop Layout -->
+  <Panel v-if="!isMobile" class="feature-panel">
     <template #header>
       <div class="feature-header-content">
-        <div>
+        <div class="header-text">
           <h1 class="feature-title">{{ route.meta.title }}</h1>
           <p class="feature-description">{{ route.meta.description }}</p>
         </div>
@@ -17,8 +18,7 @@
       </div>
     </template>
 
-    <!-- Desktop: Splitter Layout -->
-    <Splitter v-if="!isMobile" class="feature-splitter">
+    <Splitter class="feature-splitter">
       <SplitterPanel :min-size="40" class="flex items-center justify-center">
         <iframe ref="iframeRef" :src="iframeUrl" class="demo-iframe" frameborder="0"></iframe>
       </SplitterPanel>
@@ -50,14 +50,32 @@
         </Accordion>
       </SplitterPanel>
     </Splitter>
+  </Panel>
 
-    <!-- Mobile: Stacked Layout -->
-    <div v-else class="mobile-stack">
-      <div class="mobile-demo-container">
-        <iframe ref="iframeRef" :src="iframeUrl" class="demo-iframe" frameborder="0"></iframe>
+  <!-- Mobile Layout -->
+  <div v-else class="mobile-container">
+    <div class="mobile-header">
+      <div class="header-text">
+        <h1 class="feature-title">{{ route.meta.title }}</h1>
+        <p class="feature-description">{{ route.meta.description }}</p>
       </div>
+      <Button
+        icon="pi pi-refresh"
+        severity="secondary"
+        text
+        rounded
+        size="small"
+        @click="resetParameters"
+        aria-label="Reset parameters"
+      />
+    </div>
 
-      <Accordion :multiple="true" :active-index="[0]" class="mobile-accordion">
+    <div class="mobile-demo-container">
+      <iframe ref="iframeRef" :src="iframeUrl" class="demo-iframe" frameborder="0"></iframe>
+    </div>
+
+    <div class="mobile-controls">
+      <Accordion :multiple="false" :active-index="0" class="mobile-accordion">
         <AccordionTab>
           <template #header>
             <div class="panel-header">
@@ -82,7 +100,7 @@
         </AccordionTab>
       </Accordion>
     </div>
-  </Panel>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -169,9 +187,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* Minimal, layout-only CSS. All colors, borders, fonts, etc.,
-  are handled by the PrimeVue theme.
-*/
+/* Desktop Panel Layout */
 .feature-panel {
   height: 100%;
   display: flex;
@@ -197,52 +213,149 @@ onUnmounted(() => {
   gap: 1rem;
 }
 
+.header-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.feature-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem 0;
+  line-height: 1.3;
+}
+
+.feature-description {
+  margin: 0;
+  color: var(--p-text-muted-color);
+  line-height: 1.5;
+}
+
 .demo-iframe {
   width: 100%;
   height: 100%;
+  border: none;
 }
 
 .panel-header {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  font-weight: 500;
 }
 
-/* Mobile Stacked Layout */
-.mobile-stack {
+/* Mobile Container Layout */
+.mobile-container {
   display: flex;
   flex-direction: column;
   height: 100%;
-  width: 100%;
+  background-color: var(--p-surface-ground);
+}
+
+.mobile-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  background-color: var(--p-surface-card);
+  border-bottom: 1px solid var(--p-surface-border);
+  flex-shrink: 0;
+}
+
+.mobile-header .header-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.mobile-header .feature-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem 0;
+  line-height: 1.3;
+}
+
+.mobile-header .feature-description {
+  font-size: 0.875rem;
+  margin: 0;
+  color: var(--p-text-muted-color);
+  line-height: 1.4;
 }
 
 .mobile-demo-container {
-  min-height: 300px;
-  height: 50vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: relative;
+  width: 100%;
+  height: 0;
+  padding-bottom: 56.25%; /* 16:9 aspect ratio */
+  background-color: var(--p-surface-card);
   border-bottom: 1px solid var(--p-surface-border);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.mobile-demo-container .demo-iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.mobile-controls {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background-color: var(--p-surface-ground);
 }
 
 .mobile-accordion {
-  flex-grow: 1;
-  overflow-y: auto;
+  width: 100%;
 }
 
-/* Responsive adjustments */
-@media (max-width: 767px) {
-  .feature-title {
-    font-size: 1.25rem;
+/* Touch-friendly accordion headers on mobile */
+.mobile-accordion :deep(.p-accordion-header-link) {
+  padding: 1rem;
+  min-height: 3rem;
+  font-size: 0.9375rem;
+}
+
+.mobile-accordion :deep(.p-accordion-content) {
+  padding: 0.75rem;
+}
+
+.mobile-accordion :deep(.panel-header) {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.mobile-accordion :deep(.panel-header i) {
+  font-size: 1.125rem;
+}
+
+/* Landscape mobile optimization */
+@media (max-width: 767px) and (orientation: landscape) {
+  .mobile-demo-container {
+    padding-bottom: 40%;
+    max-height: 60vh;
+  }
+}
+
+/* Small mobile devices */
+@media (max-width: 400px) {
+  .mobile-header {
+    padding: 0.875rem;
   }
 
-  .feature-description {
-    font-size: 0.875rem;
+  .mobile-header .feature-title {
+    font-size: 1rem;
   }
 
-  .feature-header-content {
-    flex-direction: column;
-    align-items: flex-start;
+  .mobile-header .feature-description {
+    font-size: 0.8125rem;
+  }
+
+  .mobile-demo-container {
+    padding-bottom: 75%; /* 4:3 aspect ratio for smaller screens */
   }
 }
 </style>
