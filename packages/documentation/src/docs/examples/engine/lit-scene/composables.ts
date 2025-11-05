@@ -11,6 +11,7 @@ import {
 } from "@vertex-link/engine";
 import { Actor, ResourceComponent, type Scene } from "@vertex-link/space";
 import { CubeMeshResource } from "@/example-resources/CubeMeshResource";
+import { PlaneMeshResource } from "@/example-resources/PlaneMeshResource";
 import shaderWGSL from "./shaders/lit.wgsl?raw";
 
 /**
@@ -123,4 +124,41 @@ export function createDirectionalLight(
 
   scene.addActor(lightActor);
   return lightActor;
+}
+
+/**
+ * Creates a plane (ground) with lit material
+ */
+export function createPlane(
+  scene: Scene,
+  position: Vec3 = [0, 0, 0],
+  width: number = 10,
+  height: number = 10,
+  color: [number, number, number, number] = [0.6, 0.6, 0.6, 1.0],
+): Actor {
+  const planeActor = new Actor("Plane");
+  const transform = planeActor.addComponent(TransformComponent);
+  planeActor.addComponent(MeshRendererComponent);
+
+  transform.position = position;
+
+  console.log(`🟦 Plane at:`, position);
+
+  // Create resources
+  const planeMesh = new PlaneMeshResource(width, height);
+  const shader = new ShaderResource("LitShader", {
+    vertexSource: shaderWGSL,
+    fragmentSource: shaderWGSL,
+    entryPoints: { vertex: "vs_main", fragment: "fs_main" },
+  } as any);
+
+  // Create lit material using the simplified factory method
+  const material = MaterialResource.createLit("PlaneMaterial", shader, color);
+
+  const resources = planeActor.addComponent(ResourceComponent);
+  resources.add(planeMesh);
+  resources.add(material);
+
+  scene.addActor(planeActor);
+  return planeActor;
 }

@@ -5,6 +5,7 @@ import {
   createLitCube,
   createPointLight,
   createDirectionalLight,
+  createPlane,
 } from "./composables";
 
 async function init(container: HTMLElement) {
@@ -25,6 +26,10 @@ async function init(container: HTMLElement) {
   // Create camera
   createCamera(scene, canvas, [0, 5, 10]);
 
+  // Create ground plane
+  console.log("Creating ground plane at [0, 0, 0]");
+  createPlane(scene, [0, 0, 0], 20, 20, [0.5, 0.5, 0.5, 1.0]);
+
   // Create one cube above origin
   console.log("Creating cube at [0, 2, 0]");
   createLitCube(scene, [0, 2, 0], [0.8, 0.8, 0.8, 1.0]);
@@ -41,6 +46,7 @@ async function init(container: HTMLElement) {
   engine.start();
 
   console.log("🎨 Lit scene initialized with dynamic lighting!");
+  console.log("- 1 ground plane");
   console.log("- 1 cube");
   console.log("- 1 point light");
   console.log("- 1 directional light");
