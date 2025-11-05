@@ -6,113 +6,12 @@
   <title>Dynamic Lighting Scene</title>
   <style>
     html, body, #app { height: 100%; margin: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     #container { position: relative; width: 100%; height: 100%; background: #111; }
     canvas { width: 100%; height: 100%; display: block; }
-
-    #controls {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: rgba(0, 0, 0, 0.85);
-      color: white;
-      padding: 15px;
-      border-radius: 8px;
-      min-width: 250px;
-      max-height: 90vh;
-      overflow-y: auto;
-      backdrop-filter: blur(10px);
-    }
-    #controls h3 {
-      margin: 0 0 12px 0;
-      font-size: 14px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-      padding-bottom: 8px;
-      font-weight: 600;
-    }
-    .control-group {
-      margin-bottom: 12px;
-    }
-    .control-group label {
-      display: block;
-      font-size: 12px;
-      margin-bottom: 5px;
-      color: #bbb;
-    }
-    .control-group input[type="range"] {
-      width: 100%;
-      margin-top: 3px;
-    }
-    .control-group input[type="checkbox"] {
-      margin-right: 5px;
-      vertical-align: middle;
-    }
-    .value-display {
-      font-size: 11px;
-      color: #888;
-      float: right;
-      font-family: monospace;
-    }
   </style>
 </head>
 <body>
   <div id="container"></div>
-  <div id="controls">
-    <div style="margin-bottom: 15px; padding: 10px; background: rgba(255, 193, 7, 0.15); border-left: 3px solid #ffc107; font-size: 11px; line-height: 1.4;">
-      <strong>ℹ️ Note:</strong> Shadow mapping is structurally implemented but not yet active. The ShadowPass architecture is in place for future completion.
-    </div>
-    <h3>☀️ Point Light</h3>
-    <div class="control-group">
-      <label>
-        <input type="checkbox" id="pointEnabled" checked />
-        Enabled
-      </label>
-    </div>
-    <div class="control-group">
-      <label>
-        X Position <span class="value-display" id="pointXValue">3.0</span>
-      </label>
-      <input type="range" id="pointX" min="-10" max="10" step="0.5" value="3" />
-    </div>
-    <div class="control-group">
-      <label>
-        Y Position <span class="value-display" id="pointYValue">5.0</span>
-      </label>
-      <input type="range" id="pointY" min="1" max="15" step="0.5" value="5" />
-    </div>
-    <div class="control-group">
-      <label>
-        Z Position <span class="value-display" id="pointZValue">3.0</span>
-      </label>
-      <input type="range" id="pointZ" min="-10" max="10" step="0.5" value="3" />
-    </div>
-    <div class="control-group">
-      <label>
-        Intensity <span class="value-display" id="pointIntensityValue">10.0</span>
-      </label>
-      <input type="range" id="pointIntensity" min="0" max="50" step="1" value="10" />
-    </div>
-    <div class="control-group">
-      <label>
-        Radius <span class="value-display" id="pointRadiusValue">15.0</span>
-      </label>
-      <input type="range" id="pointRadius" min="1" max="30" step="1" value="15" />
-    </div>
-
-    <h3>🌤️ Directional Light</h3>
-    <div class="control-group">
-      <label>
-        <input type="checkbox" id="dirEnabled" checked />
-        Enabled
-      </label>
-    </div>
-    <div class="control-group">
-      <label>
-        Intensity <span class="value-display" id="dirIntensityValue">0.5</span>
-      </label>
-      <input type="range" id="dirIntensity" min="0" max="2" step="0.1" value="0.5" />
-    </div>
-  </div>
   <script type="module" src="./script.ts"></script>
 </body>
 </html>
