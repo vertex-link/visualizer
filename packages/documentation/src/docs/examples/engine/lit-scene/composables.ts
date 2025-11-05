@@ -73,6 +73,14 @@ export function createLitCube(
         value: color,
       },
     },
+    vertexLayout: {
+      stride: 32, // position(12) + normal(12) + uv(8)
+      attributes: [
+        { location: 0, format: "float32x3", offset: 0 }, // position
+        { location: 1, format: "float32x3", offset: 12 }, // normal
+        { location: 2, format: "float32x2", offset: 24 }, // uv
+      ],
+    },
     bindGroups: [0, 1], // This shader uses group 0 (globals) and group 1 (lights)
   });
 
