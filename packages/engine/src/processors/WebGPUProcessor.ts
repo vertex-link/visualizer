@@ -382,7 +382,15 @@ export class WebGPUProcessor extends Processor {
       if (!batch.isDirty || !batch.instanceData || !batch.instanceBuffer) continue;
 
       let offset = 0;
+      let firstInstance = true;
       for (const instance of batch.instances.values()) {
+        // DEBUG: Log first instance data
+        if (firstInstance) {
+          console.log("🎲 First instance model matrix:", Array.from(instance.modelMatrix));
+          console.log("🎨 First instance color:", Array.from(instance.color));
+          firstInstance = false;
+        }
+
         // Pack model matrix (16 floats)
         batch.instanceData.set(instance.modelMatrix, offset);
         offset += 16;
@@ -414,7 +422,13 @@ export class WebGPUProcessor extends Processor {
 
     const device = this.renderer.getDevice()!;
     const globalData = new Float32Array(16);
-    globalData.set(this.activeCamera.getViewProjectionMatrix());
+    const vpMatrix = this.activeCamera.getViewProjectionMatrix();
+    globalData.set(vpMatrix);
+
+    // DEBUG: Log VP matrix once
+    if (!this.globalUniformBuffer) {
+      console.log("🎥 View-Projection Matrix:", Array.from(vpMatrix));
+    }
 
     // Create or update global uniform buffer
     if (this.globalUniformBuffer) {
