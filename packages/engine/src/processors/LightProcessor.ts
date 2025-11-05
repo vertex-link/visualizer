@@ -30,6 +30,7 @@ interface DirectionalLightData {
  * Follows the same pattern as WebGPUProcessor for consistency.
  */
 export class LightProcessor extends Processor {
+  private static VERSION = "v2.0-debug"; // Change this to verify code is loaded
   private device: GPUDevice | null = null;
   private scene: Scene | null = null;
 
@@ -51,6 +52,7 @@ export class LightProcessor extends Processor {
 
   constructor(name = "light") {
     super(name, Tickers.animationFrame());
+    console.log(`🔥 LightProcessor ${LightProcessor.VERSION} instantiated`);
   }
 
   /**
