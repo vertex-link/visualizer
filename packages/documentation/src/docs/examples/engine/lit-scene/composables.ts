@@ -24,7 +24,8 @@ export function createCamera(
   const cameraActor = new Actor("Camera");
   const camTransform = cameraActor.addComponent(TransformComponent);
   camTransform.position = position;
-  camTransform.lookAt([0, 0, 0]);
+  // DON'T call lookAt() - it causes double transformation in CameraComponent.updateViewMatrix()
+  // The camera's default rotation (identity) means it looks down -Z axis, which is correct
 
   const cam = cameraActor.addComponent(CameraComponent, {
     projectionType: ProjectionType.PERSPECTIVE,
