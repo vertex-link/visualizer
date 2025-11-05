@@ -82,7 +82,11 @@ export class LightProcessor extends Processor {
 
     // Collect point lights
     this.pointLights = [];
-    const pointLightActors = this.scene.query([PointLightComponent, TransformComponent]);
+    const pointLightActors = this.scene
+      .query()
+      .withComponent(PointLightComponent)
+      .withComponent(TransformComponent)
+      .execute();
 
     for (const actor of pointLightActors) {
       const light = actor.getComponent(PointLightComponent);
@@ -101,7 +105,10 @@ export class LightProcessor extends Processor {
 
     // Collect directional lights
     this.directionalLights = [];
-    const directionalLightActors = this.scene.query([DirectionalLightComponent]);
+    const directionalLightActors = this.scene
+      .query()
+      .withComponent(DirectionalLightComponent)
+      .execute();
 
     for (const actor of directionalLightActors) {
       const light = actor.getComponent(DirectionalLightComponent);

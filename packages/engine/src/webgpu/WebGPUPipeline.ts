@@ -72,32 +72,11 @@ export class WebGPUPipeline implements IPipeline {
         format: "depth24plus",
       };
 
-      // --- ** Explicit Bind Group Layout Definition ** ---
-      // This defines what group 0 expects: one uniform buffer at binding 0.
-      const bindGroupLayout = this.device.createBindGroupLayout({
-        label: `${this.label}_BindGroupLayout_Group0`,
-        entries: [
-          {
-            binding: 0, // Corresponds to @binding(0) in your shader
-            visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, // Accessible in both VS & FS
-            buffer: {
-              type: "uniform",
-            },
-          },
-        ],
-      });
-
-      // Create the overall pipeline layout using the explicit bind group layout(s).
-      // For this pipeline, we only have one bind group (group 0).
-      const explicitPipelineLayout = this.device.createPipelineLayout({
-        label: `${this.label}_PipelineLayout`,
-        bindGroupLayouts: [bindGroupLayout], // Array of BGLs, for group 0, 1, 2...
-      });
-      // --- ** End of Explicit Layout Definition ** ---
-
+      // Use "auto" layout - WebGPU will automatically create bind group layouts
+      // based on what the shader actually uses (supports group 0, group 1, etc.)
       this.pipeline = this.device.createRenderPipeline({
         label: this.label,
-        layout: explicitPipelineLayout, // <--- USE THE EXPLICIT LAYOUT
+        layout: "auto", // <--- AUTO LAYOUT (generates layouts from shader)
         vertex: {
           module: vertexShaderModule,
           entryPoint: descriptor.entryPoints?.vertex || "vs_main",
@@ -121,7 +100,7 @@ export class WebGPUPipeline implements IPipeline {
       });
 
       this.isCompiled = true;
-      console.log(`Pipeline '${this.label}' compiled successfully with explicit layout.`);
+      console.log(`Pipeline '${this.label}' compiled successfully with auto layout.`);
     } catch (error) {
       console.error(`Failed to compile pipeline '${this.label}':`, error);
       this.isCompiled = false;
