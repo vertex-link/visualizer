@@ -81,6 +81,7 @@ export class LightProcessor extends Processor {
     if (!this.scene) return;
 
     // Collect point lights
+    const oldPointLightCount = this.pointLights.length;
     this.pointLights = [];
     const pointLightActors = this.scene
       .query()
@@ -103,7 +104,12 @@ export class LightProcessor extends Processor {
       });
     }
 
+    if (this.pointLights.length !== oldPointLightCount) {
+      console.log(`💡 Collected ${this.pointLights.length} point lights:`, this.pointLights);
+    }
+
     // Collect directional lights
+    const oldDirectionalLightCount = this.directionalLights.length;
     this.directionalLights = [];
     const directionalLightActors = this.scene
       .query()
@@ -134,6 +140,10 @@ export class LightProcessor extends Processor {
         color: [light.color[0], light.color[1], light.color[2]],
         intensity: light.intensity,
       });
+    }
+
+    if (this.directionalLights.length !== oldDirectionalLightCount) {
+      console.log(`💡 Collected ${this.directionalLights.length} directional lights:`, this.directionalLights);
     }
   }
 
