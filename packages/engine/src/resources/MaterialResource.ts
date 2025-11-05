@@ -38,6 +38,8 @@ export interface MaterialDescriptor {
     blendMode?: "none" | "alpha" | "additive";
     wireframe?: boolean;
   };
+  /** Which bind groups the shader uses (default: [0] for just globals) */
+  bindGroups?: number[];
 }
 
 /**
@@ -187,6 +189,7 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
         attributes: [{ location: 0, format: "float32x3", offset: 0 }],
       },
       label: `${this.name}_pipeline`,
+      bindGroups: this.payload.bindGroups || [0], // Default to just group 0
     };
 
     return new WebGPUPipeline(device, pipelineDescriptor, this.preferredFormat);

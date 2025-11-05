@@ -4,6 +4,10 @@ import type {
   PipelineDescriptor,
   VertexLayout,
 } from "../rendering/interfaces/IPipeline";
+import {
+  createGlobalBindGroupLayout,
+  createLightBindGroupLayout,
+} from "./StandardBindGroupLayouts";
 
 /**
  * WebGPU implementation of the IPipeline interface.
@@ -72,11 +76,26 @@ export class WebGPUPipeline implements IPipeline {
         format: "depth24plus",
       };
 
-      // Use "auto" layout - WebGPU will automatically create bind group layouts
-      // based on what the shader actually uses (supports group 0, group 1, etc.)
+      // Create explicit bind group layouts based on which groups shader uses
+      const bindGroups = descriptor.bindGroups || [0]; // Default: only group 0 (globals)
+      const bindGroupLayouts: GPUBindGroupLayout[] = [];
+
+      if (bindGroups.includes(0)) {
+        bindGroupLayouts[0] = createGlobalBindGroupLayout(this.device);
+      }
+      if (bindGroups.includes(1)) {
+        bindGroupLayouts[1] = createLightBindGroupLayout(this.device);
+      }
+
+      // Create pipeline layout with explicit bind group layouts
+      const pipelineLayout = this.device.createPipelineLayout({
+        label: `${this.label}_PipelineLayout`,
+        bindGroupLayouts: bindGroupLayouts.filter(layout => layout !== undefined),
+      });
+
       this.pipeline = this.device.createRenderPipeline({
         label: this.label,
-        layout: "auto", // <--- AUTO LAYOUT (generates layouts from shader)
+        layout: pipelineLayout, // <--- EXPLICIT SHARED LAYOUT
         vertex: {
           module: vertexShaderModule,
           entryPoint: descriptor.entryPoints?.vertex || "vs_main",
@@ -100,7 +119,7 @@ export class WebGPUPipeline implements IPipeline {
       });
 
       this.isCompiled = true;
-      console.log(`Pipeline '${this.label}' compiled successfully with auto layout.`);
+      console.log(`Pipeline '${this.label}' compiled successfully with bind groups: [${bindGroups.join(", ")}]`);
     } catch (error) {
       console.error(`Failed to compile pipeline '${this.label}':`, error);
       this.isCompiled = false;

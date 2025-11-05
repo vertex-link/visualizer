@@ -63,7 +63,18 @@ export function createLitCube(
     entryPoints: { vertex: "vs_main", fragment: "fs_main" },
   } as any);
 
-  const material = MaterialResource.createBasic("LitMaterial", shader, color);
+  // Create material with bind groups [0, 1] for globals + lights
+  const material = new MaterialResource("LitMaterial", {
+    shader,
+    uniforms: {
+      color: {
+        type: "vec4",
+        size: 16,
+        value: color,
+      },
+    },
+    bindGroups: [0, 1], // This shader uses group 0 (globals) and group 1 (lights)
+  });
 
   const resources = cubeActor.addComponent(ResourceComponent);
   resources.add(cubeMesh);

@@ -39,6 +39,8 @@ export interface PipelineDescriptor {
     /** Fragment shader entry point */
     fragment?: string;
   };
+  /** Which bind groups the shader uses (default: [0] for just globals) */
+  bindGroups?: number[];
 }
 
 /**
