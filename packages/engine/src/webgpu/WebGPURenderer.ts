@@ -122,7 +122,6 @@ export class WebGPURenderer {
     const height = this.canvas?.height || 600;
     this.currentRenderPass.setViewport(0, 0, width, height, 0, 1);
     this.currentRenderPass.setScissorRect(0, 0, width, height);
-    console.log(`🖼️ Viewport set to ${width}x${height}`);
 
     return true;
   }

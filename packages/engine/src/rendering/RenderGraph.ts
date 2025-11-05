@@ -67,7 +67,8 @@ export class RenderGraph {
   constructor() {
     // Add default passes in priority order
     // Lower priority numbers execute first
-    this.addPass(new ShadowPass(5));      // Shadow mapping
+    // Note: ShadowPass is disabled (not added) until shadow mapping is fully implemented
+    // this.addPass(new ShadowPass(5));      // Shadow mapping (placeholder)
     this.addPass(new ForwardPass(10));     // Main scene rendering
     this.addPass(new PostProcessPass(100)); // Post-processing
   }
@@ -248,7 +249,6 @@ export class ForwardPass extends RenderPass {
       }
 
       // Render each instanced batch
-      console.log(`🎨 ForwardPass: Rendering ${batches.length} batches`);
       for (const batch of batches) {
         this.renderInstancedBatch(renderer, batch);
       }
@@ -281,8 +281,6 @@ export class ForwardPass extends RenderPass {
    * Render an instanced batch with single draw call
    */
   private renderInstancedBatch(renderer: any, batch: RenderBatch): void {
-    console.log(`🔷 Rendering batch: ${batch.material.name}, ${batch.instances.size} instances`);
-
     if (batch.instances.size === 0) {
       console.warn("⚠️ Batch has 0 instances");
       return;
@@ -330,10 +328,8 @@ export class ForwardPass extends RenderPass {
 
     // Single draw call for all instances
     if (mesh.indexCount > 0) {
-      console.log(`🚀 drawIndexed(${mesh.indexCount}, ${batch.instances.size})`);
       renderer.drawIndexed(mesh.indexCount, batch.instances.size);
     } else if (mesh.vertexCount > 0) {
-      console.log(`🚀 draw(${mesh.vertexCount}, ${batch.instances.size})`);
       renderer.draw(mesh.vertexCount, batch.instances.size);
     } else {
       console.warn("⚠️ Mesh has no vertices or indices!");

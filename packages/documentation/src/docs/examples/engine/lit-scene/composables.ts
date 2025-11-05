@@ -127,13 +127,13 @@ export function createDirectionalLight(
 }
 
 /**
- * Creates a plane (ground) with lit material
+ * Creates a horizontal ground plane with lit material
  */
 export function createPlane(
   scene: Scene,
   position: Vec3 = [0, 0, 0],
   width: number = 10,
-  height: number = 10,
+  depth: number = 10,
   color: [number, number, number, number] = [0.6, 0.6, 0.6, 1.0],
 ): Actor {
   const planeActor = new Actor("Plane");
@@ -141,11 +141,11 @@ export function createPlane(
   planeActor.addComponent(MeshRendererComponent);
 
   transform.position = position;
+  // Rotate 90 degrees around X axis to make it horizontal (ground plane)
+  transform.setRotation([-Math.PI / 2, 0, 0]);
 
-  console.log(`🟦 Plane at:`, position);
-
-  // Create resources
-  const planeMesh = new PlaneMeshResource(width, height);
+  // Create resources (width, depth for ground plane)
+  const planeMesh = new PlaneMeshResource(width, depth);
   const shader = new ShaderResource("LitShader", {
     vertexSource: shaderWGSL,
     fragmentSource: shaderWGSL,
