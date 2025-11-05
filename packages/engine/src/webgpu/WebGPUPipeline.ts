@@ -72,7 +72,7 @@ export class WebGPUPipeline implements IPipeline {
 
       // Get render state from descriptor or use defaults
       const renderState = descriptor.renderState || {};
-      const cullMode = renderState.cullMode || "back";
+      const cullMode = renderState.cullMode || "none"; // DEBUG: Temporarily disable culling
       const depthWrite = renderState.depthWrite !== false; // Default true
       const depthTest = renderState.depthTest !== false; // Default true
 
