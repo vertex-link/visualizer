@@ -116,33 +116,46 @@ function formatValue(value: any): string {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  padding: 0.5rem;
 }
 
 .parameter-group {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background-color: var(--p-surface-card);
+  border-radius: 0.5rem;
+  border: 1px solid var(--p-surface-border);
 }
 
 .parameter-label {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  color: var(--p-text-color);
 }
 
 .parameter-description {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 400;
-  color: var(--p-primary-500);
+  color: var(--p-text-muted-color);
+  line-height: 1.4;
 }
 
 .parameter-value {
   align-self: flex-end;
+  margin-top: 0.25rem;
 }
 
 .parameter-value code {
-  color: var(--p-primary-600);
-  font-size: 0.75rem;
+  color: var(--p-primary-color);
+  font-size: 0.8125rem;
+  background-color: var(--p-surface-100);
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
 }
 
 .parameter-slider,
@@ -151,5 +164,50 @@ function formatValue(value: any): string {
 .parameter-text,
 .parameter-number {
   width: 100%;
+}
+
+/* Touch-friendly slider */
+.parameter-slider :deep(.p-slider-handle) {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* Touch-friendly toggle */
+.parameter-toggle {
+  align-self: flex-start;
+}
+
+/* Mobile optimizations */
+@media (max-width: 767px) {
+  .parameter-panel {
+    gap: 1rem;
+    padding: 0.25rem;
+  }
+
+  .parameter-group {
+    gap: 0.625rem;
+    padding: 0.875rem;
+  }
+
+  .parameter-label {
+    font-size: 0.875rem;
+  }
+
+  .parameter-description {
+    font-size: 0.75rem;
+  }
+
+  /* Larger touch targets on mobile */
+  .parameter-slider :deep(.p-slider-handle) {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .parameter-select :deep(.p-select),
+  .parameter-text :deep(.p-inputtext),
+  .parameter-number :deep(.p-inputnumber-input) {
+    min-height: 2.75rem;
+    font-size: 1rem;
+  }
 }
 </style>

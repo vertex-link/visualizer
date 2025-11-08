@@ -37,7 +37,11 @@ export default defineConfig({
     host: "0.0.0.0",
     origin: "http://192.168.88.14:8000",
     port: 8000,
-    allowedHosts: [".orb.local"]
+    allowedHosts: [".orb.local"],
+    fs: {
+      // Allow serving files from node_modules (for fonts, etc.)
+      allow: ['..']
+    }
   },
   resolve: {
     alias: {
@@ -46,6 +50,7 @@ export default defineConfig({
       "@vertex-link/engine": path.resolve(__dirname, "../engine/src/index.ts"),
     },
   },
+  assetsInclude: ['**/*.woff', '**/*.woff2', '**/*.ttf', '**/*.eot'],
   optimizeDeps: {
     exclude: ["@vertex-link/space", "@vertex-link/engine"],
     esbuildOptions: {
