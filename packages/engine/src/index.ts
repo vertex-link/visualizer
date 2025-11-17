@@ -21,6 +21,20 @@ export type {
   UniformDescriptor,
   MaterialDescriptor,
 } from "./resources/MaterialResource";
+export { GltfResource } from "./resources/GltfResource";
+export type { GltfResourceDescriptor } from "./resources/GltfResource";
+export type {
+  GltfData,
+  GltfMetadata,
+  MeshData,
+  MaterialData,
+  NodeData,
+  SceneData,
+  GltfResourceOptions,
+  ValidationResult,
+  LoadingProgress,
+  LoadingPhase,
+} from "./resources/types/GltfTypes";
 export { GeometryUtils } from "./resources/GeometryUtils";
 
 // Rendering Interfaces
@@ -37,6 +51,8 @@ export type {
 export { TransformComponent } from "./rendering/components/TransformComponent";
 export type { Vec3, Quat, Mat4 } from "./rendering/components/TransformComponent";
 export { MeshRendererComponent } from "./rendering/components/MeshRendererComponent";
+export { ModelComponent } from "./rendering/components/ModelComponent";
+export type { ModelPrimitive } from "./rendering/components/ModelComponent";
 
 // Camera
 export { CameraComponent, ProjectionType } from "./rendering/camera/CameraComponent";

@@ -1,6 +1,7 @@
 import { Context, type IEventBus, Processor, type Scene, Tickers, SceneChangedEvent } from "@vertex-link/space";
 import { CameraComponent } from "../rendering/camera/CameraComponent";
 import { MeshRendererComponent } from "../rendering/components/MeshRendererComponent";
+import { ModelComponent } from "../rendering/components/ModelComponent";
 import { TransformComponent } from "../rendering/components/TransformComponent";
 import { GPUResourcePool } from "../rendering/GPUResourcePool";
 import { RenderGraph } from "../rendering/RenderGraph";
@@ -17,6 +18,15 @@ interface InstanceData {
   modelMatrix: Float32Array; // 16 floats
   color: Float32Array; // 4 floats
   transformVersion: number; // Track transform changes
+}
+
+/**
+ * Renderable item for batching (supports both MeshRenderer and Model primitives)
+ */
+interface BatchableRenderable {
+  material: MaterialResource;
+  mesh: MeshResource;
+  actor: any; // Actor reference
 }
 
 /**
@@ -153,16 +163,24 @@ export class WebGPUProcessor extends Processor {
   private updateRenderBatches(): void {
     if (!this.scene) return;
 
-    // Query all renderable objects
+    // Query all renderable objects with MeshRendererComponent
     const renderables = this.scene
       .query()
       .withComponent(TransformComponent)
       .withComponent(MeshRendererComponent)
       .execute();
 
-    // Group by material+mesh for instancing
-    const batchGroups = new Map<string, MeshRendererComponent[]>();
+    // Query all renderable objects with ModelComponent (GLTF models)
+    const modelRenderables = this.scene
+      .query()
+      .withComponent(TransformComponent)
+      .withComponent(ModelComponent)
+      .execute();
 
+    // Group by material+mesh for instancing
+    const batchGroups = new Map<string, BatchableRenderable[]>();
+
+    // Process MeshRendererComponent actors
     for (const actor of renderables) {
       const meshRenderer = actor.getComponent(MeshRendererComponent);
       // Trigger resource readiness (non-blocking)
@@ -176,20 +194,53 @@ export class WebGPUProcessor extends Processor {
       if (!batchGroups.has(batchKey)) {
         batchGroups.set(batchKey, []);
       }
-      batchGroups.get(batchKey)!.push(meshRenderer);
+      batchGroups.get(batchKey)!.push({
+        material: meshRenderer.material!,
+        mesh: meshRenderer.mesh!,
+        actor: actor,
+      });
+    }
+
+    // Process ModelComponent actors (GLTF models)
+    // Each primitive in a model is treated as a separate renderable for batching
+    for (const actor of modelRenderables) {
+      const modelComponent = actor.getComponent(ModelComponent);
+      const transform = actor.getComponent(TransformComponent);
+
+      // Trigger resource readiness (non-blocking)
+      modelComponent?.updateForRender(0);
+      if (!modelComponent?.isRenderable() || !transform) continue;
+
+      // Get all primitives from the model
+      const primitives = modelComponent.getAllPrimitives();
+
+      for (const primitive of primitives) {
+        const materialId = primitive.material.id || "default";
+        const meshId = primitive.mesh.id || "default";
+        const batchKey = `${materialId}_${meshId}`;
+
+        if (!batchGroups.has(batchKey)) {
+          batchGroups.set(batchKey, []);
+        }
+        batchGroups.get(batchKey)!.push({
+          material: primitive.material,
+          mesh: primitive.mesh,
+          actor: actor,
+        });
+      }
     }
 
     // Create instanced render batches
-    this.cachedBatches = Array.from(batchGroups.entries()).map(([batchKey, meshRenderers]) => {
-      const batch = this.createInstancedBatch(meshRenderers[0].material!, meshRenderers[0].mesh!);
+    this.cachedBatches = Array.from(batchGroups.entries()).map(([batchKey, renderables]) => {
+      const batch = this.createInstancedBatch(renderables[0].material, renderables[0].mesh);
 
       // Add all instances to the batch
-      for (const meshRenderer of meshRenderers) {
-        const transform = meshRenderer.actor?.getComponent(TransformComponent);
+      for (const renderable of renderables) {
+        const transform = renderable.actor?.getComponent(TransformComponent);
         if (transform) {
           const modelMatrix = transform.getWorldMatrix();
-          const color = this.getInstanceColor(meshRenderer.material!);
-          batch.instances.set(meshRenderer.actor!.id, {
+          const color = this.getInstanceColor(renderable.material);
+          batch.instances.set(renderable.actor!.id, {
             modelMatrix,
             color,
             transformVersion: transform.version,
