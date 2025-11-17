@@ -1,66 +1,77 @@
-import { join } from "path";
-// src/main/main.ts
-import { BrowserWindow, app, ipcMain } from "electron";
+import { app, ipcMain, dialog } from "electron";
+import { ProjectManager } from "./ProjectManager";
+import { WindowManager } from "./WindowManager";
 
-let mainWindow: BrowserWindow;
-
-const createWindow = (): void => {
-  mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
-    transparent: true,
-    frame: false,
-    alwaysOnTop: false,
-    // show: false,
-    autoHideMenuBar: true,
-    titleBarStyle: "hidden", // Hide title bar
-    webPreferences: {
-      preload: join(__dirname, "../preload/preload.js"),
-      sandbox: false,
-      nodeIntegration: false,
-      contextIsolation: true,
-      experimentalFeatures: true,
-    },
-  });
-
-  mainWindow.on("ready-to-show", () => {
-    mainWindow.show();
-  });
-
-  // In development, load from Vite dev server
-  if (process.env.NODE_ENV === "development") {
-    mainWindow.loadURL("http://localhost:5173");
-    mainWindow.webContents.openDevTools();
-  } else {
-    mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
-  }
-};
-
-// IPC handlers for window controls
-ipcMain.handle("window-minimize", () => {
-  if (mainWindow) {
-    mainWindow.minimize();
-  }
-});
-
-ipcMain.handle("window-close", () => {
-  if (mainWindow) {
-    mainWindow.close();
-  }
-});
-
-// Enable WebGPU command line flags
+// Enable WebGPU
 app.commandLine.appendSwitch("enable-unsafe-webgpu");
 app.commandLine.appendSwitch("enable-features", "Vulkan,WebGPU");
 
-app.whenReady().then(() => {
-  createWindow();
+const projectManager = new ProjectManager();
+const windowManager = new WindowManager();
 
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+/**
+ * Initialize editor
+ */
+async function initializeEditor() {
+  // For now, create a demo project
+  const testProjectPath = app.getPath("userData") + "/test-project";
+
+  // Check if project exists, if not create it
+  try {
+    await projectManager.createProject(testProjectPath, "Test Project");
+  } catch (error) {
+    console.log("Project already exists, opening it...");
+  }
+
+  // Open the project
+  const context = await projectManager.openProject(testProjectPath, windowManager);
+
+  // Create editor windows
+  windowManager.createWindow("outliner");
+  windowManager.createWindow("preview");
+
+  console.log("🚀 Editor initialized");
+}
+
+// App lifecycle
+app.whenReady().then(async () => {
+  await initializeEditor();
+
+  app.on("activate", async () => {
+    if (windowManager.getWindow("outliner") === undefined) {
+      await initializeEditor();
+    }
   });
 });
 
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
+  if (process.platform !== "darwin") {
+    projectManager.closeProject();
+    app.quit();
+  }
+});
+
+// IPC handlers for window controls
+ipcMain.handle("window-minimize", (event) => {
+  const win = windowManager.getWindow("outliner");
+  if (win) win.minimize();
+});
+
+ipcMain.handle("window-close", (event) => {
+  const win = windowManager.getWindow("outliner");
+  if (win) win.close();
+});
+
+// File dialog handlers
+ipcMain.handle("dialog:openFile", async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ["openFile"],
+    filters: [
+      { name: "All Files", extensions: ["*"] },
+      { name: "GLTF Models", extensions: ["gltf", "glb"] },
+      { name: "Images", extensions: ["png", "jpg", "jpeg"] },
+    ],
+  });
+
+  return result.filePaths[0];
 });

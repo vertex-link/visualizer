@@ -23,7 +23,7 @@ export default defineConfig({
     },
   },
   renderer: {
-    root: resolve(__dirname, "src/app"),
+    root: resolve(__dirname, "src/windows"),
     worker: {
       format: "es",
     },
@@ -35,12 +35,15 @@ export default defineConfig({
       target: "esnext",
       outDir: "dist/renderer",
       rollupOptions: {
-        input: resolve(__dirname, "src/app/index.html"),
+        input: {
+          outliner: resolve(__dirname, "src/windows/outliner/index.html"),
+          preview: resolve(__dirname, "src/windows/preview/index.html"),
+          inspector: resolve(__dirname, "src/windows/inspector/index.html"),
+        },
       },
     },
     resolve: {
       alias: {
-        "@renderer": resolve(__dirname, "src/app/src"),
         "@vertex-link/space": resolve(__dirname, "../space/src/index.ts"),
         "@vertex-link/engine": resolve(__dirname, "../engine/src/index.ts"),
       },

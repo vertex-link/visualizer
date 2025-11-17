@@ -24,6 +24,8 @@
   "dependencies": {
     "@vertex-link/space": "workspace:*",
     "@vertex-link/engine": "workspace:*",
-    "@webgpu/types": "^0.1.64"
+    "@webgpu/types": "^0.1.64",
+    "lokijs": "^1.5.12",
+    "chokidar": "^4.0.3"
   }
 }
