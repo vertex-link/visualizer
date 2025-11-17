@@ -38,6 +38,13 @@ export { TransformComponent } from "./rendering/components/TransformComponent";
 export type { Vec3, Quat, Mat4 } from "./rendering/components/TransformComponent";
 export { MeshRendererComponent } from "./rendering/components/MeshRendererComponent";
 
+// Physics
+export { PhysicsProcessor } from "./physics/processors/PhysicsProcessor";
+export { RigidBodyComponent } from "./physics/components/RigidBodyComponent";
+export type { RigidBodyType } from "./physics/components/RigidBodyComponent";
+export { ColliderComponent } from "./physics/components/ColliderComponent";
+export type { ColliderShape } from "./physics/components/ColliderComponent";
+
 // Camera
 export { CameraComponent, ProjectionType } from "./rendering/camera/CameraComponent";
 export type {

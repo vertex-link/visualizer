@@ -12,6 +12,7 @@
     }
   },
   "dependencies": {
+    "@dimforge/rapier3d": "^0.19.3",
     "@gltf-transform/core": "^4.0.8",
     "@vertex-link/space": "workspace:*"
   },
