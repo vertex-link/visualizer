@@ -1,9 +1,22 @@
 @import url("https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap");
-@import "prismjs/themes/prism.css";
+@import "./variables.css";
+
+/* Import Prism themes conditionally */
+@import "prismjs/themes/prism.css" (prefers-color-scheme: light);
+@import "prismjs/themes/prism-okaidia.css" (prefers-color-scheme: dark);
+
+/* Override Prism for explicit dark mode */
+html.app-dark {
+  @import "prismjs/themes/prism-okaidia.css";
+}
+
 body {
   font-family: "Roboto Mono", monospace;
   margin: 0;
   padding: 0;
+  background-color: var(--app-bg-primary);
+  color: var(--app-text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .documentation-container {
@@ -20,19 +33,31 @@ h6 {
   font-weight: 700;
   margin-top: 2rem;
   margin-bottom: 1rem;
+  color: var(--app-text-primary);
 }
 
 p {
   line-height: 1.6;
   margin-bottom: 1rem;
+  color: var(--app-text-primary);
 }
 
 pre {
   padding: 1rem;
   border-radius: 0.5rem;
   overflow-x: auto;
+  background-color: var(--app-code-bg) !important;
 }
 
 code {
   font-family: "Roboto Mono", monospace;
+}
+
+/* Dark mode code blocks */
+html.app-dark pre {
+  background-color: #272822 !important;
+}
+
+html.app-dark pre code {
+  color: #f8f8f2;
 }

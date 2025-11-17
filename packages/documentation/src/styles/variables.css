@@ -1,3 +1,28 @@
-/*:root {
-   Design system variables extension point
-}*/
+/* Light theme variables */
+:root {
+  /* Custom application colors */
+  --app-bg-primary: #ffffff;
+  --app-bg-secondary: #f8f9fa;
+  --app-text-primary: #1e293b;
+  --app-text-secondary: #64748b;
+  --app-border-color: #e2e8f0;
+  --app-code-bg: #f1f5f9;
+  --app-shadow: rgba(0, 0, 0, 0.1);
+}
+
+/* Dark theme variables */
+html.app-dark {
+  /* Custom application colors for dark mode */
+  --app-bg-primary: #0f172a;
+  --app-bg-secondary: #1e293b;
+  --app-text-primary: #f1f5f9;
+  --app-text-secondary: #94a3b8;
+  --app-border-color: #334155;
+  --app-code-bg: #1e293b;
+  --app-shadow: rgba(0, 0, 0, 0.3);
+}
+
+/* Apply dark mode to PrimeVue components */
+html.app-dark {
+  color-scheme: dark;
+}

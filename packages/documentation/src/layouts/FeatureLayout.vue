@@ -13,6 +13,7 @@
         <i class="pi pi-bolt"></i>
         <span>Vertex Link</span>
       </h1>
+      <ThemeToggle />
     </header>
 
     <!-- Desktop Sidebar -->
@@ -22,6 +23,7 @@
           <i class="pi pi-bolt"></i>
           <span>Vertex Link</span>
         </h2>
+        <ThemeToggle />
       </div>
       <div class="sidebar-menu-container">
         <Sidebar :categories="categories" />
@@ -57,6 +59,7 @@
 
 <script setup lang="ts">
 import Sidebar from "@/components/navigation/Sidebar.vue";
+import ThemeToggle from "@/components/ThemeToggle.vue";
 import { useFeatures } from "@/composables/features";
 import Drawer from "primevue/drawer";
 import { ref, onMounted, onUnmounted } from "vue";
@@ -153,6 +156,7 @@ onUnmounted(() => {
   font-weight: 600;
   margin: 0;
   color: var(--p-text-color);
+  flex: 1;
 }
 
 .mobile-title .pi {
@@ -173,6 +177,10 @@ onUnmounted(() => {
 .sidebar-header {
   padding: 1.25rem 1.5rem;
   border-bottom: 1px solid var(--p-surface-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 .sidebar-title {
@@ -182,6 +190,7 @@ onUnmounted(() => {
   font-size: 1.25rem;
   font-weight: 600;
   margin: 0;
+  flex: 1;
 }
 
 .sidebar-title .pi {
