@@ -25,7 +25,7 @@
 1.  **Explicit Dependencies**: All dependencies are resolved explicitly. For components, use `this.actor.getComponent()`. For everything else, use the **composable pattern** (`useScene`, `useEventBus`, etc.) within a context.
 2.  **Component-Driven Resources**: Actors are made renderable by adding a `ResourceComponent` and populating it with `MeshResource` and `MaterialResource` instances.
 3.  **Context Scoping**: The `EngineContext` provides the top-level context for the engine. Composables make this context available to lower-level parts of the system without global singletons.
-4.  **Engine/ACS Separation**: The `@vertex-link/space` package remains completely engine-agnostic.
+4.  **Engine/ACS Separation**: The `@vertex-link/orbits` package remains completely engine-agnostic.
 5.  **Auto-Discovery**: The documentation system automatically discovers and presents content, requiring no manual registration.
 
 ## Implementation Roadmap

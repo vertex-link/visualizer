@@ -1,4 +1,4 @@
-import { Resource, type Context } from "@vertex-link/space";
+import { Resource, type Context } from "@vertex-link/orbits";
 import { WebGPUProcessor } from "../processors/WebGPUProcessor";
 
 /**

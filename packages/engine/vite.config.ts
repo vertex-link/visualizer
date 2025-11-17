@@ -26,12 +26,12 @@ export default defineConfig({
       formats: ["es"],
     },
     rollupOptions: {
-      external: ["@vertex-link/space"],
+      external: ["@vertex-link/orbits"],
     },
   },
   resolve: {
     alias: {
-      "@vertex-link/space": path.resolve(__dirname, "../space/src/index.ts"),
+      "@vertex-link/orbits": path.resolve(__dirname, "../space/src/index.ts"),
     },
   },
   esbuild: {

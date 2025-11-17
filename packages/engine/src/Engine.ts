@@ -1,4 +1,4 @@
-import { Context, EventBus, type Scene } from "@vertex-link/space";
+import { Context, EventBus, type Scene } from "@vertex-link/orbits";
 import { WebGPUProcessor } from "./processors/WebGPUProcessor";
 
 type EngineConfig = {

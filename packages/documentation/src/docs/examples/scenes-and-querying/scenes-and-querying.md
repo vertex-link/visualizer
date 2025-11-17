@@ -29,7 +29,7 @@ parameters:
     defaultValue: false
 ---
 
-This demo showcases the SPACe query system's performance with 2,000 actors across 6 different entity types. Each actor has a unique combination of components, allowing you to test complex queries in real-time.
+This demo showcases the Orbits query system's performance with 2,000 actors across 6 different entity types. Each actor has a unique combination of components, allowing you to test complex queries in real-time.
 
 ## Features
 

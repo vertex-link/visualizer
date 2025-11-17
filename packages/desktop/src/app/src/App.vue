@@ -44,7 +44,7 @@ import {
   TransformComponent,
   WebGPUProcessor,
 } from "@vertex-link/engine";
-import { Actor, Context, EventBus, ResourceComponent, Scene } from "@vertex-link/space";
+import { Actor, Context, EventBus, ResourceComponent, Scene } from "@vertex-link/orbits";
 import { onMounted, onUnmounted, ref } from "vue";
 
 import { RotatingComponent } from "./RotatingComponent";

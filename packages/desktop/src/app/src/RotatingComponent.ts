@@ -1,4 +1,4 @@
-import { Component } from "@vertex-link/space";
+import { Component } from "@vertex-link/orbits";
 import type { Vec3 } from "@vertex-link/engine";
 import { Transform, TransformComponent } from "@vertex-link/engine";
 

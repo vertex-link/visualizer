@@ -1,7 +1,7 @@
-# SPACe Package - LLM Implementation Instructions
+# Orbits Package - LLM Implementation Instructions
 
 ## Package Purpose
-The `@vertex-link/space` package provides the core Scene-Processor-Actor-Component architecture that the entire engine is built upon. This is the foundation layer and must remain engine-agnostic (no WebGPU or rendering code).
+The `@vertex-link/orbits` package provides the core Scene-Processor-Actor-Component architecture that the entire engine is built upon. This is the foundation layer and must remain engine-agnostic (no WebGPU or rendering code).
 
 ## Directory Structure
 ```
@@ -102,7 +102,7 @@ Composables are the primary mechanism for dependency injection and managing side
 ## Important Implementation Rules
 
 ### ✅ DO's
-- Keep SPACe engine-agnostic (no WebGPU references).
+- Keep Orbits engine-agnostic (no WebGPU references).
 - **Use Composables (`useOnEvent`, `useUpdate`) for events and update loops.**
 - Use explicit component dependencies (`this.actor.getComponent()`).
 - Emit proper events for state changes.

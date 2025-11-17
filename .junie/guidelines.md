@@ -6,9 +6,9 @@ Audience: Advanced contributors to this repository. This document captures proje
 
 - **Runtime/Tooling**: Bun (primary runtime, package manager, bundler), TypeScript 5, Vite (documentation), Electron + electron-vite (desktop), esbuild.
 - **Monorepo layout** using Bun workspaces (declared in root package.json):
-  - `packages/space`: Core SPACe (Scene-Processor-Actor-Component) library. For more details, see `packages/space/llm_instruct.md`.
-  - `packages/engine`: Rendering/Resource management built on top of SPACe; targets WebGPU and provides processors/services. For more details, see `packages/engine/LLM_INSTRUCT.md`.
-  - `packages/documentation`: Vite site with examples and docs; consumes `space` and `engine` via TS path aliases.
+  - `packages/orbits`: Core Orbits (Actor-Component-System) framework. For more details, see `packages/orbits/llm_instruct.md`.
+  - `packages/engine`: Rendering/Resource management built on top of Orbits; targets WebGPU and provides processors/services. For more details, see `packages/engine/LLM_INSTRUCT.md`.
+  - `packages/documentation`: Vite site with examples and docs; consumes `orbits` and `engine` via TS path aliases.
   - `packages/desktop`: Electron-based editor shell (experimental).
 
 ## Build and Configuration Instructions
@@ -20,9 +20,9 @@ Audience: Advanced contributors to this repository. This document captures proje
 
 ## Architecture Guidelines and Best Practices
 
--   **SPACe-first design**:
+-   **Orbits-first design**:
   -   Actors are thin containers; Components encapsulate data/behavior.
-  -   Services provide cross-cutting functionality; Processors own lifecycle/update loops.
+  -   Services provide cross-cutting functionality; Processors own lifecycle/update loops (orbits).
 -   **Dependency handling**:
   -   No decorator DI. Resolve dependencies explicitly via cached getters.
   -   Use the `EngineContext` to access engine-scoped services.

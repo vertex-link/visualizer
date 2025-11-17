@@ -6,7 +6,7 @@ description: "Learn how to use Actors and Components to build your application."
 
 # Actors and Components
 
-Actors and Components are the heart of the SPACe architecture. Understanding their relationship is key to mastering the framework.
+Actors and Components are the heart of the Orbits architecture. Understanding their relationship is key to mastering the framework.
 
 ## Actors
 
@@ -20,7 +20,7 @@ Actors can also be used to manage other Actors, for example, as singletons withi
 
 Creating an Actor is simple:
 ```typescript
-import { Actor } from '@vertex-link/space';
+import { Actor } from '@vertex-link/orbits';
 const myActor = new Actor('Player');
 ```
 

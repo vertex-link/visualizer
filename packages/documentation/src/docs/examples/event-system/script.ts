@@ -1,4 +1,4 @@
-import { Event, emit, on } from "@vertex-link/space";
+import { Event, emit, on } from "@vertex-link/orbits";
 
 // 1. Define the event payload and class
 interface ButtonClickPayload {

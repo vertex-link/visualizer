@@ -1,4 +1,4 @@
-import { Processor, Tickers } from "@vertex-link/space";
+import { Processor, Tickers } from "@vertex-link/orbits";
 
 /**
  * A Processor that uses a fixed-step loop.

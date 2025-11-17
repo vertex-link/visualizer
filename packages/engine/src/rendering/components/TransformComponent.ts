@@ -1,5 +1,5 @@
 // Type aliases for 3D math (simple arrays for now)
-import { type Actor, Component } from "@vertex-link/space";
+import { type Actor, Component } from "@vertex-link/orbits";
 
 export type Vec3 = [number, number, number];
 export type Quat = [number, number, number, number]; // [x, y, z, w]

@@ -1,5 +1,5 @@
 import { GeometryUtils, MeshResource } from "@vertex-link/engine";
-import type { Context } from "@vertex-link/space/composables/context";
+import type { Context } from "@vertex-link/orbits/composables/context";
 
 export class CubeMeshResource extends MeshResource {
   constructor(size = 1.0, context?: Context) {

@@ -1,5 +1,5 @@
 import { Engine } from "@vertex-link/engine";
-import { Scene } from "@vertex-link/space";
+import { Scene } from "@vertex-link/orbits";
 import { createCamera, createRotatingCube } from "./composables";
 
 async function init(container: HTMLElement) {

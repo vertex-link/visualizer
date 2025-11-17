@@ -31,7 +31,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@vertex-link/space": "../../../space/src/index.ts",
+      "@vertex-link/orbits": "../../../space/src/index.ts",
       "@vertex-link/engine": "../../../engine/src/index.ts",
     },
   },

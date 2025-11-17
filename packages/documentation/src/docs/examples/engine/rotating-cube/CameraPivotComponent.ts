@@ -1,5 +1,5 @@
 import { Transform, TransformComponent, type Vec3 } from "@vertex-link/engine";
-import { type Actor, Component } from "@vertex-link/space";
+import { type Actor, Component } from "@vertex-link/orbits";
 
 /**
  * Component that allows a camera to pivot around a target point using mouse drag.

@@ -1,4 +1,4 @@
-import { Actor } from "@vertex-link/space";
+import { Actor } from "@vertex-link/orbits";
 import { TransformComponent } from "../components/TransformComponent";
 import type { Vec3 } from "../components/TransformComponent";
 import { Transform } from "../math/Transform";

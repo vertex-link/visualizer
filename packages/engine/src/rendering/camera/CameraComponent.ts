@@ -1,4 +1,4 @@
-import { type Actor, Component } from "@vertex-link/space";
+import { type Actor, Component } from "@vertex-link/orbits";
 import {
   type Mat4,
   TransformComponent,

@@ -5,7 +5,7 @@
 
 Vertex Link is a modular and flexible TypeScript framework designed for game development and interactive 3D applications, aiming to become a powerful, open-source web engine with features like WebGPU rendering and buffer streaming.
 
-**This repository contains the core `acs` (Actor-Component-System) package, the `engine` package for rendering and resource management, and `documentation` including examples.**
+**This repository contains the core `orbits` (Actor-Component-System) framework, the `engine` package for rendering and resource management, and `documentation` including examples.**
 
 ## Core Philosophy
 
@@ -21,12 +21,12 @@ The framework uses explicit dependency resolution for simplicity and maintainabi
 
 ## Key Features
 
--   **Actor-Component-System (ACS)**: A robust foundation for entity management.
+-   **Actor-Component-System (Orbits)**: A robust foundation for entity management with concurrent execution orbits.
 -   **Event-Driven**: Decoupled communication using a central EventBus.
 -   **Explicit Component Dependencies**: Clear, maintainable component relationships without decorator complexity.
 -   **Resource Management**: System for loading, compiling, and managing assets like meshes, materials, and shaders.
 -   **WebGPU Rendering**: High-performance rendering using the modern WebGPU API, managed by the `WebGPUProcessor` and `RenderGraph`.
--   **Modular Design**: Core logic (`@vertex-link/space`) is separate from the rendering engine (`@vertex-link/engine`), promoting flexibility.
+-   **Modular Design**: Core logic (`@vertex-link/orbits`) is separate from the rendering engine (`@vertex-link/engine`), promoting flexibility.
 
 ## Development Setup
 
@@ -52,7 +52,7 @@ This project uses [Bun](https://bun.sh/) as the primary JavaScript runtime, pack
     ```
 
 3.  **Running the Development Environment:**
-    To develop the libraries (`acs`, `engine`) and the visualizer examples (`documentation`) concurrently with live reloading:
+    To develop the libraries (`orbits`, `engine`) and the visualizer examples (`documentation`) concurrently with live reloading:
     ```shell script
     bun run dev
     ```

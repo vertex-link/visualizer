@@ -8,7 +8,7 @@ import {
   TransformComponent,
   type Vec3, WebGPUProcessor,
 } from "@vertex-link/engine";
-import {Actor, ResourceComponent, type Scene, useUpdate} from "@vertex-link/space";
+import {Actor, ResourceComponent, type Scene, useUpdate} from "@vertex-link/orbits";
 import { CubeMeshResource } from "@/example-resources/CubeMeshResource";
 import { CameraLookAtComponent } from "./CameraLookAtComponent";
 import { CameraPivotComponent } from "./CameraPivotComponent";

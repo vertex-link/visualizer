@@ -1,4 +1,4 @@
-import { ComputeResource } from "@vertex-link/space";
+import { ComputeResource } from "@vertex-link/orbits";
 import * as mathModule from "./compute/math.zig";
 
 // 1. Define the interface for the Zig module's exports

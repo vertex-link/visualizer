@@ -1,4 +1,4 @@
-import { generateUUID } from "@vertex-link/space";
+import { generateUUID } from "@vertex-link/orbits";
 import { type BufferDescriptor, BufferUsage } from "./../rendering/interfaces/IBuffer";
 import { WebGPUBuffer } from "./WebGPUBuffer";
 

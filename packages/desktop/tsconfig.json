@@ -28,8 +28,8 @@
     /* Path mapping for workspace packages */
     "baseUrl": ".",
     "paths": {
-      "@vertex-link/space": ["../space/src/index.ts"],
-      "@vertex-link/space/*": ["../space/src/*"],
+      "@vertex-link/orbits": ["../orbits/src/index.ts"],
+      "@vertex-link/orbits/*": ["../orbits/src/*"],
       "@vertex-link/engine": ["../engine/src/index.ts"],
       "@vertex-link/engine/*": ["../engine/src/*"]
     },

@@ -15,8 +15,8 @@
 
     "paths": {
       "@/*": ["./packages/documentation/src/*"],
-      "@vertex-link/space": ["./packages/space/src/index.ts"],
-      "@vertex-link/space/*": ["./packages/space/src/*"],
+      "@vertex-link/orbits": ["./packages/orbits/src/index.ts"],
+      "@vertex-link/orbits/*": ["./packages/orbits/src/*"],
       "@vertex-link/engine": ["./packages/engine/src/index.ts"],
       "@vertex-link/engine/*": ["./packages/engine/src/*"]
     }

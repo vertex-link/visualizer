@@ -1,5 +1,5 @@
 import { TransformComponent, type Vec3, WebGPUProcessor } from "@vertex-link/engine";
-import { type Actor, Component, useUpdate } from "@vertex-link/space";
+import { type Actor, Component, useUpdate } from "@vertex-link/orbits";
 
 /**
  * Component that makes the camera always look at a specific target point in 3D space.

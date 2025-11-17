@@ -1,5 +1,5 @@
 {
-  "name": "@vertex-link/space",
+  "name": "@vertex-link/orbits",
   "version": "0.1.0",
   "type": "module",
   "main": "./src/index.ts",

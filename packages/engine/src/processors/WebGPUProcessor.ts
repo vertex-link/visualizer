@@ -1,4 +1,4 @@
-import { Context, type IEventBus, Processor, type Scene, Tickers, SceneChangedEvent } from "@vertex-link/space";
+import { Context, type IEventBus, Processor, type Scene, Tickers, SceneChangedEvent } from "@vertex-link/orbits";
 import { CameraComponent } from "../rendering/camera/CameraComponent";
 import { MeshRendererComponent } from "../rendering/components/MeshRendererComponent";
 import { TransformComponent } from "../rendering/components/TransformComponent";

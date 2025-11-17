@@ -1,5 +1,5 @@
 import { Transform, TransformComponent, type Vec3, WebGPUProcessor } from "@vertex-link/engine";
-import { type Actor, Component, useUpdate } from "@vertex-link/space";
+import { type Actor, Component, useUpdate } from "@vertex-link/orbits";
 
 export class RotatingComponent extends Component {
   private transform!: TransformComponent;
