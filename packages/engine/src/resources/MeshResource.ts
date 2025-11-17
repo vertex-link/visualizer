@@ -86,7 +86,6 @@ export class MeshResource extends Resource<MeshDescriptor> {
         console.log(`🔧 MeshResource "${this.name}": Index buffer created`);
       }
 
-      this.isCompiled = true;
       console.log(
         `✅ MeshResource "${this.name}" compiled successfully - vertexBuffer exists: ${!!this
           .vertexBuffer}, indexBuffer exists: ${!!this.indexBuffer}`,

@@ -1,4 +1,4 @@
-import { Component } from "@vertex-link/space";
+import { Component, type Actor } from "@vertex-link/space";
 import { ResourceComponent } from "@vertex-link/space";
 import { GltfResource } from "../../resources/GltfResource";
 import type { MeshResource } from "../../resources/MeshResource";
@@ -31,6 +31,31 @@ export class ModelComponent extends Component {
 
   // Cached reference to ResourceComponent
   private resources?: ResourceComponent;
+
+  /**
+   * Create a ModelComponent with optional configuration
+   * @param actor - The actor this component is attached to
+   * @param config - Optional configuration for enabled and layer properties
+   */
+  constructor(actor: Actor, config?: { enabled?: boolean; layer?: number }) {
+    super(actor);
+    if (config?.enabled !== undefined) this.enabled = config.enabled;
+    if (config?.layer !== undefined) this.layer = config.layer;
+  }
+
+  /**
+   * Initialize component and validate setup
+   * Called automatically after component is added to actor
+   */
+  override onInitialize(): void {
+    // Validate that ResourceComponent exists for proper functionality
+    if (!this.actor.hasComponent(ResourceComponent)) {
+      console.warn(
+        `ModelComponent on actor "${this.actor.label}" requires ResourceComponent to function properly. ` +
+        `Add ResourceComponent and attach a GltfResource to render this model.`
+      );
+    }
+  }
 
   /**
    * Get the GltfResource attached to this actor (lazy loaded)

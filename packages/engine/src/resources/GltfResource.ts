@@ -113,8 +113,6 @@ export class GltfResource extends Resource<GltfData> {
   private shaderResource: ShaderResource | null = null;
   private descriptor: GltfResourceDescriptor;
 
-  public isCompiled = false;
-
   constructor(
     name: string,
     descriptor: GltfResourceDescriptor,
@@ -238,7 +236,6 @@ export class GltfResource extends Resource<GltfData> {
         `✅ GltfResource "${this.name}": Created ${this.meshResources.length} meshes`,
       );
 
-      this.isCompiled = true;
       console.log(`✅ GltfResource "${this.name}": Compilation complete`);
     } catch (error) {
       console.error(`❌ Failed to compile GltfResource "${this.name}":`, error);
