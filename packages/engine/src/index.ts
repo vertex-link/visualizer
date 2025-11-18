@@ -22,6 +22,14 @@ export type {
   MaterialDescriptor,
 } from "./resources/MaterialResource";
 export { GeometryUtils } from "./resources/GeometryUtils";
+export { ClusteredLightingResource, LightType } from "./resources/ClusteredLightingResource";
+export type {
+  Light,
+  ClusterAABB,
+  ClusterLightGrid,
+  ClusterConfig,
+  ClusterAssignmentResult,
+} from "./resources/ClusteredLightingResource";
 
 // Rendering Interfaces
 export { BufferUsage } from "./rendering/interfaces/IBuffer";

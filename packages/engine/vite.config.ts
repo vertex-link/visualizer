@@ -15,6 +15,13 @@ export default defineConfig({
           target: "wasm32-freestanding",
           optimize: "ReleaseSmall",
         },
+        {
+          name: "clustered-lighting",
+          path: path.resolve(__dirname, "src/compute"),
+          entry: "clustered-lighting.zig",
+          target: "wasm32-freestanding",
+          optimize: "ReleaseFast",
+        },
       ],
     }),
   ],
