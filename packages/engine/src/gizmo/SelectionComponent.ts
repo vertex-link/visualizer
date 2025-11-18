@@ -2,6 +2,7 @@ import { Actor, Component, Scene, emit } from "@vertex-link/space";
 import { CameraComponent } from "../rendering/camera/CameraComponent";
 import { TransformComponent } from "../rendering/components/TransformComponent";
 import { ObjectSelectedEvent, SelectionClearedEvent } from "./GizmoEvents";
+import { screenToRay, raySphereIntersection } from "./RaycastUtils";
 
 /**
  * SelectableComponent marks an actor as selectable
@@ -45,7 +46,7 @@ export class SelectionManagerComponent extends Component {
       this.selectedActor = hit.actor;
       emit(
         new ObjectSelectedEvent({
-          actorId: hit.actor.id,
+          actor: hit.actor,
           screenPosition: [event.clientX, event.clientY],
         }),
       );
@@ -71,31 +72,29 @@ export class SelectionManagerComponent extends Component {
       return null;
     }
 
-    // TODO: Implement proper raycasting
-    // For now, return a placeholder
-    // This should:
-    // 1. Convert screen coordinates to world space ray
-    // 2. Test intersection with each selectable actor's geometry
-    // 3. Return the closest hit
+    // Create ray from screen coordinates
+    const ray = screenToRay(screenX, screenY, this.canvas, this.camera);
 
-    // Placeholder: select first actor if click is in center of screen
-    const canvasRect = this.canvas.getBoundingClientRect();
-    const centerX = canvasRect.width / 2;
-    const centerY = canvasRect.height / 2;
-    const threshold = 100; // pixels
+    // Test against all selectable objects
+    let closestHit: { actor: Actor; distance: number } | null = null;
 
-    const distanceFromCenter = Math.sqrt(
-      Math.pow(screenX - centerX, 2) + Math.pow(screenY - centerY, 2),
-    );
+    for (const actor of selectables) {
+      const transform = actor.getComponent(TransformComponent);
+      if (!transform) continue;
 
-    if (distanceFromCenter < threshold && selectables.length > 0) {
-      return {
-        actor: selectables[0],
-        distance: distanceFromCenter,
-      };
+      // Use sphere approximation for objects (radius based on scale)
+      const objectRadius = 0.7; // Approximate radius for 1-unit cube
+      const hit = raySphereIntersection(ray, transform.position, objectRadius);
+
+      if (hit && (!closestHit || hit.distance < closestHit.distance)) {
+        closestHit = {
+          actor,
+          distance: hit.distance,
+        };
+      }
     }
 
-    return null;
+    return closestHit;
   }
 
   /**

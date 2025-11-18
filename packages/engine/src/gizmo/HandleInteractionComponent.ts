@@ -1,7 +1,8 @@
 import { Actor, Component, emit } from "@vertex-link/space";
-import type { Vec3 } from "../rendering/components/TransformComponent";
+import { TransformComponent, type Vec3 } from "../rendering/components/TransformComponent";
 import { CameraComponent } from "../rendering/camera/CameraComponent";
 import { GizmoDragStartedEvent, GizmoDraggedEvent, GizmoDragEndedEvent } from "./GizmoEvents";
+import { screenToRay, raySphereIntersection } from "./RaycastUtils";
 
 /**
  * HandleInteractionComponent handles user input on gizmo handles
@@ -105,15 +106,20 @@ export class HandleInteractionComponent extends Component {
    * Returns hit information or null
    */
   private raycastToHandle(screenX: number, screenY: number): { point: Vec3 } | null {
-    // TODO: Implement proper raycasting
-    // For now, return a simple placeholder
-    // This should:
-    // 1. Convert screen coordinates to world space ray
-    // 2. Check intersection with handle geometry
-    // 3. Return hit point in world space
+    // Get handle's world position
+    const transform = this.actor.getComponent(TransformComponent);
+    if (!transform) return null;
 
-    // Placeholder: assume handle was clicked
-    return { point: [0, 0, 0] };
+    const handlePosition = transform.position;
+
+    // Create ray from screen coordinates
+    const ray = screenToRay(screenX, screenY, this.canvas, this.camera);
+
+    // Test against sphere around handle (approximation)
+    const handleRadius = 0.3; // Adjust based on handle size
+    const hit = raySphereIntersection(ray, handlePosition, handleRadius);
+
+    return hit;
   }
 
   /**
@@ -121,13 +127,21 @@ export class HandleInteractionComponent extends Component {
    * Takes into account camera orientation and axis constraints
    */
   private screenDeltaToWorld(deltaX: number, deltaY: number): Vec3 {
-    // Get camera matrices
-    const viewMatrix = this.camera.getViewMatrix();
-    const projectionMatrix = this.camera.getProjectionMatrix();
+    // Get handle transform for distance calculation
+    const handleTransform = this.actor.getComponent(TransformComponent);
+    if (!handleTransform) return [0, 0, 0];
 
-    // Simple heuristic: map screen delta to world delta
-    // This is a simplified version - full implementation would use inverse matrices
-    const sensitivity = 0.01;
+    const handlePos = handleTransform.position;
+    const cameraPos = this.camera.actor.getComponent(TransformComponent)?.position || [0, 0, 0];
+
+    // Calculate distance from camera to handle
+    const dx = handlePos[0] - cameraPos[0];
+    const dy = handlePos[1] - cameraPos[1];
+    const dz = handlePos[2] - cameraPos[2];
+    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+    // Scale factor based on distance (makes dragging consistent regardless of zoom)
+    const sensitivity = distance * 0.002;
 
     let worldDelta: Vec3 = [0, 0, 0];
 

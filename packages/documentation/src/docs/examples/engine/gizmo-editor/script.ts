@@ -1,5 +1,5 @@
 import { Engine, WebGPUProcessor } from "@vertex-link/engine";
-import { Scene } from "@vertex-link/space";
+import { Scene, Actor } from "@vertex-link/space";
 import { createScene, createCamera, createCube } from "./composables";
 import { createGizmo, SelectionManagerComponent, SelectableComponent } from "@vertex-link/engine";
 
@@ -43,7 +43,7 @@ export async function init(container: HTMLElement): Promise<() => void> {
   const gizmo = createGizmo(overlayScene, canvas, camera, null);
 
   // Create selection manager
-  const selectionManager = contentScene.createActor("SelectionManager");
+  const selectionManager = new Actor("SelectionManager");
   selectionManager.addComponent(SelectionManagerComponent, contentScene, canvas, camera);
   contentScene.addActor(selectionManager);
 

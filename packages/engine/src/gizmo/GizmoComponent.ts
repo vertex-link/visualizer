@@ -1,6 +1,5 @@
-import { Actor, Component, emit, useOnEvent, useUpdate } from "@vertex-link/space";
+import { Actor, Component, useOnEvent } from "@vertex-link/space";
 import { TransformComponent, type Vec3 } from "../rendering/components/TransformComponent";
-import { WebGPUProcessor } from "../processors/WebGPUProcessor";
 import { GizmoDraggedEvent, GizmoDragEndedEvent, GizmoDragStartedEvent } from "./GizmoEvents";
 
 /**
@@ -29,6 +28,11 @@ export class GizmoComponent extends Component {
   // Cached components
   private transform: TransformComponent | null = null;
 
+  // Handle actors for this gizmo instance
+  private handleActors: Set<string> = new Set();
+  private handles: Actor[] = [];
+  private handleLocalOffsets: Map<string, Vec3> = new Map();
+
   constructor(actor: Actor) {
     super(actor);
 
@@ -43,6 +47,44 @@ export class GizmoComponent extends Component {
   }
 
   /**
+   * Register a handle actor as belonging to this gizmo
+   */
+  public registerHandle(handleActor: Actor, localOffset: Vec3 = [0, 0, 0]): void {
+    this.handleActors.add(handleActor.id);
+    this.handles.push(handleActor);
+    this.handleLocalOffsets.set(handleActor.id, localOffset);
+  }
+
+  /**
+   * Update handle positions to follow gizmo
+   */
+  private updateHandlePositions(): void {
+    if (!this.transform) return;
+
+    const gizmoPos = this.transform.position;
+
+    for (const handle of this.handles) {
+      const handleTransform = handle.getComponent(TransformComponent);
+      const localOffset = this.handleLocalOffsets.get(handle.id);
+      if (handleTransform && localOffset) {
+        handleTransform.position = [
+          gizmoPos[0] + localOffset[0],
+          gizmoPos[1] + localOffset[1],
+          gizmoPos[2] + localOffset[2],
+        ];
+        handleTransform.markDirty();
+      }
+    }
+  }
+
+  /**
+   * Check if a handle belongs to this gizmo
+   */
+  private isOwnHandle(handleId: string): boolean {
+    return this.handleActors.has(handleId);
+  }
+
+  /**
    * Setup event listeners for gizmo interactions
    */
   private setupEventListeners(): void {
@@ -50,6 +92,9 @@ export class GizmoComponent extends Component {
     useOnEvent(
       GizmoDragStartedEvent,
       (event) => {
+        // Only respond to events from our own handles
+        if (!this.isOwnHandle(event.payload.handleId)) return;
+
         this.isDragging = true;
         this.dragStartWorld = event.payload.startWorld;
         this.activeAxis = event.payload.axis;
@@ -61,6 +106,8 @@ export class GizmoComponent extends Component {
     useOnEvent(
       GizmoDraggedEvent,
       (event) => {
+        // Only respond to events from our own handles
+        if (!this.isOwnHandle(event.payload.handleId)) return;
         if (!this.isDragging || !this.targetActor) return;
 
         const targetTransform = this.targetActor.getComponent(TransformComponent);
@@ -73,6 +120,7 @@ export class GizmoComponent extends Component {
         if (this.transform) {
           this.transform.position = [...targetTransform.position];
           this.transform.markDirty();
+          this.updateHandlePositions();
         }
       },
       this,
@@ -82,6 +130,9 @@ export class GizmoComponent extends Component {
     useOnEvent(
       GizmoDragEndedEvent,
       (event) => {
+        // Only respond to events from our own handles
+        if (!this.isOwnHandle(event.payload.handleId)) return;
+
         this.isDragging = false;
         this.activeAxis = null;
       },
@@ -176,6 +227,7 @@ export class GizmoComponent extends Component {
       if (targetTransform) {
         this.transform.position = [...targetTransform.position];
         this.transform.markDirty();
+        this.updateHandlePositions();
       }
     }
   }

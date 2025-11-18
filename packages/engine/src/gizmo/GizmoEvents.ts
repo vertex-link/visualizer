@@ -1,4 +1,4 @@
-import { Event } from "@vertex-link/space";
+import { Event, type Actor } from "@vertex-link/space";
 import type { Vec3 } from "../rendering/components/TransformComponent";
 
 /**
@@ -38,7 +38,7 @@ export class GizmoDragEndedEvent extends Event<{
  * Emitted when an object is selected
  */
 export class ObjectSelectedEvent extends Event<{
-  actorId: string;
+  actor: Actor;
   screenPosition: [number, number];
 }> {
   static readonly eventType = "object.selected";

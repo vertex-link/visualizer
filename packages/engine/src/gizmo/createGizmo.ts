@@ -1,5 +1,5 @@
-import { Actor, Scene, ResourceComponent, useOnEvent } from "@vertex-link/space";
-import { TransformComponent } from "../rendering/components/TransformComponent";
+import { Actor, Scene, useOnEvent } from "@vertex-link/space";
+import { TransformComponent, type Vec3 } from "../rendering/components/TransformComponent";
 import { MeshRendererComponent } from "../rendering/components/MeshRendererComponent";
 import { CameraComponent } from "../rendering/camera/CameraComponent";
 import { MeshResource } from "../resources/MeshResource";
@@ -37,19 +37,18 @@ export function createGizmo(
     { axis: "Z", color: [0, 0, 1, 1] }, // Blue
   ];
 
+  const offset = 1.5;
   for (const { axis, color } of axes) {
-    const handle = createHandle(scene, canvas, camera, axis, color);
+    const { handle, localOffset } = createHandle(scene, canvas, camera, axis, color, gizmo);
     scene.addActor(handle);
+    gizmoComponent.registerHandle(handle, localOffset);
   }
 
   // Listen for selection events to update target
   useOnEvent(
     ObjectSelectedEvent,
     (event) => {
-      const selectedActor = scene.getActor(event.payload.actorId);
-      if (selectedActor) {
-        gizmoComponent.setTarget(selectedActor);
-      }
+      gizmoComponent.setTarget(event.payload.actor);
     },
     gizmoComponent,
   );
@@ -81,25 +80,35 @@ function createHandle(
   camera: CameraComponent,
   axis: "X" | "Y" | "Z",
   color: [number, number, number, number],
-): Actor {
+  gizmoActor: Actor,
+): { handle: Actor; localOffset: Vec3 } {
   const handle = new Actor(`GizmoHandle_${axis}`);
 
   // Add transform
   const transform = handle.addComponent(TransformComponent);
 
-  // Orient handle along axis
+  // Position handle offset from gizmo center
+  const offset = 1.5;
+  let localOffset: Vec3;
+
   switch (axis) {
     case "X":
-      // Rotate 90° around Z to point along X
-      transform.rotation = [0, 0, Math.PI / 2, 1];
+      localOffset = [offset, 0, 0];
+      transform.position = [0, 0, 0]; // Will be updated by gizmo
+      transform.rotation = [0, 0, 0, Math.PI / 2]; // Euler ZYX: rotate 90° around Z
       break;
     case "Y":
-      // Default orientation (points along Y)
+      localOffset = [0, offset, 0];
+      transform.position = [0, 0, 0]; // Will be updated by gizmo
+      transform.rotation = [0, 0, 0, 0];
       break;
     case "Z":
-      // Rotate -90° around X to point along Z
-      transform.rotation = [-Math.PI / 2, 0, 0, 1];
+      localOffset = [0, 0, offset];
+      transform.position = [0, 0, 0]; // Will be updated by gizmo
+      transform.rotation = [-Math.PI / 2, 0, 0, 0]; // Rotate -90° around X
       break;
+    default:
+      localOffset = [0, 0, 0];
   }
 
   // Create arrow geometry
@@ -121,7 +130,7 @@ function createHandle(
   };
 
   // Simple vertex shader
-  const vertexShader = new ShaderResource("gizmo_vertex", {
+  const vertexShader = new ShaderResource(`gizmo_vertex_${axis}`, {
     stage: ShaderStage.Vertex,
     code: `
       struct GlobalUniforms {
@@ -158,14 +167,14 @@ function createHandle(
         var output: VertexOutput;
         output.position = global.viewProjection * model * vec4f(input.position, 1.0);
         output.color = input.instanceColor;
-        output.normal = input.normal;
+        output.normal = (model * vec4f(input.normal, 0.0)).xyz;
         return output;
       }
     `,
   });
 
   // Simple fragment shader
-  const fragmentShader = new ShaderResource("gizmo_fragment", {
+  const fragmentShader = new ShaderResource(`gizmo_fragment_${axis}`, {
     stage: ShaderStage.Fragment,
     code: `
       struct FragmentInput {
@@ -192,5 +201,5 @@ function createHandle(
   // Add interaction component
   handle.addComponent(HandleInteractionComponent, canvas, camera, axis);
 
-  return handle;
+  return { handle, localOffset };
 }
