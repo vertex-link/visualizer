@@ -22,6 +22,14 @@ export type {
   MaterialDescriptor,
 } from "./resources/MaterialResource";
 export { GeometryUtils } from "./resources/GeometryUtils";
+export { FrustumCullingResource } from "./resources/FrustumCullingResource";
+export type {
+  FrustumCullingExports,
+  Frustum,
+  FrustumPlane,
+} from "./resources/FrustumCullingResource";
+export { BoundingBoxUtils } from "./resources/types/BoundingBox";
+export type { BoundingBox, BoundingSphere } from "./resources/types/BoundingBox";
 
 // Rendering Interfaces
 export { BufferUsage } from "./rendering/interfaces/IBuffer";
@@ -58,6 +66,7 @@ export { GPUResourcePool } from "./rendering/GPUResourcePool";
 export { WebGPUProcessor } from "./processors/WebGPUProcessor";
 export { RenderProcessor } from "./processors/RenderProcessor";
 export { FixedTickProcessor } from "./processors/FixedTickProcessor";
+export { FrustumCullingProcessor } from "./processors/FrustumCullingProcessor";
 
 // WebGPU wrappers
 export { WebGPURenderer } from "./webgpu/WebGPURenderer";

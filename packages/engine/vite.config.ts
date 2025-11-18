@@ -6,11 +6,18 @@ import zig from "vite-plugin-zig";
 export default defineConfig({
   plugins: [
     zig({
-      // Configure zgltf WebAssembly compilation
+      // Configure WebAssembly compilation for Zig modules
       projects: [
         {
           name: "zgltf",
           path: path.resolve(__dirname, "src/resources/zgltf"),
+          entry: "src/main.zig",
+          target: "wasm32-freestanding",
+          optimize: "ReleaseSmall",
+        },
+        {
+          name: "frustum-culling",
+          path: path.resolve(__dirname, "src/resources/frustum-culling"),
           entry: "src/main.zig",
           target: "wasm32-freestanding",
           optimize: "ReleaseSmall",

@@ -2,6 +2,11 @@ import { Resource, type Context } from "@vertex-link/space";
 import { WebGPUProcessor } from "../processors/WebGPUProcessor";
 import { BufferUsage } from "../rendering/interfaces/IBuffer";
 import { WebGPUBuffer } from "./../webgpu/WebGPUBuffer";
+import {
+  BoundingBoxUtils,
+  type BoundingBox,
+  type BoundingSphere,
+} from "./types/BoundingBox";
 
 
 /**
@@ -39,6 +44,10 @@ export class MeshResource extends Resource<MeshDescriptor> {
   private indexBuffer: WebGPUBuffer | null = null;
   public isCompiled = false;
 
+  // Bounding volumes for frustum culling
+  private _boundingBox: BoundingBox | null = null;
+  private _boundingSphere: BoundingSphere | null = null;
+
   constructor(name: string, meshData: MeshDescriptor, context?: Context) {
     super(name, meshData, context);
   }
@@ -49,10 +58,59 @@ export class MeshResource extends Resource<MeshDescriptor> {
       throw new Error(`MeshResource "${this.name}": No vertex data provided`);
     }
 
+    // Calculate bounding volumes for frustum culling
+    this.calculateBoundingVolumes();
+
     console.debug(
       `MeshResource "${this.name}" loaded with ${this.vertexCount} vertices`,
     );
     return this.payload;
+  }
+
+  /**
+   * Calculate bounding box and bounding sphere from vertex data
+   * Extracts position data from vertex attributes
+   */
+  private calculateBoundingVolumes(): void {
+    if (!this.payload || !this.payload.vertices) {
+      return;
+    }
+
+    // Find position attribute
+    const positionAttr = this.payload.vertexAttributes.find(
+      (attr) => attr.name === "position",
+    );
+
+    if (!positionAttr || positionAttr.size < 3) {
+      console.warn(
+        `MeshResource "${this.name}": No valid position attribute for bounding volume calculation`,
+      );
+      return;
+    }
+
+    // Extract position data from interleaved vertex buffer
+    const vertices = this.payload.vertices;
+    const stride = this.payload.vertexStride / 4; // Convert bytes to float count
+    const offset = positionAttr.offset / 4; // Convert bytes to float index
+    const vertexCount = vertices.length / stride;
+
+    // Create position-only array for bounding calculations
+    const positions = new Float32Array(vertexCount * 3);
+    for (let i = 0; i < vertexCount; i++) {
+      positions[i * 3 + 0] = vertices[i * stride + offset + 0]; // x
+      positions[i * 3 + 1] = vertices[i * stride + offset + 1]; // y
+      positions[i * 3 + 2] = vertices[i * stride + offset + 2]; // z
+    }
+
+    // Calculate bounding box
+    this._boundingBox = BoundingBoxUtils.fromVertices(positions);
+
+    // Calculate bounding sphere (using box-based method for speed)
+    this._boundingSphere = BoundingBoxUtils.toBoundingSphere(this._boundingBox);
+
+    console.debug(
+      `MeshResource "${this.name}": Bounding volumes calculated - Box center: [${this._boundingBox.center.join(", ")}], Sphere radius: ${this._boundingSphere.radius.toFixed(2)}`,
+    );
   }
 
   async compile(context: Context): Promise<void> {
@@ -139,6 +197,22 @@ export class MeshResource extends Resource<MeshDescriptor> {
    */
   get hasIndices(): boolean {
     return this.payload?.indices !== undefined;
+  }
+
+  /**
+   * Get the bounding box for frustum culling.
+   * Returns null if not yet calculated.
+   */
+  get boundingBox(): BoundingBox | null {
+    return this._boundingBox;
+  }
+
+  /**
+   * Get the bounding sphere for frustum culling.
+   * Returns null if not yet calculated.
+   */
+  get boundingSphere(): BoundingSphere | null {
+    return this._boundingSphere;
   }
 
   /**

@@ -14,6 +14,17 @@ export interface BoundingBox {
   size: [number, number, number];
 }
 
+/**
+ * BoundingSphere for efficient frustum culling
+ * Spheres are faster to test than AABBs but less precise
+ */
+export interface BoundingSphere {
+  /** Center point [x, y, z] */
+  center: [number, number, number];
+  /** Radius of the sphere */
+  radius: number;
+}
+
 // biome-ignore lint/complexity/noStaticOnlyClass: <explanation>
 export class BoundingBoxUtils {
   /**
@@ -149,5 +160,130 @@ export class BoundingBoxUtils {
   static getSurfaceArea(box: BoundingBox): number {
     const [w, h, d] = box.size;
     return 2 * (w * h + w * d + h * d);
+  }
+
+  /**
+   * Calculate a bounding sphere that encompasses the bounding box
+   * Uses the box diagonal as diameter for a tight fit
+   */
+  static toBoundingSphere(box: BoundingBox): BoundingSphere {
+    // Radius is half the diagonal distance from center to corner
+    const halfSize: [number, number, number] = [
+      box.size[0] / 2,
+      box.size[1] / 2,
+      box.size[2] / 2,
+    ];
+
+    const radius = Math.sqrt(
+      halfSize[0] * halfSize[0] + halfSize[1] * halfSize[1] + halfSize[2] * halfSize[2],
+    );
+
+    return {
+      center: [box.center[0], box.center[1], box.center[2]],
+      radius,
+    };
+  }
+
+  /**
+   * Calculate a minimal bounding sphere from vertices (Ritter's algorithm)
+   * More accurate than box-based sphere but more expensive to compute
+   */
+  static boundingSphereFromVertices(vertices: Float32Array): BoundingSphere {
+    if (vertices.length === 0) {
+      return { center: [0, 0, 0], radius: 0 };
+    }
+
+    // Find axis-aligned extremes
+    let minX = vertices[0],
+      maxX = vertices[0];
+    let minY = vertices[1],
+      maxY = vertices[1];
+    let minZ = vertices[2],
+      maxZ = vertices[2];
+
+    for (let i = 3; i < vertices.length; i += 3) {
+      minX = Math.min(minX, vertices[i]);
+      maxX = Math.max(maxX, vertices[i]);
+      minY = Math.min(minY, vertices[i + 1]);
+      maxY = Math.max(maxY, vertices[i + 1]);
+      minZ = Math.min(minZ, vertices[i + 2]);
+      maxZ = Math.max(maxZ, vertices[i + 2]);
+    }
+
+    // Find the most separated pair along each axis
+    const spanX = maxX - minX;
+    const spanY = maxY - minY;
+    const spanZ = maxZ - minZ;
+
+    let centerX: number, centerY: number, centerZ: number;
+
+    if (spanX > spanY && spanX > spanZ) {
+      centerX = (minX + maxX) / 2;
+      centerY = (minY + maxY) / 2;
+      centerZ = (minZ + maxZ) / 2;
+    } else if (spanY > spanZ) {
+      centerX = (minX + maxX) / 2;
+      centerY = (minY + maxY) / 2;
+      centerZ = (minZ + maxZ) / 2;
+    } else {
+      centerX = (minX + maxX) / 2;
+      centerY = (minY + maxY) / 2;
+      centerZ = (minZ + maxZ) / 2;
+    }
+
+    // Calculate initial radius
+    let radiusSq = 0;
+    for (let i = 0; i < vertices.length; i += 3) {
+      const dx = vertices[i] - centerX;
+      const dy = vertices[i + 1] - centerY;
+      const dz = vertices[i + 2] - centerZ;
+      const distSq = dx * dx + dy * dy + dz * dz;
+      radiusSq = Math.max(radiusSq, distSq);
+    }
+
+    // Expand to include all points (iterative refinement)
+    let radius = Math.sqrt(radiusSq);
+    for (let i = 0; i < vertices.length; i += 3) {
+      const dx = vertices[i] - centerX;
+      const dy = vertices[i + 1] - centerY;
+      const dz = vertices[i + 2] - centerZ;
+      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+      if (dist > radius) {
+        const oldRadius = radius;
+        radius = (radius + dist) / 2;
+        const ratio = (radius - oldRadius) / dist;
+
+        centerX += dx * ratio;
+        centerY += dy * ratio;
+        centerZ += dz * ratio;
+      }
+    }
+
+    return {
+      center: [centerX, centerY, centerZ],
+      radius,
+    };
+  }
+
+  /**
+   * Transform a bounding sphere by a scale factor and position offset
+   */
+  static transformSphere(
+    sphere: BoundingSphere,
+    position: [number, number, number],
+    scale: [number, number, number],
+  ): BoundingSphere {
+    // Use maximum scale component for radius (conservative approach)
+    const maxScale = Math.max(scale[0], scale[1], scale[2]);
+
+    return {
+      center: [
+        sphere.center[0] * scale[0] + position[0],
+        sphere.center[1] * scale[1] + position[1],
+        sphere.center[2] * scale[2] + position[2],
+      ],
+      radius: sphere.radius * maxScale,
+    };
   }
 }
