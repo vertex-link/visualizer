@@ -50,6 +50,8 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
   private device: GPUDevice | null = null;
   private pipeline: WebGPUPipeline | null = null;
   private uniformBuffer: ArrayBuffer | null = null;
+  private uniformGPUBuffer: GPUBuffer | null = null;
+  private bindGroup: GPUBindGroup | null = null;
   private uniformData: Map<string, UniformDescriptor> = new Map();
   public isCompiled = false;
   private preferredFormat: GPUTextureFormat = "bgra8unorm";
@@ -114,6 +116,10 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
 
     try {
       this.pipeline = await this.createPipeline(device);
+
+      // Create bind group from slots
+      this.createBindGroupFromSlots(device);
+
       console.log(
         `✅ MaterialResource "${this.name}" (ID: ${this.id}) compiled successfully. isCompiled: ${this.isCompiled}`,
       );
@@ -131,6 +137,13 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
       return null;
     }
     return this.pipeline.getGPURenderPipeline();
+  }
+
+  /**
+   * Get the compiled bind group
+   */
+  getBindGroup(): GPUBindGroup | null {
+    return this.bindGroup;
   }
 
   /**
@@ -207,6 +220,100 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
     };
 
     return new WebGPUPipeline(device, pipelineDescriptor, this.preferredFormat);
+  }
+
+  /**
+   * Create WebGPU bind group from filled slots
+   */
+  private createBindGroupFromSlots(device: GPUDevice): void {
+    if (!this.pipeline) {
+      throw new Error(
+        `MaterialResource "${this.name}": Cannot create bind group without pipeline`
+      );
+    }
+
+    const entries: GPUBindGroupEntry[] = [];
+    const bindings = this.payload.shader.getBindingDescriptors();
+
+    // Create entries based on binding descriptors from shader
+    for (const binding of bindings) {
+      if (binding.type === "uniform") {
+        // Uniform buffer at binding 0
+        if (this.uniformBuffer && this.uniformBuffer.byteLength > 0) {
+          // Create GPU buffer if not exists
+          if (!this.uniformGPUBuffer) {
+            this.uniformGPUBuffer = device.createBuffer({
+              size: this.uniformBuffer.byteLength,
+              usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+              label: `${this.name}_uniformBuffer`,
+            });
+          }
+
+          // Upload data
+          device.queue.writeBuffer(
+            this.uniformGPUBuffer,
+            0,
+            this.uniformBuffer
+          );
+
+          entries.push({
+            binding: binding.binding,
+            resource: { buffer: this.uniformGPUBuffer },
+          });
+        }
+      } else if (binding.type === "texture_2d" || binding.type === "texture_cube") {
+        // Look for texture in slots
+        const textureResource = this.slot<ImageResource>(binding.name);
+        if (textureResource) {
+          entries.push({
+            binding: binding.binding,
+            resource: textureResource.getTextureView(),
+          });
+        }
+      } else if (binding.type === "sampler") {
+        // Look for sampler in slots
+        const samplerResource = this.slot<SamplerResource>(binding.name);
+        if (samplerResource) {
+          entries.push({
+            binding: binding.binding,
+            resource: samplerResource.getSampler(),
+          });
+        } else {
+          // Try to get sampler from corresponding texture
+          // Convention: "albedoSampler" -> look for "albedoTexture"
+          const textureName = binding.name.replace("Sampler", "Texture");
+          const textureResource = this.slot<ImageResource>(textureName);
+          if (textureResource) {
+            entries.push({
+              binding: binding.binding,
+              resource: textureResource.getSampler(),
+            });
+          }
+        }
+      }
+    }
+
+    // Sort entries by binding index
+    entries.sort((a, b) => a.binding - b.binding);
+
+    // Get bind group layout from pipeline
+    const bindGroupLayout = this.pipeline.getBindGroupLayout(0);
+    if (!bindGroupLayout) {
+      throw new Error(
+        `MaterialResource "${this.name}": Pipeline has no bind group layout`
+      );
+    }
+
+    // Create bind group
+    this.bindGroup = device.createBindGroup({
+      layout: bindGroupLayout,
+      entries,
+      label: `${this.name}_bindGroup`,
+    });
+
+    console.log(
+      `🔗 MaterialResource "${this.name}" created bind group with ${entries.length} entries`
+    );
   }
 
   /**

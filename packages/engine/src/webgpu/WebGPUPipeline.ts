@@ -15,6 +15,8 @@ export class WebGPUPipeline implements IPipeline {
 
   private device: GPUDevice;
   private pipeline: GPURenderPipeline | null = null;
+  private pipelineLayout: GPUPipelineLayout | null = null;
+  private bindGroupLayouts: GPUBindGroupLayout[] = [];
   readonly label: string;
   private isCompiled = false;
   readonly preferredFormat: GPUTextureFormat; // Added
@@ -46,8 +48,17 @@ export class WebGPUPipeline implements IPipeline {
     return this.pipeline;
   }
 
+  /**
+   * Get bind group layout for the specified group index
+   */
+  getBindGroupLayout(groupIndex: number): GPUBindGroupLayout | null {
+    return this.bindGroupLayouts[groupIndex] || null;
+  }
+
   destroy(): void {
     this.pipeline = null;
+    this.pipelineLayout = null;
+    this.bindGroupLayouts = [];
     this.isCompiled = false;
   }
 
@@ -72,32 +83,10 @@ export class WebGPUPipeline implements IPipeline {
         format: "depth24plus",
       };
 
-      // --- ** Explicit Bind Group Layout Definition ** ---
-      // This defines what group 0 expects: one uniform buffer at binding 0.
-      const bindGroupLayout = this.device.createBindGroupLayout({
-        label: `${this.label}_BindGroupLayout_Group0`,
-        entries: [
-          {
-            binding: 0, // Corresponds to @binding(0) in your shader
-            visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, // Accessible in both VS & FS
-            buffer: {
-              type: "uniform",
-            },
-          },
-        ],
-      });
-
-      // Create the overall pipeline layout using the explicit bind group layout(s).
-      // For this pipeline, we only have one bind group (group 0).
-      const explicitPipelineLayout = this.device.createPipelineLayout({
-        label: `${this.label}_PipelineLayout`,
-        bindGroupLayouts: [bindGroupLayout], // Array of BGLs, for group 0, 1, 2...
-      });
-      // --- ** End of Explicit Layout Definition ** ---
-
+      // Use "auto" layout to let WebGPU infer from shader bindings
       this.pipeline = this.device.createRenderPipeline({
         label: this.label,
-        layout: explicitPipelineLayout, // <--- USE THE EXPLICIT LAYOUT
+        layout: "auto", // Let WebGPU infer layout from shader
         vertex: {
           module: vertexShaderModule,
           entryPoint: descriptor.entryPoints?.vertex || "vs_main",
@@ -120,8 +109,11 @@ export class WebGPUPipeline implements IPipeline {
         depthStencil: depthStencilState,
       });
 
+      // Retrieve and store bind group layout from the compiled pipeline
+      this.bindGroupLayouts.push(this.pipeline.getBindGroupLayout(0));
+
       this.isCompiled = true;
-      console.log(`Pipeline '${this.label}' compiled successfully with explicit layout.`);
+      console.log(`Pipeline '${this.label}' compiled successfully with auto layout.`);
     } catch (error) {
       console.error(`Failed to compile pipeline '${this.label}':`, error);
       this.isCompiled = false;
