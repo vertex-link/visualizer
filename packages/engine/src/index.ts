@@ -21,6 +21,12 @@ export type {
   UniformDescriptor,
   MaterialDescriptor,
 } from "./resources/MaterialResource";
+export { ImageResource } from "./resources/ImageResource";
+export type { ImageDescriptor } from "./resources/ImageResource";
+export { SamplerResource } from "./resources/SamplerResource";
+export type { SamplerDescriptor } from "./resources/SamplerResource";
+export { parseWGSLBindings, BindingType } from "./resources/WGSLParser";
+export type { BindingDescriptor } from "./resources/WGSLParser";
 export { GeometryUtils } from "./resources/GeometryUtils";
 
 // Rendering Interfaces

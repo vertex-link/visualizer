@@ -3,6 +3,8 @@ import { WebGPUProcessor } from "../processors/WebGPUProcessor";
 import type { VertexLayout } from "../rendering/interfaces/IPipeline";
 import { WebGPUPipeline } from "./../webgpu/WebGPUPipeline";
 import { type ShaderResource, ShaderStage } from "./ShaderResource";
+import { ImageResource } from "./ImageResource";
+import { SamplerResource } from "./SamplerResource";
 
 
 /**
@@ -67,6 +69,18 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
     // Ensure shader is loaded first
     await this.payload.shader.whenReady();
 
+    // Auto-create slots from shader bindings
+    const shaderSlots = this.payload.shader.createSlotDescriptors();
+
+    for (const [name, descriptor] of shaderSlots) {
+      this.defineSlot(name, descriptor);
+    }
+
+    console.log(
+      `🎨 MaterialResource "${this.name}" created ${shaderSlots.size} slots:`,
+      Array.from(shaderSlots.keys())
+    );
+
     // Update uniform buffer
     this.updateUniformBuffer();
 
@@ -77,6 +91,9 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
     console.log(
       `🔧 MaterialResource "${this.name}" (ID: ${this.id}) starting compilation. isCompiled: ${this.isCompiled}`,
     );
+
+    // Wait for all slot resources to be ready
+    await this.waitForSlots();
 
     const webgpuProcessor = context.processors.find(p => p instanceof WebGPUProcessor) as WebGPUProcessor | undefined;
     if (!webgpuProcessor) {

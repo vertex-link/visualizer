@@ -7,6 +7,25 @@ export enum ResourceStatus {
   FAILED = 3,
 }
 
+/**
+ * Descriptor for a resource slot
+ */
+export interface SlotDescriptor {
+  type: new (...args: any[]) => Resource; // Type constraint
+  binding?: number; // WebGPU binding index (for shader resources)
+  required: boolean; // Must be filled before resource is complete
+  defaultResource?: Resource; // Fallback resource
+}
+
+/**
+ * Resource slot instance
+ */
+export interface ResourceSlot {
+  name: string;
+  descriptor: SlotDescriptor;
+  resource: Resource | null;
+}
+
 export abstract class Resource<TData = unknown> {
   public readonly id = crypto.randomUUID();
   public readonly name: string;
@@ -16,6 +35,9 @@ export abstract class Resource<TData = unknown> {
   public error: Error | null = null;
 
   private readyPromise: Promise<void>;
+
+  // Slot system for resource composition
+  private slots = new Map<string, ResourceSlot>();
 
   constructor(name: string, payload: TData, context?: Context) {
     this.name = name;
@@ -105,5 +127,127 @@ export abstract class Resource<TData = unknown> {
    */
   isLoaded(): boolean {
     return this.status === ResourceStatus.LOADED;
+  }
+
+  // === SLOT SYSTEM ===
+
+  /**
+   * Define a slot (called by subclass constructors/loadInternal)
+   */
+  protected defineSlot(name: string, descriptor: SlotDescriptor): void {
+    this.slots.set(name, {
+      name,
+      descriptor,
+      resource: descriptor.defaultResource || null,
+    });
+  }
+
+  /**
+   * Get or set a slot value
+   * - slot(name) → get resource from slot
+   * - slot(name, resource) → set resource in slot (creates slot if doesn't exist)
+   * - slot(name, resource, descriptor) → set resource and define slot
+   */
+  public slot<T extends Resource>(name: string): T | undefined;
+  public slot<T extends Resource>(name: string, resource: T): this;
+  public slot<T extends Resource>(
+    name: string,
+    resource: T,
+    descriptor: SlotDescriptor
+  ): this;
+  public slot<T extends Resource>(
+    name: string,
+    resource?: T,
+    descriptor?: SlotDescriptor
+  ): T | undefined | this {
+    // Getter: slot(name)
+    if (resource === undefined) {
+      const slot = this.slots.get(name);
+      return slot?.resource as T | undefined;
+    }
+
+    // Setter: slot(name, resource) or slot(name, resource, descriptor)
+    let slot = this.slots.get(name);
+
+    if (!slot) {
+      // Create new slot if doesn't exist
+      if (!descriptor) {
+        // Infer descriptor from resource
+        descriptor = {
+          type: resource.constructor as new (...args: any[]) => Resource,
+          required: false,
+        };
+      }
+      slot = {
+        name,
+        descriptor,
+        resource: null,
+      };
+      this.slots.set(name, slot);
+    }
+
+    // Type validation
+    if (!(resource instanceof slot.descriptor.type)) {
+      throw new Error(
+        `Resource "${this.name}" slot "${name}" expects ${slot.descriptor.type.name}, got ${resource.constructor.name}`
+      );
+    }
+
+    slot.resource = resource;
+    return this; // Fluent API
+  }
+
+  /**
+   * Get all slots (read-only)
+   */
+  public getSlots(): ReadonlyMap<string, ResourceSlot> {
+    return this.slots;
+  }
+
+  /**
+   * Check if all required slots are filled
+   */
+  public areSlotsComplete(): boolean {
+    for (const [name, slot] of this.slots) {
+      if (slot.descriptor.required && !slot.resource) {
+        console.warn(
+          `Resource "${this.name}" missing required slot "${name}"`
+        );
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Get list of missing required slots
+   */
+  public getMissingSlots(): string[] {
+    const missing: string[] = [];
+    for (const [name, slot] of this.slots) {
+      if (slot.descriptor.required && !slot.resource) {
+        missing.push(name);
+      }
+    }
+    return missing;
+  }
+
+  /**
+   * Wait for all slot resources to be ready
+   */
+  protected async waitForSlots(): Promise<void> {
+    const promises: Promise<any>[] = [];
+
+    for (const [name, slot] of this.slots) {
+      if (slot.resource) {
+        promises.push(slot.resource.whenReady());
+      } else if (slot.descriptor.required) {
+        throw new Error(
+          `Required slot "${name}" not filled in resource "${this.name}"`
+        );
+      }
+    }
+
+    await Promise.all(promises);
   }
 }

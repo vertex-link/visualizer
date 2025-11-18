@@ -1,5 +1,12 @@
-import { Resource, type Context } from "@vertex-link/space";
+import { Resource, type Context, type SlotDescriptor } from "@vertex-link/space";
 import { WebGPUProcessor } from "../processors/WebGPUProcessor";
+import {
+  parseWGSLBindings,
+  type BindingDescriptor,
+  BindingType,
+} from "./WGSLParser";
+import { ImageResource } from "./ImageResource";
+import { SamplerResource } from "./SamplerResource";
 
 /**
  * Shader stage types supported by the engine.
@@ -45,6 +52,9 @@ export class ShaderResource extends Resource<ShaderDescriptor> {
 
   // Direct device reference instead of going through service
   private device: GPUDevice | null = null;
+
+  // Binding descriptors discovered from shader
+  private bindingDescriptors: BindingDescriptor[] = [];
 
   constructor(name: string, shaderDescriptor: ShaderDescriptor, context?: Context) {
     super(name, shaderDescriptor, context);
@@ -120,6 +130,23 @@ export class ShaderResource extends Resource<ShaderDescriptor> {
 
   protected async loadInternal(): Promise<ShaderDescriptor> {
     console.log("load internal shader");
+
+    // Parse bindings from all shader sources
+    const allSources = [
+      this.payload.vertexSource,
+      this.payload.fragmentSource,
+      this.payload.computeSource,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    this.bindingDescriptors = parseWGSLBindings(allSources);
+
+    console.log(
+      `🔍 ShaderResource "${this.name}" discovered ${this.bindingDescriptors.length} bindings:`,
+      this.bindingDescriptors.map((b) => `${b.name}@${b.binding}(${b.type})`)
+    );
+
     return this.payload;
   }
 
@@ -190,6 +217,56 @@ export class ShaderResource extends Resource<ShaderDescriptor> {
     this.device = null;
 
     console.debug(`ShaderResource "${this.name}" unloaded`);
+  }
+
+  /**
+   * Get binding descriptors discovered from shader
+   */
+  public getBindingDescriptors(): BindingDescriptor[] {
+    return [...this.bindingDescriptors];
+  }
+
+  /**
+   * Create slot descriptors from shader bindings
+   * Used by MaterialResource to auto-create slots
+   */
+  public createSlotDescriptors(): Map<string, SlotDescriptor> {
+    const slots = new Map<string, SlotDescriptor>();
+
+    for (const binding of this.bindingDescriptors) {
+      // Skip uniform buffers (handled separately by MaterialResource)
+      if (binding.type === BindingType.UNIFORM_BUFFER) continue;
+
+      // Map binding types to Resource classes
+      let type: new (...args: any[]) => Resource;
+
+      switch (binding.type) {
+        case BindingType.TEXTURE_2D:
+        case BindingType.TEXTURE_CUBE:
+        case BindingType.TEXTURE_3D:
+          type = ImageResource;
+          break;
+
+        case BindingType.SAMPLER:
+          type = SamplerResource;
+          break;
+
+        case BindingType.STORAGE_BUFFER:
+          // TODO: Add StorageBufferResource when implemented
+          continue;
+
+        default:
+          continue;
+      }
+
+      slots.set(binding.name, {
+        type,
+        binding: binding.binding,
+        required: false, // Materials can override to make required
+      });
+    }
+
+    return slots;
   }
 
   /**
