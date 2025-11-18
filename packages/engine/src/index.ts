@@ -51,7 +51,7 @@ export { PerspectiveCamera } from "./rendering/camera/PerspectiveCamera";
 export { Transform } from "./rendering/math/Transform";
 
 // Rendering Pipeline & Processors
-export { RenderGraph, RenderPass, ForwardPass, PostProcessPass } from "./rendering/RenderGraph";
+export { RenderGraph, RenderPass, ForwardPass, OverlayPass, PostProcessPass } from "./rendering/RenderGraph";
 export type { RenderBatch, RenderPassContext } from "./rendering/RenderGraph";
 export { GPUResourcePool } from "./rendering/GPUResourcePool";
 
@@ -63,3 +63,26 @@ export { FixedTickProcessor } from "./processors/FixedTickProcessor";
 export { WebGPURenderer } from "./webgpu/WebGPURenderer";
 export { WebGPUPipeline } from "./webgpu/WebGPUPipeline";
 export { WebGPUBuffer } from "./webgpu/WebGPUBuffer";
+
+// Gizmo (transform manipulation tools)
+export {
+  GizmoComponent,
+  HandleInteractionComponent,
+  SelectableComponent,
+  SelectionManagerComponent,
+  GizmoDragStartedEvent,
+  GizmoDraggedEvent,
+  GizmoDragEndedEvent,
+  ObjectSelectedEvent,
+  SelectionClearedEvent,
+  GizmoModeChangedEvent,
+  screenToRay,
+  raySphereIntersection,
+  rayCylinderIntersection,
+  createArrowGeometry,
+  createLineGeometry,
+  createCubeGeometry,
+  createSphereGeometry,
+  createGizmo,
+} from "./gizmo";
+export type { GizmoMode, GizmoSpace, Ray, RayHit } from "./gizmo";

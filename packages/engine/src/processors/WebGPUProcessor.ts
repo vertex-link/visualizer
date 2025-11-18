@@ -45,11 +45,14 @@ export class WebGPUProcessor extends Processor {
   private resourcePool: GPUResourcePool;
   private renderGraph: RenderGraph;
 
-  // Scene reference for queries
-  private scene: Scene | null = null;
+  // Scene references for queries
+  private scene: Scene | null = null; // Legacy: maps to contentScene
+  private contentScene: Scene | null = null;
+  private overlayScenes: Map<string, Scene> = new Map();
 
   // Cached render data (updated when dirty)
   private cachedBatches: InstancedRenderBatch[] = [];
+  private overlayBatches: Map<string, InstancedRenderBatch[]> = new Map();
   private globalUniformBuffer: GPUBuffer | null = null;
   private globalBindGroup: GPUBindGroup | null = null;
   private activeCamera: CameraComponent | null = null;
@@ -101,10 +104,50 @@ export class WebGPUProcessor extends Processor {
 
   /**
    * Set the scene to render (called from application)
+   * Legacy method - sets content scene
    */
   setScene(scene: Scene): void {
     this.scene = scene;
+    this.contentScene = scene;
     this.isDirty = true;
+  }
+
+  /**
+   * Set the content scene (main 3D scene)
+   */
+  setContentScene(scene: Scene): void {
+    this.contentScene = scene;
+    this.scene = scene; // Keep legacy reference
+    this.isDirty = true;
+  }
+
+  /**
+   * Add an overlay scene (for gizmos, editor tools, etc.)
+   * @param layerName - Unique identifier for this overlay layer
+   * @param scene - The scene to render as an overlay
+   */
+  addOverlayScene(layerName: string, scene: Scene): void {
+    this.overlayScenes.set(layerName, scene);
+    this.isDirty = true;
+  }
+
+  /**
+   * Remove an overlay scene
+   */
+  removeOverlayScene(layerName: string): boolean {
+    const removed = this.overlayScenes.delete(layerName);
+    if (removed) {
+      this.overlayBatches.delete(layerName);
+      this.isDirty = true;
+    }
+    return removed;
+  }
+
+  /**
+   * Get an overlay scene by name
+   */
+  getOverlayScene(layerName: string): Scene | undefined {
+    return this.overlayScenes.get(layerName);
   }
 
   /**
@@ -137,6 +180,7 @@ export class WebGPUProcessor extends Processor {
         this.activeCamera,
         deltaTime,
         this.globalBindGroup,
+        this.overlayBatches,
       );
     };
 
@@ -151,10 +195,25 @@ export class WebGPUProcessor extends Processor {
    * Query scene and create efficient instanced render batches
    */
   private updateRenderBatches(): void {
-    if (!this.scene) return;
+    // Update content scene batches
+    if (this.contentScene) {
+      this.cachedBatches = this.createBatchesForScene(this.contentScene);
+    } else if (this.scene) {
+      this.cachedBatches = this.createBatchesForScene(this.scene);
+    }
 
+    // Update overlay scene batches
+    for (const [layerName, overlayScene] of this.overlayScenes) {
+      this.overlayBatches.set(layerName, this.createBatchesForScene(overlayScene));
+    }
+  }
+
+  /**
+   * Create batches for a specific scene
+   */
+  private createBatchesForScene(scene: Scene): InstancedRenderBatch[] {
     // Query all renderable objects
-    const renderables = this.scene
+    const renderables = scene
       .query()
       .withComponent(TransformComponent)
       .withComponent(MeshRendererComponent)
@@ -180,7 +239,7 @@ export class WebGPUProcessor extends Processor {
     }
 
     // Create instanced render batches
-    this.cachedBatches = Array.from(batchGroups.entries()).map(([batchKey, meshRenderers]) => {
+    return Array.from(batchGroups.entries()).map(([batchKey, meshRenderers]) => {
       const batch = this.createInstancedBatch(meshRenderers[0].material!, meshRenderers[0].mesh!);
 
       // Add all instances to the batch
@@ -307,11 +366,28 @@ export class WebGPUProcessor extends Processor {
    * Check if any transforms have been updated and mark batches dirty
    */
   private checkTransformUpdates(): void {
-    if (!this.scene) return;
+    // Check content scene
+    const contentScene = this.contentScene || this.scene;
+    if (contentScene) {
+      this.checkTransformUpdatesForBatches(contentScene, this.cachedBatches);
+    }
 
-    for (const batch of this.cachedBatches) {
+    // Check overlay scenes
+    for (const [layerName, overlayScene] of this.overlayScenes) {
+      const batches = this.overlayBatches.get(layerName);
+      if (batches) {
+        this.checkTransformUpdatesForBatches(overlayScene, batches);
+      }
+    }
+  }
+
+  /**
+   * Check transform updates for specific batches
+   */
+  private checkTransformUpdatesForBatches(scene: Scene, batches: InstancedRenderBatch[]): void {
+    for (const batch of batches) {
       for (const [actorId, instanceData] of batch.instances) {
-        const actor = this.scene.getActor(actorId);
+        const actor = scene.getActor(actorId);
         if (actor) {
           const transform = actor.getComponent(TransformComponent);
           if (transform && transform.version !== instanceData.transformVersion) {
@@ -331,7 +407,20 @@ export class WebGPUProcessor extends Processor {
   private uploadInstanceData(): void {
     const device = this.renderer.getDevice()!;
 
-    for (const batch of this.cachedBatches) {
+    // Upload content scene batches
+    this.uploadBatchData(device, this.cachedBatches);
+
+    // Upload overlay scene batches
+    for (const batches of this.overlayBatches.values()) {
+      this.uploadBatchData(device, batches);
+    }
+  }
+
+  /**
+   * Upload batch data to GPU
+   */
+  private uploadBatchData(device: GPUDevice, batches: InstancedRenderBatch[]): void {
+    for (const batch of batches) {
       if (!batch.isDirty || !batch.instanceData || !batch.instanceBuffer) continue;
 
       let offset = 0;

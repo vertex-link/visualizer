@@ -17,6 +17,7 @@ export interface RenderPassContext {
   camera: any; // CameraComponent
   deltaTime: number;
   globalBindGroup: GPUBindGroup | null;
+  overlayBatches?: Map<string, RenderBatch[]>;
 }
 
 /**
@@ -66,6 +67,7 @@ export class RenderGraph {
   constructor() {
     // Add default passes
     this.addPass(new ForwardPass(10));
+    this.addPass(new OverlayPass(50));
     this.addPass(new PostProcessPass(100));
   }
 
@@ -124,6 +126,7 @@ export class RenderGraph {
     camera: any,
     deltaTime: number,
     globalBindGroup: GPUBindGroup | null = null,
+    overlayBatches?: Map<string, RenderBatch[]>,
   ): void {
     if (!this.device) {
       console.warn("⚠️ RenderGraph: No device set, skipping execution");
@@ -136,6 +139,7 @@ export class RenderGraph {
       camera,
       deltaTime,
       globalBindGroup,
+      overlayBatches,
     };
 
     // Execute passes in priority order
@@ -309,6 +313,102 @@ export class ForwardPass extends RenderPass {
     }
 
     // console.log(`🚀 Rendered ${batch.instances.size} instances in single draw call`);
+  }
+}
+
+/**
+ * Overlay rendering pass for gizmos, editor tools, etc.
+ * Renders after ForwardPass with configurable depth testing
+ */
+export class OverlayPass extends RenderPass {
+  constructor(priority = 50) {
+    super("Overlay", priority);
+  }
+
+  /**
+   * Execute the overlay rendering pass
+   */
+  execute(context: RenderPassContext): void {
+    const { renderer, camera, overlayBatches, globalBindGroup } = context;
+
+    if (!renderer || !camera) {
+      return;
+    }
+
+    if (!overlayBatches || overlayBatches.size === 0) {
+      return;
+    }
+
+    // Render each overlay layer
+    for (const [layerName, batches] of overlayBatches) {
+      if (batches.length === 0) continue;
+
+      // Render all batches in this layer
+      for (const batch of batches) {
+        this.renderInstancedBatch(renderer, batch, globalBindGroup);
+      }
+    }
+  }
+
+  /**
+   * Render an instanced batch (same logic as ForwardPass)
+   */
+  private renderInstancedBatch(
+    renderer: any,
+    batch: RenderBatch,
+    globalBindGroup: GPUBindGroup | null,
+  ): void {
+    if (batch.instances.size === 0) return;
+
+    // Get pipeline from material
+    const pipeline = batch.material.getPipeline();
+    if (!pipeline) {
+      console.error(`❌ OverlayPass: No pipeline for material ${batch.material.name}`);
+      return;
+    }
+
+    // Get mesh from batch
+    const mesh = batch.mesh;
+    if (!mesh) {
+      console.error(`❌ OverlayPass: No mesh for batch with meshId ${batch.meshId}`);
+      return;
+    }
+
+    // Set global bind group
+    if (globalBindGroup) {
+      renderer.setBindGroup(0, globalBindGroup);
+    }
+
+    // Set pipeline once for entire batch
+    renderer.setPipeline(pipeline);
+
+    // Set vertex buffers
+    const vertexBuffer = mesh.getVertexBuffer();
+    if (vertexBuffer) {
+      renderer.setVertexBuffer(0, vertexBuffer);
+    } else {
+      return;
+    }
+
+    // Set instance buffer
+    if (batch.instanceBuffer) {
+      renderer.setVertexBuffer(1, batch.instanceBuffer);
+    } else {
+      return;
+    }
+
+    // Set index buffer if available
+    const indexBuffer = mesh.getIndexBuffer();
+    if (indexBuffer) {
+      renderer.setIndexBuffer(indexBuffer);
+    }
+
+    // Single draw call for all instances
+    if (mesh.indexCount > 0) {
+      renderer.drawIndexed(mesh.indexCount, batch.instances.size);
+    } else if (mesh.vertexCount > 0) {
+      renderer.draw(mesh.vertexCount, batch.instances.size);
+    }
   }
 }
 
