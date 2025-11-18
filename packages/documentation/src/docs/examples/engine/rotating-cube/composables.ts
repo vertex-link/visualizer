@@ -11,6 +11,11 @@ import {
   GridComponent,
   GeometryUtils,
   MeshResource,
+  GRID_VERTEX_SHADER,
+  GRID_FRAGMENT_SHADER,
+  type GridConfig,
+  type MaterialDescriptor,
+  type ShaderDescriptor,
 } from "@vertex-link/engine";
 import { Actor, ResourceComponent, type Scene, useUpdate } from "@vertex-link/space";
 import { CubeMeshResource } from "@/example-resources/CubeMeshResource";
@@ -20,9 +25,6 @@ import { RotatingComponent } from "./RotatingComponent";
 import fragmentWGSL from "./shaders/cube.frag.wgsl?raw";
 // Load shader files as text
 import vertexWGSL from "./shaders/cube.vert.wgsl?raw";
-// Load grid shader files
-import gridVertexWGSL from "@vertex-link/engine/src/webgpu/shaders/grid.vert.wgsl?raw";
-import gridFragmentWGSL from "@vertex-link/engine/src/webgpu/shaders/grid.frag.wgsl?raw";
 import { onUpdated } from "vue";
 
 /**
@@ -85,21 +87,15 @@ export function createRotatingCube(
 
   // Resources via ResourceComponent
   const cubeMesh = new CubeMeshResource(1);
-  const shader = new ShaderResource(
-    "CubeShader",
-    {
-      vertexSource: vertexWGSL,
-      fragmentSource: fragmentWGSL,
-      entryPoints: { vertex: "vs_main", fragment: "fs_main" },
-    } as any,
-    // context,
-  );
-  const material = MaterialResource.createBasic(
-    "CubeMaterial",
-    shader,
-    color,
-    // context,
-  );
+
+  const shaderDescriptor: ShaderDescriptor = {
+    vertexSource: vertexWGSL,
+    fragmentSource: fragmentWGSL,
+    entryPoints: { vertex: "vs_main", fragment: "fs_main" },
+  };
+
+  const shader = new ShaderResource("CubeShader", shaderDescriptor);
+  const material = MaterialResource.createBasic("CubeMaterial", shader, color);
 
   const resources = cubeActor.addComponent(ResourceComponent);
   resources.add(cubeMesh);
@@ -111,41 +107,94 @@ export function createRotatingCube(
 }
 
 /**
- * Creates a grid actor with shader-based grid rendering
- * The grid can be toggled on/off using the GridComponent
+ * Creates a grid actor with shader-based grid rendering.
+ * The grid uses procedural rendering with anti-aliased lines, colored axes,
+ * and distance-based fading for an infinite appearance.
+ *
+ * @param scene - Scene to add the grid to
+ * @param config - Grid configuration options
+ * @returns The created grid actor with GridComponent attached
+ *
+ * @example
+ * ```typescript
+ * // Create a horizontal grid
+ * const grid = createGrid(scene, {
+ *   size: 100,
+ *   color: [0.5, 0.5, 0.5, 1.0],
+ *   plane: "xz",
+ *   visible: true
+ * });
+ *
+ * // Toggle grid visibility
+ * const gridComponent = grid.getComponent(GridComponent);
+ * gridComponent.toggle();
+ * ```
  */
-export function createGrid(
-  scene: Scene,
-  size = 100,
-  color: [number, number, number, number] = [0.5, 0.5, 0.5, 1.0],
-  visible = true,
-): Actor {
-  const gridActor = new Actor("Grid");
+export function createGrid(scene: Scene, config: GridConfig = {}): Actor {
+  // Apply defaults and validate
+  const {
+    size = 100,
+    color = [0.5, 0.5, 0.5, 1.0] as [number, number, number, number],
+    visible = true,
+    plane = "xz",
+    layer = -1000, // Render in background by default
+  } = config;
+
+  // Validate parameters
+  if (size <= 0) {
+    throw new Error(`Grid size must be positive, got: ${size}`);
+  }
+
+  for (let i = 0; i < 4; i++) {
+    if (color[i] < 0 || color[i] > 1) {
+      throw new Error(`Grid color values must be in range [0, 1], got: ${color}`);
+    }
+  }
+
+  // Create unique actor name with ID to avoid collisions
+  const gridActor = new Actor(`Grid_${plane.toUpperCase()}`);
   const transform = gridActor.addComponent(TransformComponent);
-  gridActor.addComponent(MeshRendererComponent, { enabled: visible });
+  gridActor.addComponent(MeshRendererComponent, { enabled: visible, layer });
   gridActor.addComponent(GridComponent);
 
   // Position grid at origin
   transform.position = [0, 0, 0];
 
+  // Set rotation based on plane orientation
+  switch (plane) {
+    case "xy":
+      // XY plane - no rotation needed (default orientation)
+      transform.setRotationEuler(Math.PI / 2, 0, 0);
+      break;
+    case "xz":
+      // XZ plane (horizontal) - default grid orientation
+      break;
+    case "yz":
+      // YZ plane (vertical wall) - rotate 90 degrees around Z
+      transform.setRotationEuler(0, 0, Math.PI / 2);
+      break;
+  }
+
   // Create grid mesh using GeometryUtils
   const gridMeshDescriptor = GeometryUtils.createGrid(size);
-  const gridMesh = new MeshResource("GridMesh", gridMeshDescriptor);
+  const gridMesh = new MeshResource(`GridMesh_${gridActor.id}`, gridMeshDescriptor);
 
-  // Create grid shader
-  const gridShader = new ShaderResource("GridShader", {
-    vertexSource: gridVertexWGSL,
-    fragmentSource: gridFragmentWGSL,
+  // Create grid shader using exported shader sources
+  const shaderDescriptor: ShaderDescriptor = {
+    vertexSource: GRID_VERTEX_SHADER,
+    fragmentSource: GRID_FRAGMENT_SHADER,
     entryPoints: { vertex: "vs_main", fragment: "fs_main" },
-  } as any);
+  };
+
+  const gridShader = new ShaderResource(`GridShader_${gridActor.id}`, shaderDescriptor);
 
   // Create material with alpha blending for transparency
-  const gridMaterial = new MaterialResource("GridMaterial", {
+  const materialDescriptor: MaterialDescriptor = {
     shader: gridShader,
     vertexLayout: {
       stride: 32, // position(12) + normal(12) + uv(8)
       attributes: [
-        { location: 0, format: "float32x3", offset: 0 },  // position
+        { location: 0, format: "float32x3", offset: 0 }, // position
         { location: 1, format: "float32x3", offset: 12 }, // normal
         { location: 2, format: "float32x2", offset: 24 }, // uv
       ],
@@ -153,10 +202,12 @@ export function createGrid(
     renderState: {
       cullMode: "none", // Render both sides
       depthWrite: false, // Don't write to depth buffer (for transparency)
-      depthTest: true,   // Still test depth
+      depthTest: true, // Still test depth
       blendMode: "alpha", // Enable alpha blending
     },
-  } as any);
+  };
+
+  const gridMaterial = new MaterialResource(`GridMaterial_${gridActor.id}`, materialDescriptor);
 
   // Add resources to the actor
   const resources = gridActor.addComponent(ResourceComponent);

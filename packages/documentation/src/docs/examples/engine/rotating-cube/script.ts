@@ -16,7 +16,13 @@ async function init(container: HTMLElement) {
 
   // Create camera and grid
   createCamera(scene, canvas, [0, 0, 40]);
-  const gridActor = createGrid(scene, 100, [0.5, 0.5, 0.5, 1.0], true);
+  const gridActor = createGrid(scene, {
+    size: 100,
+    color: [0.5, 0.5, 0.5, 1.0],
+    plane: "xz",
+    visible: true,
+    layer: -1000,
+  });
   // Create a 3D grid of rotating cubes
   const gridSize = 10; // 2x2x2 grid (adjust as needed)
   const spacing = 1.2; // Space between cubes
@@ -54,41 +60,69 @@ async function init(container: HTMLElement) {
   // Start render loop
   context.start();
 
-  // Create toggle button for grid
-  const toggleButton = document.createElement("button");
-  toggleButton.textContent = "Toggle Grid";
-  toggleButton.style.position = "absolute";
-  toggleButton.style.top = "10px";
-  toggleButton.style.left = "10px";
-  toggleButton.style.padding = "10px 20px";
-  toggleButton.style.backgroundColor = "#333";
-  toggleButton.style.color = "#fff";
-  toggleButton.style.border = "none";
-  toggleButton.style.borderRadius = "4px";
-  toggleButton.style.cursor = "pointer";
-  toggleButton.style.fontFamily = "monospace";
-  toggleButton.style.fontSize = "14px";
-  toggleButton.style.zIndex = "1000";
-
-  toggleButton.addEventListener("click", () => {
-    const gridComponent = gridActor.getComponent(GridComponent);
-    if (gridComponent) {
-      gridComponent.toggle();
-      toggleButton.textContent = gridComponent.isVisible() ? "Hide Grid" : "Show Grid";
-    }
-  });
-
-  // Update button text based on initial state
+  // Setup grid toggle UI and controls
   const gridComponent = gridActor.getComponent(GridComponent);
-  if (gridComponent) {
-    toggleButton.textContent = gridComponent.isVisible() ? "Hide Grid" : "Show Grid";
+  if (!gridComponent) {
+    throw new Error("GridComponent not found on grid actor");
   }
 
+  // Helper function to update button text
+  const updateButtonText = (button: HTMLButtonElement) => {
+    button.textContent = gridComponent.isVisible() ? "Hide Grid [G]" : "Show Grid [G]";
+  };
+
+  // Create toggle button with CSS class
+  const toggleButton = document.createElement("button");
+  toggleButton.className = "grid-toggle-button";
+  Object.assign(toggleButton.style, {
+    position: "absolute",
+    top: "10px",
+    left: "10px",
+    padding: "10px 20px",
+    backgroundColor: "#333",
+    color: "#fff",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
+    fontFamily: "monospace",
+    fontSize: "14px",
+    zIndex: "1000",
+    transition: "background-color 0.2s",
+  });
+
+  // Hover effect
+  toggleButton.addEventListener("mouseenter", () => {
+    toggleButton.style.backgroundColor = "#555";
+  });
+  toggleButton.addEventListener("mouseleave", () => {
+    toggleButton.style.backgroundColor = "#333";
+  });
+
+  // Toggle grid on click
+  toggleButton.addEventListener("click", () => {
+    gridComponent.toggle();
+    updateButtonText(toggleButton);
+  });
+
+  // Set initial button text
+  updateButtonText(toggleButton);
+
   container.appendChild(toggleButton);
+
+  // Add keyboard shortcut (G key)
+  const handleKeyPress = (e: KeyboardEvent) => {
+    if (e.key === "g" || e.key === "G") {
+      gridComponent.toggle();
+      updateButtonText(toggleButton);
+    }
+  };
+
+  window.addEventListener("keydown", handleKeyPress);
 
   return () => {
     context.stop();
     toggleButton.remove();
+    window.removeEventListener("keydown", handleKeyPress);
   };
 }
 

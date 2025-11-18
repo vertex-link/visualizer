@@ -22,6 +22,7 @@ export type {
   MaterialDescriptor,
 } from "./resources/MaterialResource";
 export { GeometryUtils } from "./resources/GeometryUtils";
+export { GRID_VERTEX_SHADER, GRID_FRAGMENT_SHADER } from "./resources/GridShaders";
 
 // Rendering Interfaces
 export { BufferUsage } from "./rendering/interfaces/IBuffer";
@@ -39,6 +40,7 @@ export { TransformComponent } from "./rendering/components/TransformComponent";
 export type { Vec3, Quat, Mat4 } from "./rendering/components/TransformComponent";
 export { MeshRendererComponent } from "./rendering/components/MeshRendererComponent";
 export { GridComponent } from "./rendering/components/GridComponent";
+export type { GridConfig } from "./rendering/components/GridComponent";
 
 // Camera
 export { CameraComponent, ProjectionType } from "./rendering/camera/CameraComponent";

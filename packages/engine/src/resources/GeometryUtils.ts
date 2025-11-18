@@ -449,8 +449,27 @@ export class GeometryUtils {
   }
 
   /**
-   * Create a grid geometry for shader-based grid rendering
-   * Creates a large plane that will render grid lines in the fragment shader
+   * Create a grid geometry for shader-based grid rendering.
+   *
+   * Creates a large horizontal plane (XZ plane at Y=0) that will be used
+   * with a grid fragment shader to render infinite grid lines. The actual
+   * grid pattern is rendered procedurally in the shader, not in the geometry.
+   *
+   * The plane can be rotated via TransformComponent to create grids in
+   * different orientations (XY, YZ, etc.).
+   *
+   * @param size - Total size of the grid plane in world units (default: 100).
+   *               This determines how far the grid extends before shader fade.
+   * @param includeNormals - Whether to include normal vectors (default: true).
+   *                        Required for shader-based orientation detection.
+   * @param includeUVs - Whether to include UV coordinates (default: true).
+   * @returns MeshDescriptor with interleaved vertex data for the grid plane
+   *
+   * @example
+   * ```typescript
+   * const gridMesh = GeometryUtils.createGrid(100);
+   * const mesh = new MeshResource("Grid", gridMesh);
+   * ```
    */
   static createGrid(
     size = 100.0,
