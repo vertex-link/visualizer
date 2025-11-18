@@ -85,7 +85,7 @@ export function createObjModel(
     vertexSource: vertexWGSL,
     fragmentSource: fragmentWGSL,
     entryPoints: { vertex: "vs_main", fragment: "fs_main" },
-  } as any);
+  });
 
   const material = MaterialResource.createBasic("ObjMaterial", shader, color);
 

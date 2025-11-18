@@ -2,6 +2,14 @@ import { MeshResource, type MeshDescriptor, type VertexAttribute } from "./MeshR
 import type { Context } from "@vertex-link/space";
 import ObjFileParser from "obj-file-parser";
 
+// Constants
+const BYTES_PER_FLOAT32 = 4;
+const POSITION_SIZE = 3;
+const NORMAL_SIZE = 3;
+const UV_SIZE = 2;
+const NORMAL_EPSILON = 0.0001;
+const MAX_UINT16_VALUE = 65535;
+
 export interface ObjResourceOptions {
   /** Generate normals if missing (default: true) */
   generateNormals?: boolean;
@@ -50,10 +58,11 @@ export class ObjResource extends MeshResource {
     // 1. Fetch if URL, otherwise use as content
     let objContent: string;
     if (this.isUrl(this.source)) {
-      console.debug(`ObjResource "${this.name}": Fetching from ${this.source}`);
       const response = await fetch(this.source);
       if (!response.ok) {
-        throw new Error(`Failed to fetch OBJ from ${this.source}: ${response.statusText}`);
+        throw new Error(
+          `ObjResource "${this.name}": Failed to fetch from ${this.source}: ${response.statusText}`
+        );
       }
       objContent = await response.text();
     } else {
@@ -61,7 +70,6 @@ export class ObjResource extends MeshResource {
     }
 
     // 2. Parse with obj-file-parser
-    console.debug(`ObjResource "${this.name}": Parsing OBJ content...`);
     const parser = new ObjFileParser(objContent);
     const parsed = parser.parse();
 
@@ -77,21 +85,24 @@ export class ObjResource extends MeshResource {
     }
 
     const model = parsed.models[modelIndex];
-    console.debug(
-      `ObjResource "${this.name}": Using model "${model.name}" (${model.vertices.length} vertices, ${model.faces.length} faces)`
-    );
 
     // 3. Convert to MeshDescriptor
     const descriptor = this.convertToMeshDescriptor(model);
 
-    console.debug(
-      `ObjResource "${this.name}": Converted to MeshDescriptor (${this.getVertexCount(descriptor)} vertices)`
-    );
-
     return descriptor;
   }
 
+  /**
+   * Improved URL detection that checks for OBJ content format first
+   */
   private isUrl(str: string): boolean {
+    // Check if it looks like OBJ content (starts with common OBJ directives)
+    const objContentPattern = /^\s*(#|v\s|vn\s|vt\s|f\s|o\s|g\s|mtllib\s|usemtl\s)/;
+    if (objContentPattern.test(str)) {
+      return false;
+    }
+
+    // Otherwise check if it looks like a URL
     return (
       str.startsWith("http://") ||
       str.startsWith("https://") ||
@@ -102,11 +113,13 @@ export class ObjResource extends MeshResource {
   }
 
   private convertToMeshDescriptor(model: ObjFileParser.ObjModel): MeshDescriptor {
-    const hasNormals = model.vertexNormals.length > 0;
     const hasTexCoords = model.textureCoords.length > 0;
 
+    // Check if ALL faces have complete normal data
+    const hasCompleteNormals = this.checkCompleteNormals(model);
+
     // Determine what attributes we'll have
-    const includeNormals = hasNormals || this.options.generateNormals;
+    const includeNormals = hasCompleteNormals || this.options.generateNormals;
     const includeUVs = hasTexCoords;
 
     // Build interleaved vertex data from faces
@@ -114,6 +127,7 @@ export class ObjResource extends MeshResource {
     const indices: number[] = [];
     const vertexMap = new Map<string, number>(); // Cache unique vertices
 
+    let faceIndex = 0;
     for (const face of model.faces) {
       // Triangulate face if needed (supports triangles and quads)
       const triangles = this.triangulateFace(face);
@@ -133,14 +147,26 @@ export class ObjResource extends MeshResource {
             // Position (indices are 1-based in OBJ)
             const pos = model.vertices[faceVertex.vertexIndex - 1];
             if (!pos) {
-              throw new Error(`Invalid vertex index: ${faceVertex.vertexIndex}`);
+              throw new Error(
+                `ObjResource "${this.name}": Invalid vertex index ${faceVertex.vertexIndex} in face ${faceIndex} (model has ${model.vertices.length} vertices)`
+              );
             }
-            vertexData.push(pos.x * this.options.scale!, pos.y * this.options.scale!, pos.z * this.options.scale!);
+            vertexData.push(
+              pos.x * this.options.scale!,
+              pos.y * this.options.scale!,
+              pos.z * this.options.scale!
+            );
 
             // Normal
             if (includeNormals) {
-              if (hasNormals && faceVertex.vertexNormalIndex > 0) {
-                const normal = model.vertexNormals[faceVertex.vertexNormalIndex - 1];
+              if (hasCompleteNormals && faceVertex.vertexNormalIndex > 0) {
+                const normalIndex = faceVertex.vertexNormalIndex - 1;
+                if (normalIndex >= model.vertexNormals.length) {
+                  throw new Error(
+                    `ObjResource "${this.name}": Invalid normal index ${faceVertex.vertexNormalIndex} in face ${faceIndex} (model has ${model.vertexNormals.length} normals)`
+                  );
+                }
+                const normal = model.vertexNormals[normalIndex];
                 vertexData.push(normal.x, normal.y, normal.z);
               } else {
                 // Will generate normals later if needed
@@ -151,7 +177,13 @@ export class ObjResource extends MeshResource {
             // UV
             if (includeUVs) {
               if (faceVertex.textureCoordsIndex > 0) {
-                const uv = model.textureCoords[faceVertex.textureCoordsIndex - 1];
+                const uvIndex = faceVertex.textureCoordsIndex - 1;
+                if (uvIndex >= model.textureCoords.length) {
+                  throw new Error(
+                    `ObjResource "${this.name}": Invalid UV index ${faceVertex.textureCoordsIndex} in face ${faceIndex} (model has ${model.textureCoords.length} UVs)`
+                  );
+                }
+                const uv = model.textureCoords[uvIndex];
                 vertexData.push(uv.u, uv.v);
               } else {
                 vertexData.push(0, 0);
@@ -162,6 +194,7 @@ export class ObjResource extends MeshResource {
           indices.push(vertexIndex);
         }
       }
+      faceIndex++;
     }
 
     // Create vertex attributes
@@ -171,32 +204,32 @@ export class ObjResource extends MeshResource {
     // Position attribute
     attributes.push({
       name: "position",
-      size: 3,
+      size: POSITION_SIZE,
       type: "float32",
       offset: offset,
     });
-    offset += 3 * 4; // 3 floats * 4 bytes
+    offset += POSITION_SIZE * BYTES_PER_FLOAT32;
 
     // Normal attribute
     if (includeNormals) {
       attributes.push({
         name: "normal",
-        size: 3,
+        size: NORMAL_SIZE,
         type: "float32",
         offset: offset,
       });
-      offset += 3 * 4;
+      offset += NORMAL_SIZE * BYTES_PER_FLOAT32;
     }
 
     // UV attribute
     if (includeUVs) {
       attributes.push({
         name: "uv",
-        size: 2,
+        size: UV_SIZE,
         type: "float32",
         offset: offset,
       });
-      offset += 2 * 4;
+      offset += UV_SIZE * BYTES_PER_FLOAT32;
     }
 
     const vertexStride = offset;
@@ -204,7 +237,7 @@ export class ObjResource extends MeshResource {
     let vertices = new Float32Array(vertexData);
 
     // Generate normals if needed
-    if (includeNormals && !hasNormals && this.options.generateNormals) {
+    if (includeNormals && !hasCompleteNormals && this.options.generateNormals) {
       vertices = this.generateNormals(vertices, indices, vertexStride);
     }
 
@@ -213,13 +246,39 @@ export class ObjResource extends MeshResource {
       vertices = this.centerVertices(vertices, vertexStride);
     }
 
+    // Choose appropriate index buffer type based on vertex count
+    const uniqueVertexCount = vertexMap.size;
+    const indexBuffer = uniqueVertexCount > MAX_UINT16_VALUE
+      ? new Uint32Array(indices)
+      : new Uint16Array(indices);
+
     return {
       vertices,
-      indices: indices.length > 0 ? new Uint16Array(indices) : undefined,
+      indices: indices.length > 0 ? indexBuffer : undefined,
       vertexAttributes: attributes,
       vertexStride,
       primitiveTopology: "triangle-list",
     };
+  }
+
+  /**
+   * Check if all faces have complete normal data
+   */
+  private checkCompleteNormals(model: ObjFileParser.ObjModel): boolean {
+    if (model.vertexNormals.length === 0) {
+      return false;
+    }
+
+    // Check if all face vertices reference valid normals
+    for (const face of model.faces) {
+      for (const vertex of face.vertices) {
+        if (vertex.vertexNormalIndex <= 0 || vertex.vertexNormalIndex > model.vertexNormals.length) {
+          return false;
+        }
+      }
+    }
+
+    return true;
   }
 
   /**
@@ -251,9 +310,9 @@ export class ObjResource extends MeshResource {
    * Generate normals for vertices that don't have them
    */
   private generateNormals(vertices: Float32Array, indices: number[], vertexStride: number): Float32Array {
-    const vertexCount = vertices.length / (vertexStride / 4);
-    const floatsPerVertex = vertexStride / 4;
-    const normalOffset = 3; // Position is first (3 floats), then normal
+    const floatsPerVertex = vertexStride / BYTES_PER_FLOAT32;
+    const vertexCount = vertices.length / floatsPerVertex;
+    const normalOffset = POSITION_SIZE;
 
     // Initialize normals to zero
     for (let i = 0; i < vertexCount; i++) {
@@ -317,7 +376,7 @@ export class ObjResource extends MeshResource {
       let nz = vertices[base + normalOffset + 2];
 
       const length = Math.sqrt(nx * nx + ny * ny + nz * nz);
-      if (length > 0.0001) {
+      if (length > NORMAL_EPSILON) {
         nx /= length;
         ny /= length;
         nz /= length;
@@ -340,8 +399,8 @@ export class ObjResource extends MeshResource {
    * Center vertices around origin
    */
   private centerVertices(vertices: Float32Array, vertexStride: number): Float32Array {
-    const vertexCount = vertices.length / (vertexStride / 4);
-    const floatsPerVertex = vertexStride / 4;
+    const floatsPerVertex = vertexStride / BYTES_PER_FLOAT32;
+    const vertexCount = vertices.length / floatsPerVertex;
 
     // Find bounding box
     let minX = Infinity, minY = Infinity, minZ = Infinity;
@@ -374,14 +433,10 @@ export class ObjResource extends MeshResource {
       vertices[base + 2] -= centerZ;
     }
 
-    console.debug(
-      `ObjResource "${this.name}": Centered model (offset: ${centerX.toFixed(2)}, ${centerY.toFixed(2)}, ${centerZ.toFixed(2)})`
-    );
-
     return vertices;
   }
 
   private getVertexCount(descriptor: MeshDescriptor): number {
-    return descriptor.vertices.length / (descriptor.vertexStride / 4);
+    return descriptor.vertices.length / (descriptor.vertexStride / BYTES_PER_FLOAT32);
   }
 }
