@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zig Transform Math Module</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f7fa;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-top: 0;
+        }
+
+        #output {
+            margin-top: 20px;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .info-box h3 {
+            margin-top: 0;
+            color: #1976d2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔢 Zig Transform Math Module</h1>
+
+        <div class="info-box">
+            <h3>About This Example</h3>
+            <p>
+                This demonstrates the <strong>ztransform</strong> WebAssembly module -
+                a high-performance 3D math library written in Zig and compiled to WebAssembly.
+            </p>
+            <p>
+                The module provides vector operations (Vec2, Vec3, Vec4), matrix transformations (Mat4),
+                quaternions, and utility functions optimized for graphics programming.
+            </p>
+        </div>
+
+        <div id="output">
+            <div style="color: #666; font-style: italic;">Initializing...</div>
+        </div>
+    </div>
+
+    <script type="module" src="./script.ts"></script>
+</body>
+</html>

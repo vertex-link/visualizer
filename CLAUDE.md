@@ -12,6 +12,7 @@ Auto-generated from all feature plans. Last updated: 2025-09-11
 - @gltf-transform/web for web-based glTF I/O (002-building-a-feature)
 - zgltf for WebAssembly glTF parsing via ComputeResource (002-building-a-feature)
 - vite-plugin-zig for Zig to WebAssembly compilation (002-building-a-feature)
+- ztransform for high-performance 3D math via WebAssembly (003-transform-module)
 
 ## Project Structure
 ```
@@ -45,10 +46,12 @@ packages/
 - Resource-based architecture: Resources → Components → Rendering (3D Models)
 - Dual backend pattern: JavaScript development + WebAssembly performance (3D Models)
 - ComputeResource integration for WebAssembly modules (3D Models)
+- WebAssembly math libraries for performance-critical operations (Transform Math)
 
 ## Recent Changes
 - 001-i-want-to: Added turn-based strategy game example with character progression, combat, and equipment systems
 - 002-building-a-feature: Added resource-based 3D model import with dual backends (JS/WASM), GltfResource system, and ModelComponent ACS integration
+- 003-transform-module: Added ztransform WebAssembly module for high-performance 3D math (vectors, matrices, quaternions) with TypeScript wrapper API
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->

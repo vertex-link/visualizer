@@ -22,6 +22,8 @@ export type {
   MaterialDescriptor,
 } from "./resources/MaterialResource";
 export { GeometryUtils } from "./resources/GeometryUtils";
+export { TransformMath } from "./resources/TransformResource";
+export type { ZTransformExports } from "./resources/TransformResource";
 
 // Rendering Interfaces
 export { BufferUsage } from "./rendering/interfaces/IBuffer";

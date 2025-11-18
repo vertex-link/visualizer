@@ -15,6 +15,13 @@ export default defineConfig({
           target: "wasm32-freestanding",
           optimize: "ReleaseSmall",
         },
+        {
+          name: "ztransform",
+          path: path.resolve(__dirname, "src/resources/ztransform"),
+          entry: "src/main.zig",
+          target: "wasm32-freestanding",
+          optimize: "ReleaseSmall",
+        },
       ],
     }),
   ],
