@@ -33,8 +33,10 @@ packages/
 - ACS-first design: Actors are containers, Components hold data/behavior
 - No decorator DI: Resolve dependencies explicitly via cached getters
 - Use EngineContext for engine-scoped services
-- Resources follow create → setDevice() → compile() lifecycle
+- Resources follow create → loadInternal() → compile() lifecycle
+- Resources use slot system for composition: `resource.slot("name", value)`
 - Maintain TS path aliases for inter-package dependencies
+- No factory patterns or service managers: use `new Resource()` directly
 
 ## Architecture Patterns
 - Finite State Machine for combat phases (Turn-Based Strategy)
@@ -45,10 +47,22 @@ packages/
 - Resource-based architecture: Resources → Components → Rendering (3D Models)
 - Dual backend pattern: JavaScript development + WebAssembly performance (3D Models)
 - ComputeResource integration for WebAssembly modules (3D Models)
+- Resource slot system: Composable resource trees via named slots (Textures/Samplers)
+- Shader-driven binding discovery: Auto-create slots from WGSL @binding annotations (Textures/Samplers)
+- Automatic resource deduplication: Static caches for shared GPU resources (Textures/Samplers)
 
 ## Recent Changes
 - 001-i-want-to: Added turn-based strategy game example with character progression, combat, and equipment systems
 - 002-building-a-feature: Added resource-based 3D model import with dual backends (JS/WASM), GltfResource system, and ModelComponent ACS integration
+- 003-image-resources: Implemented resource slot system with ImageResource and SamplerResource
+  - Extended Resource base class with `.slot(name, value)` fluent API
+  - Added ImageResource for texture loading with automatic sampler slot
+  - Added SamplerResource with static cache for automatic deduplication
+  - Created WGSLParser to extract @group/@binding from shaders
+  - ShaderResource auto-discovers bindings and creates slot descriptors
+  - MaterialResource auto-creates slots and generates bind groups from filled slots
+  - WebGPUPipeline uses layout: "auto" for flexible binding inference
+  - Added textured-cube example demonstrating complete texture + sampler pipeline
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->
