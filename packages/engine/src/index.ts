@@ -15,6 +15,8 @@ export type {
   VertexAttribute as MeshVertexAttribute,
   MeshDescriptor,
 } from "./resources/MeshResource";
+export { ObjResource } from "./resources/ObjResource";
+export type { ObjResourceOptions } from "./resources/ObjResource";
 export { MaterialResource } from "./resources/MaterialResource";
 export type {
   UniformValue,
