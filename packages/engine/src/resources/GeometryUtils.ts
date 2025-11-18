@@ -447,4 +447,93 @@ export class GeometryUtils {
       primitiveTopology: "triangle-list",
     };
   }
+
+  /**
+   * Create a grid geometry for shader-based grid rendering
+   * Creates a large plane that will render grid lines in the fragment shader
+   */
+  static createGrid(
+    size = 100.0,
+    includeNormals = true,
+    includeUVs = true,
+  ): MeshDescriptor {
+    // Create a large plane for the grid
+    const halfSize = size * 0.5;
+
+    const positions = [
+      -halfSize, 0, -halfSize, // bottom-left
+      halfSize, 0, -halfSize,  // bottom-right
+      halfSize, 0, halfSize,   // top-right
+      -halfSize, 0, halfSize,  // top-left
+    ];
+
+    const normals = includeNormals
+      ? [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0]
+      : [];
+
+    const uvs = includeUVs
+      ? [0, 0, 1, 0, 1, 1, 0, 1]
+      : [];
+
+    const indices = [0, 1, 2, 0, 2, 3];
+
+    // Interleave vertex data
+    const vertexData: number[] = [];
+    const vertexCount = 4;
+
+    for (let i = 0; i < vertexCount; i++) {
+      // Position
+      vertexData.push(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
+
+      // Normal
+      if (includeNormals) {
+        vertexData.push(normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]);
+      }
+
+      // UV
+      if (includeUVs) {
+        vertexData.push(uvs[i * 2], uvs[i * 2 + 1]);
+      }
+    }
+
+    // Create vertex attributes
+    const attributes: VertexAttribute[] = [];
+    let offset = 0;
+
+    attributes.push({
+      name: "position",
+      size: 3,
+      type: "float32",
+      offset: offset,
+    });
+    offset += 3 * 4;
+
+    if (includeNormals) {
+      attributes.push({
+        name: "normal",
+        size: 3,
+        type: "float32",
+        offset: offset,
+      });
+      offset += 3 * 4;
+    }
+
+    if (includeUVs) {
+      attributes.push({
+        name: "uv",
+        size: 2,
+        type: "float32",
+        offset: offset,
+      });
+      offset += 2 * 4;
+    }
+
+    return {
+      vertices: new Float32Array(vertexData),
+      indices: new Uint16Array(indices),
+      vertexAttributes: attributes,
+      vertexStride: offset,
+      primitiveTopology: "triangle-list",
+    };
+  }
 }

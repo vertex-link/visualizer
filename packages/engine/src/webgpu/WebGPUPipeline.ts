@@ -66,11 +66,17 @@ export class WebGPUPipeline implements IPipeline {
       const vertexBufferLayout = this.createWebGPUVertexLayout(descriptor.vertexLayout);
       const instanceBufferLayout = this.createInstanceBufferLayout();
 
+      // Get render state configuration
+      const renderState = descriptor.renderState || {};
+
       const depthStencilState: GPUDepthStencilState = {
-        depthWriteEnabled: true,
-        depthCompare: "less",
+        depthWriteEnabled: renderState.depthWrite ?? true,
+        depthCompare: renderState.depthTest === false ? "always" : "less",
         format: "depth24plus",
       };
+
+      // Configure blend mode
+      const blendState = this.getBlendState(renderState.blendMode || "none");
 
       // --- ** Explicit Bind Group Layout Definition ** ---
       // This defines what group 0 expects: one uniform buffer at binding 0.
@@ -109,12 +115,13 @@ export class WebGPUPipeline implements IPipeline {
           targets: [
             {
               format: this.preferredFormat,
+              blend: blendState,
             },
           ],
         },
         primitive: {
           topology: "triangle-list",
-          cullMode: "none", // Keep as 'none' for debugging, or set to 'back'
+          cullMode: renderState.cullMode || "none",
           frontFace: "ccw",
         },
         depthStencil: depthStencilState,
@@ -201,6 +208,46 @@ export class WebGPUPipeline implements IPipeline {
       return gpuFormat;
     }
     throw new Error(`Unsupported vertex format: ${format}`);
+  }
+
+  /**
+   * Get blend state configuration based on blend mode
+   */
+  private getBlendState(blendMode: "none" | "alpha" | "additive"): GPUBlendState | undefined {
+    switch (blendMode) {
+      case "alpha":
+        // Standard alpha blending (src.a * src + (1 - src.a) * dst)
+        return {
+          color: {
+            srcFactor: "src-alpha",
+            dstFactor: "one-minus-src-alpha",
+            operation: "add",
+          },
+          alpha: {
+            srcFactor: "one",
+            dstFactor: "one-minus-src-alpha",
+            operation: "add",
+          },
+        };
+      case "additive":
+        // Additive blending (src + dst)
+        return {
+          color: {
+            srcFactor: "one",
+            dstFactor: "one",
+            operation: "add",
+          },
+          alpha: {
+            srcFactor: "one",
+            dstFactor: "one",
+            operation: "add",
+          },
+        };
+      case "none":
+      default:
+        // No blending
+        return undefined;
+    }
   }
 
   static create(

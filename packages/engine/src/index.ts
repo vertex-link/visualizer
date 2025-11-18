@@ -31,12 +31,14 @@ export type {
   VertexLayout,
   PipelineDescriptor,
   IPipeline,
+  RenderState,
 } from "./rendering/interfaces/IPipeline";
 
 // Rendering Components
 export { TransformComponent } from "./rendering/components/TransformComponent";
 export type { Vec3, Quat, Mat4 } from "./rendering/components/TransformComponent";
 export { MeshRendererComponent } from "./rendering/components/MeshRendererComponent";
+export { GridComponent } from "./rendering/components/GridComponent";
 
 // Camera
 export { CameraComponent, ProjectionType } from "./rendering/camera/CameraComponent";

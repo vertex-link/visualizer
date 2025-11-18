@@ -21,6 +21,22 @@ export interface VertexLayout {
 }
 
 /**
+ * Render state configuration for pipeline.
+ */
+export interface RenderState {
+  /** Culling mode */
+  cullMode?: "none" | "front" | "back";
+  /** Depth write enabled */
+  depthWrite?: boolean;
+  /** Depth test enabled */
+  depthTest?: boolean;
+  /** Blend mode */
+  blendMode?: "none" | "alpha" | "additive";
+  /** Wireframe rendering */
+  wireframe?: boolean;
+}
+
+/**
  * Pipeline creation descriptor.
  */
 export interface PipelineDescriptor {
@@ -39,6 +55,8 @@ export interface PipelineDescriptor {
     /** Fragment shader entry point */
     fragment?: string;
   };
+  /** Optional render state configuration */
+  renderState?: RenderState;
 }
 
 /**

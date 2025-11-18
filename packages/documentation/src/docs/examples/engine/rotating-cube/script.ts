@@ -1,6 +1,6 @@
-import { Engine } from "@vertex-link/engine";
+import { Engine, GridComponent } from "@vertex-link/engine";
 import { Scene } from "@vertex-link/space";
-import { createCamera, createRotatingCube } from "./composables";
+import { createCamera, createRotatingCube, createGrid } from "./composables";
 
 async function init(container: HTMLElement) {
   const canvas = document.createElement("canvas");
@@ -13,8 +13,10 @@ async function init(container: HTMLElement) {
 
   const scene = new Scene("RotatingCubeScene");
   context.setScene(scene);
-  // Create camera and rotating cube using composables
+
+  // Create camera and grid
   createCamera(scene, canvas, [0, 0, 40]);
+  const gridActor = createGrid(scene, 100, [0.5, 0.5, 0.5, 1.0], true);
   // Create a 3D grid of rotating cubes
   const gridSize = 10; // 2x2x2 grid (adjust as needed)
   const spacing = 1.2; // Space between cubes
@@ -52,8 +54,41 @@ async function init(container: HTMLElement) {
   // Start render loop
   context.start();
 
+  // Create toggle button for grid
+  const toggleButton = document.createElement("button");
+  toggleButton.textContent = "Toggle Grid";
+  toggleButton.style.position = "absolute";
+  toggleButton.style.top = "10px";
+  toggleButton.style.left = "10px";
+  toggleButton.style.padding = "10px 20px";
+  toggleButton.style.backgroundColor = "#333";
+  toggleButton.style.color = "#fff";
+  toggleButton.style.border = "none";
+  toggleButton.style.borderRadius = "4px";
+  toggleButton.style.cursor = "pointer";
+  toggleButton.style.fontFamily = "monospace";
+  toggleButton.style.fontSize = "14px";
+  toggleButton.style.zIndex = "1000";
+
+  toggleButton.addEventListener("click", () => {
+    const gridComponent = gridActor.getComponent(GridComponent);
+    if (gridComponent) {
+      gridComponent.toggle();
+      toggleButton.textContent = gridComponent.isVisible() ? "Hide Grid" : "Show Grid";
+    }
+  });
+
+  // Update button text based on initial state
+  const gridComponent = gridActor.getComponent(GridComponent);
+  if (gridComponent) {
+    toggleButton.textContent = gridComponent.isVisible() ? "Hide Grid" : "Show Grid";
+  }
+
+  container.appendChild(toggleButton);
+
   return () => {
     context.stop();
+    toggleButton.remove();
   };
 }
 

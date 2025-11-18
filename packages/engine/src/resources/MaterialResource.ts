@@ -187,6 +187,7 @@ export class MaterialResource extends Resource<MaterialDescriptor> {
         attributes: [{ location: 0, format: "float32x3", offset: 0 }],
       },
       label: `${this.name}_pipeline`,
+      renderState: this.payload.renderState,
     };
 
     return new WebGPUPipeline(device, pipelineDescriptor, this.preferredFormat);
