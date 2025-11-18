@@ -1,5 +1,8 @@
 import { Context, type IEventBus, Processor, type Scene, Tickers, SceneChangedEvent } from "@vertex-link/space";
 import { CameraComponent } from "../rendering/camera/CameraComponent";
+import { ClusteringComponent } from "../rendering/clustering/ClusteringComponent";
+import type { ClusteringResource } from "../rendering/clustering/ClusteringResource";
+import { LightComponent } from "../rendering/components/LightComponent";
 import { MeshRendererComponent } from "../rendering/components/MeshRendererComponent";
 import { TransformComponent } from "../rendering/components/TransformComponent";
 import { GPUResourcePool } from "../rendering/GPUResourcePool";
@@ -54,6 +57,10 @@ export class WebGPUProcessor extends Processor {
   private globalBindGroup: GPUBindGroup | null = null;
   private activeCamera: CameraComponent | null = null;
   private isDirty = true;
+
+  // Clustering data
+  private clusteringResource: ClusteringResource | null = null;
+  private clusteringEnabled = false;
 
   // Frame timing
   private lastFrameTime = 0;
@@ -122,6 +129,9 @@ export class WebGPUProcessor extends Processor {
       // Update render batches and camera after logic updates
       this.updateRenderBatches();
       this.updateActiveCamera();
+
+      // Update clustering data (if enabled)
+      this.updateClusteringData();
 
       // Check for transform updates and mark batches dirty
       this.checkTransformUpdates();
@@ -304,6 +314,66 @@ export class WebGPUProcessor extends Processor {
   }
 
   /**
+   * Update clustering data for forward+ rendering
+   */
+  private updateClusteringData(): void {
+    if (!this.scene || !this.activeCamera) return;
+
+    // Query for clustering component
+    const clusteringActors = this.scene.query().withComponent(ClusteringComponent).execute();
+
+    if (clusteringActors.length === 0) {
+      this.clusteringEnabled = false;
+      this.clusteringResource = null;
+      return;
+    }
+
+    // Get clustering component (use first one found)
+    const clusteringComp = clusteringActors[0].getComponent(ClusteringComponent);
+    if (!clusteringComp || !clusteringComp.autoUpdate) {
+      this.clusteringEnabled = false;
+      return;
+    }
+
+    // Get clustering resource
+    const resource = clusteringComp.clusteringResource;
+    if (!resource?.isCompiled) {
+      this.clusteringEnabled = false;
+      return;
+    }
+
+    this.clusteringResource = resource;
+    this.clusteringEnabled = true;
+
+    // Query all lights in scene
+    const lightActors = this.scene.query().withComponent(LightComponent).execute();
+    const lights = lightActors
+      .map((a) => a.getComponent(LightComponent))
+      .filter((l): l is LightComponent => l !== undefined && l.isValid());
+
+    // Run clustering algorithm
+    try {
+      const clusterData = resource.updateClustering(
+        this.activeCamera,
+        lights,
+        this.canvas.width,
+        this.canvas.height,
+      );
+
+      // Log statistics occasionally (every 60 frames)
+      if (Math.random() < 0.016) {
+        console.log(
+          `🔦 Clustering: ${clusterData.lightCount} lights, ${clusterData.clusterCount} clusters, ` +
+            `${clusterData.averageLightsPerCluster.toFixed(1)} avg lights/cluster`,
+        );
+      }
+    } catch (error) {
+      console.error("❌ Clustering error:", error);
+      this.clusteringEnabled = false;
+    }
+  }
+
+  /**
    * Check if any transforms have been updated and mark batches dirty
    */
   private checkTransformUpdates(): void {
@@ -457,6 +527,20 @@ export class WebGPUProcessor extends Processor {
    */
   getActiveCamera(): CameraComponent | null {
     return this.activeCamera;
+  }
+
+  /**
+   * Get clustering resource (for render passes)
+   */
+  getClusteringResource(): ClusteringResource | null {
+    return this.clusteringResource;
+  }
+
+  /**
+   * Check if clustering is enabled
+   */
+  isClusteringEnabled(): boolean {
+    return this.clusteringEnabled;
   }
 
   /**

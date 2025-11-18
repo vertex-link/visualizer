@@ -37,6 +37,7 @@ export type {
 export { TransformComponent } from "./rendering/components/TransformComponent";
 export type { Vec3, Quat, Mat4 } from "./rendering/components/TransformComponent";
 export { MeshRendererComponent } from "./rendering/components/MeshRendererComponent";
+export { LightComponent, LightType } from "./rendering/components/LightComponent";
 
 // Camera
 export { CameraComponent, ProjectionType } from "./rendering/camera/CameraComponent";
@@ -54,6 +55,12 @@ export { Transform } from "./rendering/math/Transform";
 export { RenderGraph, RenderPass, ForwardPass, PostProcessPass } from "./rendering/RenderGraph";
 export type { RenderBatch, RenderPassContext } from "./rendering/RenderGraph";
 export { GPUResourcePool } from "./rendering/GPUResourcePool";
+export { LightingPass } from "./rendering/passes/LightingPass";
+
+// Clustered Forward+ Rendering
+export { ClusteringComponent } from "./rendering/clustering/ClusteringComponent";
+export { ClusteringResource } from "./rendering/clustering/ClusteringResource";
+export type { ClusterGridConfig, ClusterData } from "./rendering/clustering/ClusteringResource";
 
 export { WebGPUProcessor } from "./processors/WebGPUProcessor";
 export { RenderProcessor } from "./processors/RenderProcessor";

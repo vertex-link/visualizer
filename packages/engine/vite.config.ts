@@ -6,7 +6,7 @@ import zig from "vite-plugin-zig";
 export default defineConfig({
   plugins: [
     zig({
-      // Configure zgltf WebAssembly compilation
+      // Configure WebAssembly compilation for Zig modules
       projects: [
         {
           name: "zgltf",
@@ -14,6 +14,13 @@ export default defineConfig({
           entry: "src/main.zig",
           target: "wasm32-freestanding",
           optimize: "ReleaseSmall",
+        },
+        {
+          name: "zclustering",
+          path: path.resolve(__dirname, "src/rendering/clustering/zclustering"),
+          entry: "src/main.zig",
+          target: "wasm32-freestanding",
+          optimize: "ReleaseFast", // Optimize for speed (clustering is performance-critical)
         },
       ],
     }),
